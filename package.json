@@ -17,6 +17,7 @@
     "uqr": "0.1.2"
   },
   "devDependencies": {
+    "typescript": "6.0.3",
     "wrangler": "4.151.0"
   }
 }
