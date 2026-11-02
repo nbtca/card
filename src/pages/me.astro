@@ -10,9 +10,20 @@ if (Astro.request.method === "POST") {
   const form = await Astro.request.formData()
   const text = (name: string, max: number) => String(form.get(name) ?? "").trim().slice(0, max) || null
   const hue = Math.round(Number(form.get("hue")))
+  const year = Number(form.get("joined"))
+  const thisYear = new Date().getFullYear()
   await db()
-    .prepare("UPDATE members SET word = ?, motto = ?, hue = ? WHERE id = ?")
-    .bind(text("word", 12), text("motto", 40), Number.isFinite(hue) ? Math.min(360, Math.max(0, hue)) : 210, id)
+    .prepare("UPDATE members SET word = ?, motto = ?, hue = ?, section = ?, role = ?, joined = ?, github = ? WHERE id = ?")
+    .bind(
+      text("word", 12),
+      text("motto", 40),
+      Number.isFinite(hue) ? Math.min(360, Math.max(0, hue)) : 210,
+      text("section", 12) ?? "",
+      text("role", 12) ?? "社员",
+      Number.isInteger(year) && year >= 2000 && year <= thisYear ? year : thisYear,
+      text("github", 39)?.replace(/^@/, "") ?? null,
+      id,
+    )
     .run()
   saved = true
 }
@@ -36,7 +47,7 @@ const uploads = [
       <header class="reveal">
         <p class="eyebrow">Customize</p>
         <h1>装扮我的卡片</h1>
-        <p class="muted">姓名、部门和身份由管理员登记。下面这些由你决定，改动会立刻出现在左边的卡片上。</p>
+        <p class="muted">姓名和代号来自你的 Logto 账号，其他都由你决定。卡面上的改动会立刻出现在左边。</p>
       </header>
 
       {saved && <p class="notice reveal">已保存，所有人看到的都是新卡面了。</p>}
@@ -59,7 +70,13 @@ const uploads = [
           </div>
           <input name="hue" type="range" min="0" max="360" value={member.hue} data-live="hue" aria-label="自定义色相" />
         </div>
-        <button class="button">保存卡面</button>
+        <div class="pair">
+          <label>部门<input name="section" maxlength="12" value={member.section} placeholder="技术部" data-live="section" /></label>
+          <label>身份<input name="role" maxlength="12" value={member.role} placeholder="社员" data-live="role" /></label>
+          <label>入会年份<input name="joined" type="number" min="2000" max={new Date().getFullYear()} value={member.joined} /></label>
+          <label>GitHub<input name="github" maxlength="39" value={member.github ?? ""} placeholder="用户名" /></label>
+        </div>
+        <button class="button">保存</button>
       </form>
 
       <section class="panel uploads reveal" style="--i: 2">
@@ -117,6 +134,12 @@ const uploads = [
     dispatchEvent(new Event("card:refit"))
   })
   if (motto) live("motto", (value) => (motto.textContent = value))
+  const sub = card.querySelector<HTMLElement>(".sub")!
+  const section = document.querySelector<HTMLInputElement>("[data-live=section]")!
+  const role = document.querySelector<HTMLInputElement>("[data-live=role]")!
+  const updateSub = () => (sub.textContent = [section.value.trim(), role.value.trim() || "社员"].filter(Boolean).join(" · "))
+  section.addEventListener("input", updateSub)
+  role.addEventListener("input", updateSub)
 
   // Safari cannot encode WebP and returns PNG, so the server accepts both.
   async function encode(file: File) {
@@ -202,6 +225,12 @@ const uploads = [
   header p {
     margin: 0;
     line-height: 1.7;
+  }
+
+  .pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
   }
 
   .hues {

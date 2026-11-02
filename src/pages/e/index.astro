@@ -12,6 +12,7 @@ const events = await upcomingEvents()
       <p class="eyebrow reveal">Events</p>
       <h1 class="title reveal" style="--i: 1">活动</h1>
       <p class="lede reveal" style="--i: 2">每场活动都有一张专属的券。在开放时间里领一张，活动当天出示给工作人员扫码入场。</p>
+      {Astro.locals.user?.member && <a class="button reveal" style="--i: 3" href="/e/new">发起活动</a>}
     </header>
     {events.length ? <EventList events={events} /> : <p class="muted">最近还没有活动，过几天再来看看。</p>}
   </main>
@@ -26,6 +27,7 @@ const events = await upcomingEvents()
 
   header {
     display: grid;
+    justify-items: start;
     gap: 1.2rem;
   }
 </style>

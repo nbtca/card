@@ -10,7 +10,8 @@
   "vars": {
     "ACCESS_TEAM_DOMAIN": "https://nbtca.cloudflareaccess.com",
     "ACCESS_AUD": "f2dc1e37e5658c78d88715a512acfb0069a98e7d63319ab8523d36d00be255c1",
-    "ADMIN_EMAILS": "contact@m1ng.space,clas.wen@icloud.com"
+    "MEMBER_ROLES": "Repair Member,Repair Admin,Admin",
+    "ADMIN_ROLES": "Repair Admin,Admin"
   },
   "d1_databases": [{ "binding": "DB", "database_name": "card", "database_id": "643f54b7-6b92-43b6-95d4-18e2a7fc5a3e", "migrations_dir": "migrations" }],
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "card" }]

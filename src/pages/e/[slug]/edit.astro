@@ -1,0 +1,109 @@
+---
+import EventEditor from "../../../components/EventEditor.astro"
+import Base from "../../../layouts/Base.astro"
+import { db, formatShort, getEvent, type Pass } from "../../../lib/db"
+import { canEdit, saveEvent } from "../../../lib/events"
+
+const event = await getEvent(Astro.params.slug!)
+if (!event) return new Response(null, { status: 404 })
+const { user } = Astro.locals
+if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`)
+if (!canEdit(event, user)) return Astro.redirect(`/e/${event.slug}`)
+
+let error = ""
+if (Astro.request.method === "POST") {
+  const result = await saveEvent(await Astro.request.formData(), event, event.created_by)
+  if (result.slug) return Astro.redirect(`/e/${event.slug}`, 303)
+  error = result.error
+}
+
+const { results: passes } = await db().prepare("SELECT * FROM passes WHERE event = ? ORDER BY serial").bind(event.slug).all<Pass>()
+const entered = passes.filter((p) => p.redeemed_at).length
+const stamp = (ms: number) => formatShort(new Date(ms).toISOString())
+---
+
+<Base title={`编辑 ${event.title} · NBTCA`}>
+  <main class="wrap">
+    <header>
+      <p class="eyebrow reveal">Edit event</p>
+      <h1 class="title reveal" style="--i: 1">{event.title}</h1>
+    </header>
+
+    <EventEditor event={event} isNew={false} error={error} holder={user.name} />
+
+    <section class="panel roll reveal">
+      <div class="head">
+        <h2>领取名单</h2>
+        <dl>
+          <div><dt>已领取</dt><dd>{passes.length}{event.capacity !== null && <small> / {event.capacity}</small>}</dd></div>
+          <div><dt>已入场</dt><dd>{entered}</dd></div>
+        </dl>
+      </div>
+      {passes.length
+        ? (
+            <table>
+              <thead><tr><th>编号</th><th>姓名</th><th>领取时间</th><th>入场时间</th></tr></thead>
+              <tbody>
+                {passes.map((p) => (
+                  <tr>
+                    <td>{String(p.serial).padStart(4, "0")}</td>
+                    <td>{p.name}</td>
+                    <td>{stamp(p.created_at)}</td>
+                    <td>{p.redeemed_at ? stamp(p.redeemed_at) : <span class="muted">未入场</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        : <p class="muted">还没有人领券。</p>}
+    </section>
+  </main>
+</Base>
+
+<style>
+  main {
+    display: grid;
+    gap: 3.5rem;
+    padding-block: 3rem;
+  }
+
+  header {
+    display: grid;
+    gap: 1.2rem;
+  }
+
+  .roll {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  dl {
+    display: flex;
+    gap: 2.5rem;
+    margin: 0;
+  }
+
+  dt {
+    font-size: 0.8rem;
+    color: var(--faint);
+  }
+
+  dd {
+    margin: 0.3rem 0 0;
+    font: 800 2rem / 1 var(--wide);
+    font-stretch: 125%;
+  }
+
+  dd small {
+    font-size: 1rem;
+    color: var(--faint);
+  }
+</style>

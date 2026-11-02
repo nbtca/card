@@ -15,32 +15,32 @@ Both cards live in `src/cards/` and share `tilt.ts`, which follows the pointer o
 
 ## Designing a pass
 
-Each `.astro` file in `src/cards/passes/` is a pass design, named after the file, and appears in the design menu on `/admin`. A design receives `PassProps` from `src/cards/pass.ts`, and `ticket()` there gives it the dates, serial number, check-in state and QR code path, so a new design only decides how they look. Events whose design file is missing fall back to `default`.
+Each `.astro` file in `src/cards/passes/` is a pass design, named after the file, and appears in the design menu of the event editor. A design receives `PassProps` from `src/cards/pass.ts`, and `ticket()` there gives it the dates, serial number, check-in state and QR code path, so a new design only decides how they look. Mark elements with `data-bind` to have the editor update them live. Events whose design file is missing fall back to `default`.
 
 ## Access
 
-[Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/access-controls/) signs people in through Logto, the same identity provider `photo.nbtca.space` uses. The Worker verifies the token Access issues and takes the email in it as the identity, so a request that bypasses Access carries no identity.
+[Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/access-controls/) signs people in through Logto, the same identity provider `photo.nbtca.space` uses. The Worker verifies the Access token, then reads the visitor's Logto name, username and roles from the Access identity endpoint. A request that bypasses Access carries no identity.
 
 Access guards only the paths that need a signed-in visitor. Event pages stay public, and the Worker reads the same `CF_Authorization` cookie there to show a signed-in visitor their pass.
 
 | Who | Can do |
 | --- | --- |
-| Anyone | See open events |
+| Anyone | See events |
 | Anyone who signs in | Claim one pass per event |
-| Emails on the member roster | See every member card, customise their own, check in passes at `/scan` |
-| Emails in `ADMIN_EMAILS` | Manage events and the roster at `/admin` |
+| Logto roles in `MEMBER_ROLES` | See every member card, customise their own, start events and edit them, check in passes at `/scan` |
+| Logto roles in `ADMIN_ROLES` | Everything members can do, and edit any event |
 
-Admins keep the roster at `/admin/members`, one member at a time or by pasting lines of `email,name,alias,section,role,year,github`. Members' portraits and backgrounds are re-encoded in the browser to WebP (PNG on Safari, which cannot encode WebP) and served only to members. Event videos are public.
+A member's card appears after their first visit. Its name and alias follow their Logto account; the rest is theirs to set at `/me`. Portraits and backgrounds are re-encoded in the browser to WebP (PNG on Safari, which cannot encode WebP) and served only to members. Event videos are public.
 
 ## Check-in
 
-An admin gives each event a claim window and a start and end time. Passes can be claimed only inside the window, and checked in from an hour before the event starts until it ends. A scan outside those hours says so and leaves the pass unused.
+Whoever starts an event gives it a claim window and a start and end time, and sees who claimed and entered on its edit page. Passes can be claimed only inside the window, and checked in from an hour before the event starts until it ends. A scan outside those hours says so and leaves the pass unused.
 
 Each pass carries a QR code for `https://card.nbtca.space/scan#<pass id>`. Staff can scan it on `/scan`, which uses `BarcodeDetector` where available and jsQR elsewhere, or with their phone's camera app, which opens the same page and checks the pass in. A pass checks in once; scanning it again shows when it was used. Passes can also be checked in by event and number.
 
 ## Setup
 
-1. In Zero Trust, add a self-hosted application with Logto as the only identity provider and instant authentication on. The reusable policy `Anyone signed in with Logto` admits everyone who signs in with it. Give it these paths on `card.nbtca.space`: `/login`, `/members`, `/me`, `/scan`, `/admin`, `/api` and `/media/members`. Put its Application Audience (AUD) tag in `ACCESS_AUD` in `wrangler.jsonc`. Until it is set, nobody can sign in.
+1. In Zero Trust, add a self-hosted application with Logto as the only identity provider and instant authentication on. The reusable policy `Anyone signed in with Logto` admits everyone who signs in with it. Give it these paths on `card.nbtca.space`: `/login`, `/members`, `/me`, `/scan`, `/api` and `/media/members`. The Logto identity provider must pass the `name`, `username` and `roles` OIDC claims. Put its Application Audience (AUD) tag in `ACCESS_AUD` in `wrangler.jsonc`. Until it is set, nobody can sign in.
 2. Create the database and bucket, and copy the D1 ID into `wrangler.jsonc`:
 
    ```sh

@@ -47,10 +47,46 @@ function token(request: Request) {
   }
 }
 
+interface Identity {
+  name?: string
+  oidc_fields?: { roles?: string | string[]; name?: string; username?: string }
+}
+
+export interface Visitor {
+  email: string
+  name: string
+  username: string
+  roles: string[]
+}
+
+const IDENTITY_TTL = 5 * 60 * 1000
+const identities = new Map<string, { at: number; visitor: Visitor }>()
+
+// Logto's roles reach the Worker only through the identity endpoint, not the Access token itself.
+async function identity(jwt: string, email: string): Promise<Visitor> {
+  const cached = identities.get(jwt)
+  if (cached && Date.now() - cached.at < IDENTITY_TTL) return cached.visitor
+  const response = await fetch(`${env.ACCESS_TEAM_DOMAIN}/cdn-cgi/access/get-identity`, {
+    headers: { Cookie: `CF_Authorization=${jwt}` },
+  })
+  const data: Identity = response.ok ? await response.json() : {}
+  const fields = data.oidc_fields ?? {}
+  const visitor = {
+    email,
+    name: fields.name || data.name || fields.username || email.split("@")[0]!,
+    username: fields.username || email.split("@")[0]!,
+    roles: [fields.roles ?? []].flat(),
+  }
+  if (identities.size > 500) identities.clear()
+  if (response.ok) identities.set(jwt, { at: Date.now(), visitor })
+  return visitor
+}
+
 // Access only guards some paths, and public pages read the same cookie, so every token is verified here.
-export async function accessEmail(request: Request) {
-  const [header, payload, signature] = token(request)?.split(".") ?? []
-  if (!env.ACCESS_AUD || !header || !payload || !signature) return null
+export async function accessVisitor(request: Request) {
+  const jwt = token(request)
+  const [header, payload, signature] = jwt?.split(".") ?? []
+  if (!env.ACCESS_AUD || !jwt || !header || !payload || !signature) return null
   try {
     const { kid, alg } = parse<{ kid: string; alg: string }>(header)
     if (alg !== "RS256") return null
@@ -61,7 +97,8 @@ export async function accessEmail(request: Request) {
     const claims = parse<Claims>(payload)
     const fresh = claims.exp && claims.exp > Date.now() / 1000
     const ours = claims.iss === env.ACCESS_TEAM_DOMAIN && [claims.aud].flat().includes(env.ACCESS_AUD)
-    return fresh && ours ? (claims.email?.toLowerCase() ?? null) : null
+    const email = claims.email?.toLowerCase()
+    return fresh && ours && email ? await identity(jwt, email) : null
   } catch {
     return null
   }

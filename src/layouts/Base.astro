@@ -13,7 +13,6 @@ const links = [
   user?.member && { href: "/members", label: "社员" },
   { href: "/e", label: "活动" },
   user?.member && { href: "/scan", label: "核销" },
-  user?.admin && { href: "/admin", label: "管理" },
 ].filter((l) => !!l)
 ---
 

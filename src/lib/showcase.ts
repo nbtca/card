@@ -21,6 +21,7 @@ export const showcaseEvent = (): Event => {
   const now = new Date().toISOString()
   return {
     slug: "",
+    created_by: "",
     title: "理工维修日",
     word: "fix",
     design: "default",

@@ -1,0 +1,263 @@
+---
+import { passDesign, passDesigns } from "../cards/pass"
+import type { Event } from "../lib/db"
+import { toLocal } from "../lib/events"
+
+interface Props {
+  event: Event
+  isNew: boolean
+  error?: string
+  holder: string
+}
+
+const { event, isNew, error, holder } = Astro.props
+const Design = passDesign(event.design)
+const times = [
+  ["claim_from", "开始领券"],
+  ["claim_until", "停止领券"],
+  ["starts_at", "活动开始"],
+  ["ends_at", "活动结束"],
+] as const
+---
+
+<div class="studio">
+  <aside class="preview">
+    <Design event={event} pass={null} holder={holder} guest={false} />
+    <p class="hint">实时预览 · 移动鼠标看看卡面的光泽</p>
+  </aside>
+
+  <form class="sheets form" method="post" enctype="multipart/form-data">
+    {error && <p class="notice error">{error}</p>}
+
+    <section class="panel">
+      <h2><span>01</span>卡面</h2>
+      <label>活动名称<input name="title" required maxlength="40" value={event.title} data-live="title" placeholder="理工维修日" /></label>
+      <label>
+        卡面大字
+        <input class="big" name="word" required maxlength="16" value={event.word} data-live="word" placeholder="fix" />
+        <small>视频会从这几个字里透出来，2 到 6 个字符最好看。</small>
+      </label>
+      {isNew && (
+        <label>
+          链接名
+          <span class="slug"><em>card.nbtca.space/e/</em><input name="slug" required pattern="[a-z0-9][a-z0-9\-]{1,40}" placeholder="repair-day" /></span>
+          <small>小写字母、数字和连字符，创建后不能再改。</small>
+        </label>
+      )}
+      {Object.keys(passDesigns).length > 1 && (
+        <label>
+          卡面设计
+          <select name="design">
+            {Object.keys(passDesigns).map((name) => <option selected={name === event.design}>{name}</option>)}
+          </select>
+        </label>
+      )}
+    </section>
+
+    <section class="panel">
+      <h2><span>02</span>时间</h2>
+      <fieldset>
+        <p>按北京时间填写。只有在领券时间里才能领券，活动开始前一小时到结束之间才能核销。</p>
+        {times.map(([name, label]) => (
+          <label>{label}<input name={name} type="datetime-local" required value={event[name] && toLocal(event[name])} data-live={name} /></label>
+        ))}
+      </fieldset>
+    </section>
+
+    <section class="panel">
+      <h2><span>03</span>地点与名额</h2>
+      <label>地点<input name="venue" required maxlength="40" value={event.venue} data-live="venue" placeholder="图书馆一楼大厅" /></label>
+      <label>名额<input name="capacity" type="number" min="1" value={event.capacity ?? ""} placeholder="不限" /><small>留空表示不限名额。</small></label>
+      <label>简介<textarea name="summary" rows="3" maxlength="200" placeholder="一两句话介绍这场活动">{event.summary}</textarea></label>
+    </section>
+
+    <section class="panel">
+      <h2><span>04</span>卡面视频</h2>
+      <label class="drop">
+        <input name="video" type="file" accept="video/mp4,video/webm" data-live="video" />
+        <strong data-file>{event.video ? "已上传视频，选择新文件可替换" : "选择一段视频"}</strong>
+        <small>50MB 以内的 MP4 或 WebM，几秒钟的循环画面最好。不上传就用默认的渐变动画。</small>
+      </label>
+    </section>
+
+    <div class="submit">
+      <button class="button">{isNew ? "发布活动" : "保存修改"}</button>
+      <a class="button ghost" href={isNew ? "/e" : `/e/${event.slug}`}>取消</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  const bind = (name: string, value: string) =>
+    document.querySelectorAll<HTMLElement>(`.preview [data-bind=${name}]`).forEach((el) => (el.textContent = value))
+  const input = (name: string) => document.querySelector<HTMLInputElement>(`[data-live=${name}]`)!
+
+  for (const name of ["title", "venue"]) {
+    input(name).addEventListener("input", (e) => bind(name, (e.target as HTMLInputElement).value || " "))
+  }
+  input("word").addEventListener("input", (e) => {
+    bind("word", (e.target as HTMLInputElement).value || " ")
+    dispatchEvent(new Event("card:refit"))
+  })
+  input("starts_at").addEventListener("input", (e) => {
+    const [date, time] = (e.target as HTMLInputElement).value.split("T")
+    if (!date || !time) return
+    const [y, m, d] = date.split("-").map(Number) as [number, number, number]
+    bind("date", `${d} ${MONTHS[m - 1]} ${y}`)
+    bind("day", `${m}月${d}日`)
+    bind("time", time)
+  })
+  input("video").addEventListener("change", (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    document.querySelector("[data-file]")!.textContent = file ? file.name : "选择一段视频"
+    const footage = document.querySelector<HTMLElement>(".preview [data-bind=footage]")
+    if (!file || !footage) return
+    const video = Object.assign(document.createElement("video"), {
+      src: URL.createObjectURL(file),
+      muted: true,
+      loop: true,
+      autoplay: true,
+      playsInline: true,
+    })
+    footage.replaceChildren(video)
+  })
+</script>
+
+<style>
+  .studio {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: start;
+    gap: 3rem 4rem;
+  }
+
+  .preview {
+    position: sticky;
+    top: 7rem;
+    display: grid;
+    justify-items: center;
+    gap: 1.5rem;
+    padding-block: 1rem;
+  }
+
+  .preview::before {
+    content: "";
+    position: absolute;
+    inset: 5% 0 15%;
+    z-index: -1;
+    background: radial-gradient(closest-side, rgb(59 141 255 / 0.3), transparent);
+    filter: blur(30px);
+  }
+
+  .preview :global(video) {
+    position: absolute;
+    inset: -6%;
+    width: 112%;
+    height: 112%;
+    object-fit: cover;
+    translate: calc(var(--x, 0) * -4cqi) calc(var(--y, 0) * -4cqi);
+  }
+
+  .hint {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--faint);
+  }
+
+  .sheets {
+    gap: 1.25rem;
+  }
+
+  .panel {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    font-size: 1.15rem;
+  }
+
+  h2 span {
+    font: 800 0.8rem / 1 var(--wide);
+    font-stretch: 125%;
+    color: var(--glow);
+  }
+
+  .form .big {
+    min-height: 3.6rem;
+    font: 900 1.6rem / 1 var(--wide);
+    font-stretch: 125%;
+    letter-spacing: -0.02em;
+  }
+
+  .slug {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 0.9rem;
+    background: rgb(0 0 0 / 0.25);
+    overflow: hidden;
+  }
+
+  .slug em {
+    padding-left: 0.95rem;
+    font-style: normal;
+    font-size: 0.85rem;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+
+  .form .slug input {
+    border: 0;
+    background: none;
+    box-shadow: none;
+    padding-left: 0.1rem;
+  }
+
+  .drop {
+    position: relative;
+    justify-items: center;
+    padding: 2rem 1rem;
+    border: 1px dashed rgb(255 255 255 / 0.2);
+    border-radius: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .drop:hover {
+    border-color: var(--glow);
+    background: rgb(59 141 255 / 0.05);
+  }
+
+  .drop input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .drop strong {
+    color: var(--fg);
+  }
+
+  .submit {
+    display: flex;
+    gap: 0.75rem;
+    padding-top: 0.5rem;
+  }
+
+  @media (max-width: 900px) {
+    .studio {
+      grid-template-columns: 1fr;
+    }
+
+    .preview {
+      position: static;
+    }
+  }
+</style>

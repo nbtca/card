@@ -18,6 +18,7 @@ export interface Member {
 
 export interface Event {
   slug: string
+  created_by: string
   title: string
   word: string
   design: string

@@ -18,33 +18,33 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
 >
   <div class="tilt">
     <article class="card" aria-label={`${event.title} 通行证`}>
-      <div class="plane footage">
+      <div class="plane footage" data-bind="footage">
         {video
           ? <video src={video} muted loop playsinline preload={size === "thumb" ? "metadata" : "auto"} aria-hidden="true" />
           : <div class="aurora" />}
       </div>
       <div class="knockout" aria-hidden="true">
         <div class="plane sheet" />
-        <div class="title"><span class="word" data-fit="0.84">{event.word}</span></div>
+        <div class="title"><span class="word" data-fit="0.84" data-bind="word">{event.word}</span></div>
       </div>
       <div class="plane print">
         <div class="texture" />
         <header class="head">
           <span>NBTCA Event Pass</span>
-          <span>{date}</span>
+          <span data-bind="date">{date}</span>
         </header>
         <div class="who">
           <span class="holo" aria-hidden="true" />
           <p class="name">{holder}</p>
           <p class="role">
             <span class="tag">{guest ? "Guest" : "Member"}</span>
-            <span>{event.title}</span>
+            <span data-bind="title">{event.title}</span>
           </p>
         </div>
         <dl class="grid">
-          <div><dt>Venue</dt><dd>{event.venue}</dd></div>
-          <div><dt>Date</dt><dd>{day}</dd></div>
-          <div><dt>Time</dt><dd>{time}</dd></div>
+          <div><dt>Venue</dt><dd data-bind="venue">{event.venue}</dd></div>
+          <div><dt>Date</dt><dd data-bind="day">{day}</dd></div>
+          <div><dt>Time</dt><dd data-bind="time">{time}</dd></div>
         </dl>
         <div class="stub">
           <svg class="qr" viewBox={`0 0 ${qr.size} ${qr.size}`} shape-rendering="crispEdges" aria-hidden="true">

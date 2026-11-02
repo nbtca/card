@@ -1,0 +1,57 @@
+---
+import EventEditor from "../../components/EventEditor.astro"
+import Base from "../../layouts/Base.astro"
+import type { Event } from "../../lib/db"
+import { saveEvent } from "../../lib/events"
+
+const user = Astro.locals.user!
+let error = ""
+if (Astro.request.method === "POST") {
+  const result = await saveEvent(await Astro.request.formData(), null, user.email)
+  if (result.slug) return Astro.redirect(`/e/${result.slug}`, 303)
+  error = result.error
+}
+
+const day = 864e5
+const hour = 36e5
+const next = Math.ceil(Date.now() / hour) * hour
+const draft: Event = {
+  slug: "",
+  created_by: user.email,
+  title: "",
+  word: "NBTCA",
+  design: "default",
+  venue: "",
+  summary: "",
+  video: null,
+  capacity: null,
+  claim_from: new Date(next).toISOString(),
+  claim_until: new Date(next + 6 * day).toISOString(),
+  starts_at: new Date(next + 7 * day).toISOString(),
+  ends_at: new Date(next + 7 * day + 2 * hour).toISOString(),
+}
+---
+
+<Base title="发起活动 · NBTCA">
+  <main class="wrap">
+    <header>
+      <p class="eyebrow reveal">New event</p>
+      <h1 class="title reveal" style="--i: 1">发起一场活动</h1>
+      <p class="lede reveal" style="--i: 2">填好下面几项，左边就是大家会领到的活动券。发布后活动会出现在活动页，到了领券时间就能领取。</p>
+    </header>
+    <EventEditor event={draft} isNew error={error} holder={user.name} />
+  </main>
+</Base>
+
+<style>
+  main {
+    display: grid;
+    gap: 3.5rem;
+    padding-block: 3rem;
+  }
+
+  header {
+    display: grid;
+    gap: 1.2rem;
+  }
+</style>

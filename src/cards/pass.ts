@@ -1,6 +1,7 @@
 import { encode } from "uqr"
 import { checkInPhase, mediaUrl, ZONE, type Event, type Pass } from "../lib/db"
 
+// Elements marked data-bind="word|title|venue|date|day|time|footage" update live in the event editor.
 export interface PassProps {
   event: Event
   pass: Pass | null

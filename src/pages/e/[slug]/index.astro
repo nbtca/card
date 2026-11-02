@@ -1,7 +1,8 @@
 ---
-import { passDesign } from "../../cards/pass"
-import Base from "../../layouts/Base.astro"
-import { checkInPhase, claimPhase, db, formatClock, formatRange, formatShort, formatTime, getEvent, randomId, sameDay, ZONE, type Pass } from "../../lib/db"
+import { passDesign } from "../../../cards/pass"
+import Base from "../../../layouts/Base.astro"
+import { checkInPhase, claimPhase, db, formatClock, formatRange, formatShort, formatTime, getEvent, memberByEmail, randomId, sameDay, ZONE, type Pass } from "../../../lib/db"
+import { canEdit } from "../../../lib/events"
 
 const event = await getEvent(Astro.params.slug!)
 if (!event) return new Response(null, { status: 404 })
@@ -39,6 +40,8 @@ const passNotice = pass?.redeemed_at
     ? "活动已经结束了。"
     : "这是你的活动券。入场时把底部的二维码给工作人员扫一下就好，活动开始前一小时起可以核销。"
 const Design = passDesign(event.design)
+const host = event.created_by ? await memberByEmail(event.created_by) : null
+const editable = canEdit(event, user)
 
 const now = Date.now()
 const milestones = [
@@ -82,6 +85,12 @@ const chip = {
       </div>
 
       {event.summary && <p class="summary reveal" style="--i: 3">{event.summary}</p>}
+      {(host || editable) && (
+        <div class="host reveal" style="--i: 3">
+          {host && <a href={`/members/${host.id}`} class="by"><span class="avatar" style={`--hue: ${host.hue}`}>{[...host.name][0]}</span>由 {host.name} 发起</a>}
+          {editable && <a class="button ghost small" href={`/e/${event.slug}/edit`}>编辑活动与名单</a>}
+        </div>
+      )}
 
       <ol class="timeline reveal" style="--i: 4">
         {milestones.map((m) => (
@@ -234,6 +243,40 @@ const chip = {
     max-width: 32em;
     line-height: 1.8;
     color: var(--muted);
+  }
+
+  .host {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+  }
+
+  .by {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 1.8rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: linear-gradient(135deg, oklch(0.7 0.16 var(--hue)), oklch(0.45 0.16 calc(var(--hue) + 40)));
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--fg);
+  }
+
+  .button.small {
+    min-height: 2.3rem;
+    padding-inline: 1rem;
+    font-size: 0.85rem;
   }
 
   .timeline {
