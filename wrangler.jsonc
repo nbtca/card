@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "card",
+  "account_id": "a415a3ae7a197093d02233755d38800b",
   "main": "@astrojs/cloudflare/entrypoints/server",
   "compatibility_date": "2026-10-01",
   "assets": { "directory": "./dist", "binding": "ASSETS" },
@@ -11,6 +12,6 @@
     "ACCESS_AUD": "",
     "ADMIN_EMAILS": "contact@m1ng.space,clas.wen@icloud.com"
   },
-  "d1_databases": [{ "binding": "DB", "database_name": "card", "database_id": "", "migrations_dir": "migrations" }],
+  "d1_databases": [{ "binding": "DB", "database_name": "card", "database_id": "643f54b7-6b92-43b6-95d4-18e2a7fc5a3e", "migrations_dir": "migrations" }],
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "card" }]
 }
