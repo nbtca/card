@@ -2,8 +2,7 @@
 import { env } from "cloudflare:workers"
 import { passDesigns } from "../../cards/pass"
 import Base from "../../layouts/Base.astro"
-import { db, formatTime, getEvent, type Pass } from "../../lib/db"
-import { randomId } from "../../lib/session"
+import { db, formatTime, getEvent, randomId, type Pass } from "../../lib/db"
 
 const MAX_VIDEO = 50 * 1024 * 1024
 const SHANGHAI = 8 * 3600e3
@@ -65,6 +64,7 @@ const passes = event
 
 <Base title="管理 · NBTCA">
   <main>
+    <nav class="tabs"><a href="/admin" aria-current="page">活动</a><a href="/admin/members">社员名单</a></nav>
     <section class="list">
       <div class="heading">
         <h1>活动</h1>
@@ -163,27 +163,4 @@ const passes = event
     max-width: 36rem;
   }
 
-  table {
-    display: block;
-    overflow-x: auto;
-    border-collapse: collapse;
-    font-size: 0.92rem;
-  }
-
-  th,
-  td {
-    padding: 0.6rem 1.25rem 0.6rem 0;
-    border-bottom: 1px solid var(--line);
-    text-align: left;
-    white-space: nowrap;
-  }
-
-  th {
-    font-weight: 500;
-    color: var(--muted);
-  }
-
-  tr[aria-current] td {
-    color: var(--accent);
-  }
 </style>

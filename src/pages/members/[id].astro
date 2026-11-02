@@ -5,7 +5,7 @@ import { getMember } from "../../lib/db"
 
 const member = await getMember(Astro.params.id!)
 if (!member) return new Response(null, { status: 404 })
-const mine = member.member_id === Astro.locals.user?.member
+const mine = member.id === Astro.locals.user?.member?.id
 ---
 
 <Base title={`${member.name} · NBTCA 社员卡`}>

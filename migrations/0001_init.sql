@@ -1,19 +1,18 @@
 CREATE TABLE members (
-  member_id  TEXT PRIMARY KEY,
-  logto_id   TEXT NOT NULL UNIQUE,
+  id         TEXT PRIMARY KEY,
+  email      TEXT NOT NULL UNIQUE,
   name       TEXT NOT NULL,
   alias      TEXT NOT NULL,
   section    TEXT NOT NULL DEFAULT '',
-  role       TEXT NOT NULL,
-  github     TEXT,
-  avatar     TEXT,
+  role       TEXT NOT NULL DEFAULT '社员',
   joined     INTEGER NOT NULL,
+  github     TEXT,
   word       TEXT,
   motto      TEXT,
   hue        INTEGER NOT NULL DEFAULT 210,
   portrait   TEXT,
   background TEXT,
-  synced_at  INTEGER NOT NULL
+  created_at INTEGER NOT NULL
 );
 
 CREATE TABLE events (
@@ -33,12 +32,12 @@ CREATE TABLE events (
 CREATE TABLE passes (
   id          TEXT PRIMARY KEY,
   event       TEXT NOT NULL REFERENCES events (slug) ON DELETE CASCADE,
-  logto_id    TEXT NOT NULL,
+  email       TEXT NOT NULL,
   name        TEXT NOT NULL,
   serial      INTEGER NOT NULL,
   created_at  INTEGER NOT NULL,
   redeemed_at INTEGER,
   redeemed_by TEXT,
-  UNIQUE (event, logto_id),
+  UNIQUE (event, email),
   UNIQUE (event, serial)
 );

@@ -19,16 +19,18 @@ Each `.astro` file in `src/cards/passes/` is a pass design, named after the file
 
 ## Access
 
-Everyone signs in through Logto. On each sign-in the Worker calls Saturday's `GET /member` with the user's Logto access token. Saturday answers only for accounts bound to a member, and the Worker copies that member's name, alias, section, role, avatar and GitHub ID into D1.
+[Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/access-controls/) signs people in through Logto, the same identity provider `photo.nbtca.space` uses. The Worker verifies the token Access issues and takes the email in it as the identity, so a request that bypasses Access carries no identity.
+
+Access guards only the paths that need a signed-in visitor. Event pages stay public, and the Worker reads the same `CF_Authorization` cookie there to show a signed-in visitor their pass.
 
 | Who | Can do |
 | --- | --- |
 | Anyone | See open events |
-| Signed-in users | Claim one pass per event |
-| Members | See every member card, customise their own, check in passes at `/scan` |
-| Members with the Saturday `admin` role | Create and edit events at `/admin`, see who claimed and entered |
+| Anyone who signs in | Claim one pass per event |
+| Emails on the member roster | See every member card, customise their own, check in passes at `/scan` |
+| Emails in `ADMIN_EMAILS` | Manage events and the roster at `/admin` |
 
-Member cards appear in the directory after the member's first sign-in. Portraits and backgrounds are re-encoded in the browser to WebP (PNG on Safari, which cannot encode WebP) and served only to signed-in members. Event videos are public.
+Admins keep the roster at `/admin/members`, one member at a time or by pasting lines of `email,name,alias,section,role,year,github`. Members' portraits and backgrounds are re-encoded in the browser to WebP (PNG on Safari, which cannot encode WebP) and served only to members. Event videos are public.
 
 ## Check-in
 
@@ -36,14 +38,12 @@ Each pass carries a QR code for `https://card.nbtca.space/scan#<pass id>`. Staff
 
 ## Setup
 
-1. In Logto, create a Traditional Web application with the redirect URI `https://card.nbtca.space/callback` and the post sign-out redirect URI `https://card.nbtca.space`. Put its app ID in `LOGTO_APP_ID` in `wrangler.jsonc`.
-2. Create the resources and copy the D1 ID into `wrangler.jsonc`:
+1. In Zero Trust, add a self-hosted application with Logto as the identity provider and a policy that admits everyone who signs in with it. Give it these paths on `card.nbtca.space`: `/login`, `/members`, `/me`, `/scan`, `/admin`, `/api` and `/media/members`. Put its Application Audience (AUD) tag in `ACCESS_AUD` in `wrangler.jsonc`. Until it is set, nobody can sign in.
+2. Create the database and bucket, and copy the D1 ID into `wrangler.jsonc`:
 
    ```sh
    wrangler d1 create card
    wrangler r2 bucket create card
-   wrangler secret put LOGTO_APP_SECRET
-   wrangler secret put SESSION_SECRET   # any random string of 32+ bytes
    ```
 
 3. `pnpm run deploy` builds, applies D1 migrations and deploys. Plain `pnpm deploy` is a different, built-in pnpm command.
@@ -54,9 +54,8 @@ Every push to `main` runs type checks and a build in GitHub Actions, then deploy
 
 ```sh
 pnpm install
-cp .dev.vars.example .dev.vars
 pnpm preview      # production build on local workerd with local D1 and R2
 pnpm typecheck
 ```
 
-`wrangler dev` serves the app as `card.nbtca.space` because of the custom domain route, so Logto sign-in does not complete locally. Test signed-in pages with a `card_session` cookie signed with the local `SESSION_SECRET`; `src/lib/session.ts` shows the format.
+Access does not run locally. To test signed-in pages, serve a JWKS from a local issuer, start `wrangler dev` with `--var ACCESS_TEAM_DOMAIN:<issuer> --var ACCESS_AUD:<aud>`, and send RS256 tokens it signed in the `CF_Authorization` cookie.

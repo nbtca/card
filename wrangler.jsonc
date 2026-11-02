@@ -7,11 +7,10 @@
   "routes": [{ "pattern": "card.nbtca.space", "custom_domain": true }],
   "observability": { "enabled": true },
   "vars": {
-    "LOGTO_ENDPOINT": "https://auth.app.nbtca.space",
-    "LOGTO_APP_ID": "",
-    "SATURDAY_API": "https://api.nbtca.space"
+    "ACCESS_TEAM_DOMAIN": "https://nbtca.cloudflareaccess.com",
+    "ACCESS_AUD": "",
+    "ADMIN_EMAILS": "contact@m1ng.space,clas.wen@icloud.com"
   },
-  // LOGTO_APP_SECRET and SESSION_SECRET are set with `wrangler secret put`.
   "d1_databases": [{ "binding": "DB", "database_name": "card", "database_id": "", "migrations_dir": "migrations" }],
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "card" }]
 }

@@ -1,7 +1,6 @@
 import type { APIRoute } from "astro"
 import { env } from "cloudflare:workers"
-import { db, getMember } from "../../../lib/db"
-import { randomId } from "../../../lib/session"
+import { db, getMember, randomId } from "../../../lib/db"
 
 const KINDS = ["portrait", "background"] as const
 const MAX_BYTES = 4 * 1024 * 1024
@@ -15,7 +14,7 @@ function imageType(bytes: Uint8Array) {
 async function target(url: URL, locals: App.Locals) {
   const kind = url.searchParams.get("kind") as (typeof KINDS)[number]
   if (!KINDS.includes(kind)) return null
-  const member = (await getMember(locals.user!.member!))!
+  const member = (await getMember(locals.user!.member!.id))!
   return { kind, member, old: member[kind] }
 }
 
@@ -27,9 +26,9 @@ export const PUT: APIRoute = async ({ request, url, locals }) => {
   const type = imageType(bytes)
   if (!type) return new Response("只支持 WebP 或 PNG", { status: 415 })
 
-  const key = `members/${t.member.member_id}/${t.kind}-${randomId(8)}.${type.split("/")[1]}`
+  const key = `members/${t.member.id}/${t.kind}-${randomId(8)}.${type.split("/")[1]}`
   await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: type } })
-  await db().prepare(`UPDATE members SET ${t.kind} = ? WHERE member_id = ?`).bind(key, t.member.member_id).run()
+  await db().prepare(`UPDATE members SET ${t.kind} = ? WHERE id = ?`).bind(key, t.member.id).run()
   if (t.old) await env.MEDIA.delete(t.old)
   return Response.json({ key })
 }
@@ -37,7 +36,7 @@ export const PUT: APIRoute = async ({ request, url, locals }) => {
 export const DELETE: APIRoute = async ({ url, locals }) => {
   const t = await target(url, locals)
   if (!t) return new Response("unknown kind", { status: 400 })
-  await db().prepare(`UPDATE members SET ${t.kind} = NULL WHERE member_id = ?`).bind(t.member.member_id).run()
+  await db().prepare(`UPDATE members SET ${t.kind} = NULL WHERE id = ?`).bind(t.member.id).run()
   if (t.old) await env.MEDIA.delete(t.old)
   return new Response(null, { status: 204 })
 }

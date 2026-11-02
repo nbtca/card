@@ -1,8 +1,7 @@
 ---
 import { passDesign } from "../../cards/pass"
 import Base from "../../layouts/Base.astro"
-import { db, formatTime, getEvent, type Pass } from "../../lib/db"
-import { randomId } from "../../lib/session"
+import { db, formatTime, getEvent, randomId, type Pass } from "../../lib/db"
 
 const event = await getEvent(Astro.params.slug!)
 if (!event) return new Response(null, { status: 404 })
@@ -10,22 +9,23 @@ const { user } = Astro.locals
 
 const findPass = () =>
   user
-    ? db().prepare("SELECT * FROM passes WHERE event = ? AND logto_id = ?").bind(event.slug, user.sub).first<Pass>()
+    ? db().prepare("SELECT * FROM passes WHERE event = ? AND email = ?").bind(event.slug, user.email).first<Pass>()
     : null
 
 let error = ""
 if (Astro.request.method === "POST") {
   if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`)
+  const name = user.member?.name ?? (String((await Astro.request.formData()).get("name") ?? "").trim().slice(0, 20) || user.name)
   await db()
     .prepare(
-      `INSERT INTO passes (id, event, logto_id, name, serial, created_at)
+      `INSERT INTO passes (id, event, email, name, serial, created_at)
        SELECT ?1, slug, ?3, ?4, COALESCE((SELECT MAX(serial) FROM passes WHERE event = ?2), 0) + 1, ?5
        FROM events
        WHERE slug = ?2 AND open = 1
          AND (capacity IS NULL OR (SELECT COUNT(*) FROM passes WHERE event = ?2) < capacity)
-       ON CONFLICT (event, logto_id) DO NOTHING`,
+       ON CONFLICT (event, email) DO NOTHING`,
     )
-    .bind(randomId(), event.slug, user.sub, user.name, Date.now())
+    .bind(randomId(), event.slug, user.email, name, Date.now())
     .run()
   if (await findPass()) return Astro.redirect(Astro.url.pathname, 303)
   error = event.open ? "名额已经领完了。" : "这个活动已经停止领取。"
@@ -52,7 +52,12 @@ const Design = passDesign(event.design)
           : full
             ? <p class="notice">名额已经领完了。</p>
             : user
-              ? <form method="post"><button class="button">领取通行证</button></form>
+              ? (
+                  <form class="form claim" method="post">
+                    {!user.member && <label>印在通行证上的名字<input name="name" maxlength="20" required value={user.name} /></label>}
+                    <button class="button">领取通行证</button>
+                  </form>
+                )
               : <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>登录后领取通行证</a>}
       {event.capacity !== null && <p class="muted small">已领取 {claimed} / {event.capacity}</p>}
     </section>
@@ -86,6 +91,11 @@ const Design = passDesign(event.design)
 
   h1 {
     font-size: clamp(1.8rem, 5vw, 2.6rem);
+  }
+
+  .claim {
+    width: 100%;
+    justify-items: start;
   }
 
   .small {

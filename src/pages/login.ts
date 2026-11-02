@@ -1,8 +1,7 @@
 import type { APIRoute } from "astro"
-import { authorizeUrl } from "../lib/logto"
 
-export const GET: APIRoute = async ({ cookies, url, redirect }) => {
+// Access guards this path, so reaching it means the visitor has just signed in.
+export const GET: APIRoute = ({ url, redirect }) => {
   const next = url.searchParams.get("next") ?? "/"
-  const safe = next.startsWith("/") && !next.startsWith("//") ? next : "/"
-  return redirect((await authorizeUrl(cookies, url.origin, safe)).toString())
+  return redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/")
 }
