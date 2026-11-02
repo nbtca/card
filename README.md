@@ -40,7 +40,7 @@ Each pass carries a QR code for `https://card.nbtca.space/scan#<pass id>`. Staff
 
 ## Setup
 
-1. In Zero Trust, add a self-hosted application with Logto as the only identity provider and instant authentication on. The reusable policy `Anyone signed in with Logto` admits everyone who signs in with it. Give it these paths on `card.nbtca.space`: `/login`, `/members`, `/me`, `/scan`, `/api` and `/media/members`. The Logto identity provider must pass the `name`, `username` and `roles` OIDC claims. Put its Application Audience (AUD) tag in `ACCESS_AUD` in `wrangler.jsonc`. Until it is set, nobody can sign in.
+1. In Zero Trust, add a self-hosted application with Logto as the only identity provider and instant authentication on. The reusable policy `Anyone signed in with Logto` admits everyone who signs in with it. Give it these paths on `card.nbtca.space`: `/login`, `/members`, `/me`, `/scan`, `/api` and `/media/members`. The Logto identity provider in Zero Trust must pass the `roles`, `name`, `username` and `picture` OIDC claims; Access hands the Worker only the claims listed there. Put its Application Audience (AUD) tag in `ACCESS_AUD` in `wrangler.jsonc`. Until it is set, nobody can sign in.
 2. Create the database and bucket, and copy the D1 ID into `wrangler.jsonc`:
 
    ```sh

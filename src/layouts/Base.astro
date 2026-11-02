@@ -44,7 +44,9 @@ const links = [
         {user
           ? (
               <a class="me" href={user.member ? "/me" : "/e"} title={user.email}>
-                <span class="avatar" style={`--hue: ${user.member?.hue ?? 210}`}>{[...user.name][0]}</span>
+                {user.picture
+                  ? <img class="avatar" src={user.picture} alt="" referrerpolicy="no-referrer" />
+                  : <span class="avatar" style={`--hue: ${user.member?.hue ?? 210}`}>{[...user.name][0]}</span>}
                 <span class="who">{user.name}</span>
               </a>
             )
@@ -159,6 +161,7 @@ const links = [
     background: linear-gradient(135deg, oklch(0.7 0.16 var(--hue)), oklch(0.45 0.16 calc(var(--hue) + 40)));
     font-size: 0.85rem;
     font-weight: 700;
+    object-fit: cover;
   }
 
   footer {

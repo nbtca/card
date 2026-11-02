@@ -30,6 +30,7 @@ export const onRequest = defineMiddleware(async ({ request, url, locals, redirec
   locals.user = visitor && {
     email: visitor.email,
     name: visitor.name,
+    picture: visitor.picture,
     member: isMember ? await memberCard(visitor) : null,
     admin: isMember && hasRole(visitor, env.ADMIN_ROLES),
   }

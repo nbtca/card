@@ -47,15 +47,24 @@ function token(request: Request) {
   }
 }
 
+interface Claims_ {
+  roles?: string | string[]
+  name?: string
+  username?: string
+  picture?: string
+}
+
 interface Identity {
   name?: string
-  oidc_fields?: { roles?: string | string[]; name?: string; username?: string }
+  custom?: Claims_
+  oidc_fields?: Claims_
 }
 
 export interface Visitor {
   email: string
   name: string
   username: string
+  picture: string | null
   roles: string[]
 }
 
@@ -70,11 +79,13 @@ async function identity(jwt: string, email: string): Promise<Visitor> {
     headers: { Cookie: `CF_Authorization=${jwt}` },
   })
   const data: Identity = response.ok ? await response.json() : {}
-  const fields = data.oidc_fields ?? {}
+  const fields = data.custom ?? data.oidc_fields ?? {}
+  const name = fields.name || data.name || fields.username || email.split("@")[0]!
   const visitor = {
     email,
-    name: fields.name || data.name || fields.username || email.split("@")[0]!,
-    username: fields.username || email.split("@")[0]!,
+    name,
+    username: fields.username || name,
+    picture: fields.picture?.startsWith("https://") ? fields.picture : null,
     roles: [fields.roles ?? []].flat(),
   }
   if (identities.size > 500) identities.clear()
