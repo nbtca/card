@@ -1,0 +1,189 @@
+---
+import { env } from "cloudflare:workers"
+import { passDesigns } from "../../cards/pass"
+import Base from "../../layouts/Base.astro"
+import { db, formatTime, getEvent, type Pass } from "../../lib/db"
+import { randomId } from "../../lib/session"
+
+const MAX_VIDEO = 50 * 1024 * 1024
+const SHANGHAI = 8 * 3600e3
+const toLocal = (iso: string) => new Date(new Date(iso).getTime() + SHANGHAI).toISOString().slice(0, 16)
+
+const editing = Astro.url.searchParams.get("event")
+let error = ""
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData()
+  const text = (name: string) => String(form.get(name) ?? "").trim()
+  const slug = editing ?? text("slug").toLowerCase()
+  const startsAt = new Date(`${text("starts_at")}:00+08:00`)
+  const capacity = text("capacity") ? Number(text("capacity")) : null
+  const video = form.get("video")
+  const design = Object.hasOwn(passDesigns, text("design")) ? text("design") : "default"
+
+  if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(slug)) error = "链接名只能用小写字母、数字和连字符。"
+  else if (!editing && (await getEvent(slug))) error = "这个链接名已经被用过了。"
+  else if (!text("title") || !text("word") || !text("venue") || Number.isNaN(startsAt.getTime())) error = "请把必填项填完整。"
+  else if (capacity !== null && !(capacity > 0)) error = "名额必须是正整数。"
+  else if (video instanceof File && video.size > MAX_VIDEO) error = "视频不能超过 50MB。"
+
+  if (!error) {
+    const old = editing ? (await getEvent(editing))?.video : null
+    let key = old ?? null
+    if (video instanceof File && video.size > 0) {
+      key = `events/${slug}/${randomId(8)}.${video.type === "video/webm" ? "webm" : "mp4"}`
+      await env.MEDIA.put(key, video.stream(), { httpMetadata: { contentType: video.type || "video/mp4" } })
+      if (old) await env.MEDIA.delete(old)
+    }
+    await db()
+      .prepare(
+        `INSERT INTO events (slug, title, word, design, starts_at, venue, summary, video, capacity, open, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+         ON CONFLICT (slug) DO UPDATE SET
+           title = ?2, word = ?3, design = ?4, starts_at = ?5, venue = ?6, summary = ?7, video = ?8, capacity = ?9, open = ?10`,
+      )
+      .bind(slug, text("title"), text("word").slice(0, 16), design, startsAt.toISOString(), text("venue"), text("summary"), key, capacity, form.has("open") ? 1 : 0, Date.now())
+      .run()
+    return Astro.redirect(`/admin?event=${slug}`, 303)
+  }
+}
+
+const { results: events } = await db()
+  .prepare(
+    `SELECT e.slug, e.title, e.starts_at, e.open, e.capacity,
+       COUNT(p.id) AS claimed, COUNT(p.redeemed_at) AS redeemed
+     FROM events e LEFT JOIN passes p ON p.event = e.slug
+     GROUP BY e.slug ORDER BY e.starts_at DESC`,
+  )
+  .all<{ slug: string; title: string; starts_at: string; open: number; capacity: number | null; claimed: number; redeemed: number }>()
+const event = editing ? await getEvent(editing) : null
+if (editing && !event) return Astro.redirect("/admin")
+const passes = event
+  ? (await db().prepare("SELECT * FROM passes WHERE event = ? ORDER BY serial").bind(event.slug).all<Pass>()).results
+  : []
+---
+
+<Base title="管理 · NBTCA">
+  <main>
+    <section class="list">
+      <div class="heading">
+        <h1>活动</h1>
+        <a class="button ghost" href="/admin">新建活动</a>
+      </div>
+      <table>
+        <thead><tr><th>活动</th><th>时间</th><th>领取</th><th>入场</th></tr></thead>
+        <tbody>
+          {events.map((e) => (
+            <tr aria-current={e.slug === editing ? "true" : undefined}>
+              <td><a href={`/admin?event=${e.slug}`}>{e.title}</a>{!e.open && <span class="muted"> · 已关闭</span>}</td>
+              <td>{formatTime(e.starts_at)}</td>
+              <td>{e.claimed}{e.capacity !== null && ` / ${e.capacity}`}</td>
+              <td>{e.redeemed}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>{event ? `编辑「${event.title}」` : "新建活动"}</h2>
+      {event && <p><a href={`/e/${event.slug}`}>查看活动页</a></p>}
+      {error && <p class="notice error">{error}</p>}
+      <form class="form" method="post" enctype="multipart/form-data">
+        {!event && (
+          <label>链接名<input name="slug" required pattern="[a-z0-9][a-z0-9\-]{1,40}" /><small>活动页的地址是 /e/链接名，创建后不能再改。</small></label>
+        )}
+        <label>活动名称<input name="title" required value={event?.title} /></label>
+        <label>卡面大字<input name="word" required maxlength="16" value={event?.word} /><small>视频会从这几个字里透出来，2 到 6 个字符效果最好。</small></label>
+        <label>
+          卡面设计
+          <select name="design">
+            {Object.keys(passDesigns).map((name) => <option selected={name === (event?.design ?? "default")}>{name}</option>)}
+          </select>
+          <small>没有专门设计的活动都用 default，新设计由开发者加在 src/cards/passes/ 里。</small>
+        </label>
+        <label>开始时间<input name="starts_at" type="datetime-local" required value={event && toLocal(event.starts_at)} /><small>按北京时间填写。</small></label>
+        <label>地点<input name="venue" required value={event?.venue} /></label>
+        <label>简介<textarea name="summary" rows="3">{event?.summary}</textarea></label>
+        <label>名额<input name="capacity" type="number" min="1" value={event?.capacity ?? ""} /><small>留空表示不限名额。</small></label>
+        <label>卡面视频<input name="video" type="file" accept="video/mp4,video/webm" /><small>支持 50MB 以内的 MP4 或 WebM，不上传时使用默认的渐变动画。</small></label>
+        <label class="check"><input name="open" type="checkbox" checked={event ? event.open === 1 : true} />开放领取</label>
+        <button class="button">保存</button>
+      </form>
+    </section>
+
+    {event && (
+      <section>
+        <h2>已领取 {passes.length} 张</h2>
+        <table>
+          <thead><tr><th>编号</th><th>姓名</th><th>领取</th><th>入场</th></tr></thead>
+          <tbody>
+            {passes.map((p) => (
+              <tr>
+                <td>{String(p.serial).padStart(4, "0")}</td>
+                <td>{p.name}</td>
+                <td>{formatTime(new Date(p.created_at).toISOString())}</td>
+                <td>{p.redeemed_at ? formatTime(new Date(p.redeemed_at).toISOString()) : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    )}
+  </main>
+</Base>
+
+<style>
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-block: 4vh 10vh;
+    display: grid;
+    gap: 3.5rem;
+  }
+
+  section {
+    display: grid;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+
+  section > p {
+    margin: 0;
+  }
+
+  .heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  form {
+    max-width: 36rem;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+
+  th,
+  td {
+    padding: 0.6rem 1.25rem 0.6rem 0;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  th {
+    font-weight: 500;
+    color: var(--muted);
+  }
+
+  tr[aria-current] td {
+    color: var(--accent);
+  }
+</style>

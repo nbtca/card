@@ -1,0 +1,32 @@
+---
+import MemberCard from "../../cards/MemberCard.astro"
+import Base from "../../layouts/Base.astro"
+import { getMember } from "../../lib/db"
+
+const member = await getMember(Astro.params.id!)
+if (!member) return new Response(null, { status: 404 })
+const mine = member.member_id === Astro.locals.user?.member
+---
+
+<Base title={`${member.name} · NBTCA 社员卡`}>
+  <main>
+    <MemberCard member={member} size="full" />
+    <p class="muted">点击卡片翻面{mine && <> · <a href="/me">装扮我的卡片</a></>}</p>
+  </main>
+</Base>
+
+<style>
+  main {
+    min-height: calc(100svh - 5rem);
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 2rem;
+    padding-block: 2rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.85rem;
+  }
+</style>

@@ -1,0 +1,66 @@
+---
+import Base from "../../layouts/Base.astro"
+import { formatTime, listEvents } from "../../lib/db"
+
+const events = (await listEvents()).filter((e) => e.open)
+---
+
+<Base title="活动 · NBTCA">
+  <main>
+    <h1>活动</h1>
+    {events.length
+      ? (
+          <ul>
+            {events.map((e) => (
+              <li>
+                <a href={`/e/${e.slug}`}>
+                  <strong>{e.title}</strong>
+                  <span class="muted">{formatTime(e.starts_at)} · {e.venue}</span>
+                  {e.summary && <span class="summary">{e.summary}</span>}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      : <p class="muted">现在还没有开放报名的活动。</p>}
+  </main>
+</Base>
+
+<style>
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-block: 6vh 10vh;
+    display: grid;
+    gap: 2rem;
+  }
+
+  ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  a {
+    display: grid;
+    gap: 0.5rem;
+    height: 100%;
+    padding: 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: var(--panel);
+    text-decoration: none;
+  }
+
+  a:hover {
+    border-color: rgb(255 255 255 / 0.3);
+  }
+
+  span {
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+</style>

@@ -1,0 +1,5 @@
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
+overrides:
+  "@cloudflare/vite-plugin": 1.64.0

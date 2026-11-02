@@ -1,0 +1,94 @@
+---
+import { passDesign } from "../../cards/pass"
+import Base from "../../layouts/Base.astro"
+import { db, formatTime, getEvent, type Pass } from "../../lib/db"
+import { randomId } from "../../lib/session"
+
+const event = await getEvent(Astro.params.slug!)
+if (!event) return new Response(null, { status: 404 })
+const { user } = Astro.locals
+
+const findPass = () =>
+  user
+    ? db().prepare("SELECT * FROM passes WHERE event = ? AND logto_id = ?").bind(event.slug, user.sub).first<Pass>()
+    : null
+
+let error = ""
+if (Astro.request.method === "POST") {
+  if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`)
+  await db()
+    .prepare(
+      `INSERT INTO passes (id, event, logto_id, name, serial, created_at)
+       SELECT ?1, slug, ?3, ?4, COALESCE((SELECT MAX(serial) FROM passes WHERE event = ?2), 0) + 1, ?5
+       FROM events
+       WHERE slug = ?2 AND open = 1
+         AND (capacity IS NULL OR (SELECT COUNT(*) FROM passes WHERE event = ?2) < capacity)
+       ON CONFLICT (event, logto_id) DO NOTHING`,
+    )
+    .bind(randomId(), event.slug, user.sub, user.name, Date.now())
+    .run()
+  if (await findPass()) return Astro.redirect(Astro.url.pathname, 303)
+  error = event.open ? "名额已经领完了。" : "这个活动已经停止领取。"
+}
+
+const pass = await findPass()
+const { n: claimed } = (await db().prepare("SELECT COUNT(*) AS n FROM passes WHERE event = ?").bind(event.slug).first<{ n: number }>())!
+const full = event.capacity !== null && claimed >= event.capacity
+const Design = passDesign(event.design)
+---
+
+<Base title={`${event.title} · NBTCA`} description={event.summary || `${formatTime(event.starts_at)}，${event.venue}`}>
+  <main>
+    <Design event={event} pass={pass} holder={pass?.name ?? user?.name ?? "你的名字"} guest={!user?.member} />
+    <section>
+      <h1>{event.title}</h1>
+      <p class="muted">{formatTime(event.starts_at)} · {event.venue}</p>
+      {event.summary && <p class="summary">{event.summary}</p>}
+      {error && <p class="notice error">{error}</p>}
+      {pass
+        ? <p class="notice">这是你的通行证。入场时把卡片底部的二维码给工作人员扫一下就好。</p>
+        : !event.open
+          ? <p class="notice">这个活动已经停止领取通行证。</p>
+          : full
+            ? <p class="notice">名额已经领完了。</p>
+            : user
+              ? <form method="post"><button class="button">领取通行证</button></form>
+              : <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>登录后领取通行证</a>}
+      {event.capacity !== null && <p class="muted small">已领取 {claimed} / {event.capacity}</p>}
+    </section>
+  </main>
+</Base>
+
+<style>
+  main {
+    max-width: 1080px;
+    min-height: calc(100svh - 5rem);
+    margin: 0 auto;
+    padding-block: 2rem 4rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 3rem 5rem;
+  }
+
+  section {
+    flex: 0 1 24rem;
+    display: grid;
+    justify-items: start;
+    gap: 1rem;
+  }
+
+  section p {
+    margin: 0;
+    line-height: 1.7;
+  }
+
+  h1 {
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+  }
+
+  .small {
+    font-size: 0.85rem;
+  }
+</style>

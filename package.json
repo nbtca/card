@@ -1,0 +1,22 @@
+{
+  "name": "card",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.29.3",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro build && wrangler d1 migrations apply card --local && wrangler dev",
+    "deploy": "astro build && wrangler d1 migrations apply card --remote && wrangler deploy",
+    "typecheck": "wrangler types && astro sync && tsc --noEmit"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "14.4.0",
+    "astro": "7.4.2",
+    "jsqr": "1.4.0",
+    "uqr": "0.1.2"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.0"
+  }
+}

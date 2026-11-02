@@ -1,0 +1,54 @@
+---
+import MemberCard from "../../cards/MemberCard.astro"
+import Base from "../../layouts/Base.astro"
+import { listMembers } from "../../lib/db"
+
+const members = await listMembers()
+---
+
+<Base title="社员 · NBTCA">
+  <main>
+    <header>
+      <h1>社员</h1>
+      <p class="muted">社员第一次登录后，卡片就会出现在这里。这一页只有社员能看到。</p>
+    </header>
+    <ul>
+      {members.map((member) => <li><MemberCard member={member} size="thumb" /></li>)}
+    </ul>
+  </main>
+</Base>
+
+<style>
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-block: 6vh 10vh;
+  }
+
+  header {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 3rem;
+  }
+
+  header p {
+    margin: 0;
+  }
+
+  ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+    gap: 3rem 2rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    width: 100%;
+    max-width: 300px;
+    justify-self: center;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 300px auto 420px;
+  }
+</style>

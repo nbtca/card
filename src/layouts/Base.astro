@@ -1,0 +1,81 @@
+---
+import "../styles/base.css"
+
+interface Props {
+  title: string
+  description?: string
+}
+
+const { title, description = "浙大宁波理工学院计算机协会的社员卡与活动通行证。" } = Astro.props
+const { user } = Astro.locals
+const path = Astro.url.pathname
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta name="theme-color" content="#07090d" />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <nav>
+      <a class="home" href="/" aria-label="首页"><span class="ring" /></a>
+      <div class="links">
+        {user?.member && <a href="/members" aria-current={path.startsWith("/members") ? "page" : undefined}>社员</a>}
+        <a href="/e" aria-current={path.startsWith("/e") ? "page" : undefined}>活动</a>
+        {user?.member && <a href="/scan" aria-current={path === "/scan" ? "page" : undefined}>核销</a>}
+        {user?.admin && <a href="/admin" aria-current={path.startsWith("/admin") ? "page" : undefined}>管理</a>}
+        {user
+          ? <a href="/logout" class="muted">退出</a>
+          : <a href={`/login?next=${encodeURIComponent(path)}`}>登录</a>}
+      </div>
+    </nav>
+    <slot />
+    <script src="../cards/tilt.ts"></script>
+  </body>
+</html>
+
+<style>
+  nav {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-block: 1rem;
+  }
+
+  .home .ring {
+    display: block;
+    width: 36px;
+    aspect-ratio: 1;
+    background: currentColor;
+    mask: url("/logo.svg") center / contain no-repeat;
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  .links a {
+    text-decoration: none;
+    opacity: 0.75;
+  }
+
+  .links a:is(:hover, :focus-visible, [aria-current]) {
+    opacity: 1;
+  }
+</style>

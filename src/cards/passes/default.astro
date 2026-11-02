@@ -1,0 +1,340 @@
+---
+import { ticket, type PassProps } from "../pass"
+
+type Props = PassProps
+
+const { event, pass, holder, guest } = Astro.props
+const { state, date, day, time, serial, redeemedAt: redeemed, video, qr } = ticket(Astro.props, Astro.url.origin)
+const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.05 : 0.78), 0)
+---
+
+<div
+  class="pass-card"
+  data-card="full"
+  data-state={state}
+  style={`--fit: min(34cqi, ${(84 / Math.max(units, 1)).toFixed(2)}cqi)`}
+>
+  <div class="tilt">
+    <article class="card" aria-label={`${event.title} 通行证`}>
+      <div class="plane footage">
+        {video
+          ? <video src={video} muted loop autoplay playsinline preload="auto" aria-hidden="true" />
+          : <div class="aurora" />}
+      </div>
+      <div class="knockout" aria-hidden="true">
+        <div class="plane sheet" />
+        <div class="title"><span class="word" data-fit="0.84">{event.word}</span></div>
+      </div>
+      <div class="plane print">
+        <div class="texture" />
+        <header class="head">
+          <span>NBTCA Event Pass</span>
+          <span>{date}</span>
+        </header>
+        <div class="who">
+          <span class="holo" aria-hidden="true" />
+          <p class="name">{holder}</p>
+          <p class="role">
+            <span class="tag">{guest ? "Guest" : "Member"}</span>
+            <span>{event.title}</span>
+          </p>
+        </div>
+        <dl class="grid">
+          <div><dt>Venue</dt><dd>{event.venue}</dd></div>
+          <div><dt>Date</dt><dd>{day}</dd></div>
+          <div><dt>Time</dt><dd>{time}</dd></div>
+        </dl>
+        <div class="stub">
+          <svg class="qr" viewBox={`0 0 ${qr.size} ${qr.size}`} shape-rendering="crispEdges" aria-hidden="true">
+            <path d={qr.path} />
+          </svg>
+          <div class="serial">
+            <span>{serial}</span>
+            <span>Admit one</span>
+            <small>{pass ? (redeemed ? `${redeemed} 已入场` : "入场时出示此码") : "领取后生成入场码"}</small>
+          </div>
+          {redeemed && <span class="stamp">已入场</span>}
+        </div>
+      </div>
+      <div class="glare" />
+    </article>
+  </div>
+</div>
+
+<style>
+  @font-face {
+    font-family: "Archivo";
+    src: url("/fonts/archivo-latin-wdth.woff2") format("woff2-variations");
+    font-weight: 100 900;
+    font-stretch: 62% 125%;
+    font-display: swap;
+  }
+
+  .pass-card {
+    --ink: #0b0d12;
+    --muted: rgb(11 13 18 / 0.55);
+    --line: rgb(11 13 18 / 0.14);
+    --wide: "Archivo", system-ui, -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
+    --die: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 800' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M24 0H476A24 24 0 0 1 500 24V590A18 18 0 0 0 500 626V776A24 24 0 0 1 476 800H24A24 24 0 0 1 0 776V626A18 18 0 0 0 0 590V24A24 24 0 0 1 24 0ZM212 30H288A11 11 0 0 1 288 52H212A11 11 0 0 1 212 30Z'/%3E%3C/svg%3E");
+    position: relative;
+    width: min(360px, 100%, (100svh - 10rem) * 5 / 8);
+    aspect-ratio: 5 / 8;
+    perspective: 1400px;
+    container-type: inline-size;
+    color: var(--ink);
+    rotate: -1.5deg;
+  }
+
+  .tilt {
+    position: absolute;
+    inset: 0;
+    transform: rotateX(calc(var(--y, 0) * -9deg)) rotateY(calc(var(--x, 0) * 12deg));
+    filter: drop-shadow(0 1.5cqi 2cqi rgb(0 0 0 / 0.25)) drop-shadow(0 8cqi 10cqi rgb(0 0 0 / 0.35));
+  }
+
+  .card {
+    position: absolute;
+    inset: 0;
+    isolation: isolate;
+    mask: var(--die) 0 0 / 100% 100% no-repeat;
+  }
+
+  .plane {
+    position: absolute;
+    inset: 0;
+  }
+
+  .footage {
+    background: #000;
+    overflow: hidden;
+  }
+
+  .footage video,
+  .aurora {
+    position: absolute;
+    inset: -6%;
+    width: 112%;
+    height: 112%;
+    object-fit: cover;
+    translate: calc(var(--x, 0) * -4cqi) calc(var(--y, 0) * -4cqi);
+  }
+
+  @property --spin {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+  }
+
+  .aurora {
+    background:
+      radial-gradient(40% 30% at 30% 30%, #2f8cff, transparent 70%),
+      radial-gradient(35% 30% at 70% 40%, #ff4fa3, transparent 70%),
+      conic-gradient(from var(--spin) at 50% 35%, #004b86, #00c2ff, #7b5cff, #ff6b4a, #ffd84a, #004b86);
+    animation: spin 9s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      --spin: 360deg;
+    }
+  }
+
+  /* White over footage stays white under screen; the black word lets it through. */
+  .knockout {
+    position: absolute;
+    inset: 0;
+    mix-blend-mode: screen;
+  }
+
+  .sheet {
+    background: #fff;
+  }
+
+  .title {
+    position: absolute;
+    inset: 21cqi 0 auto;
+    height: 30cqi;
+    display: grid;
+    place-items: center;
+  }
+
+  .word {
+    font: 900 var(--fit) / 0.8 var(--wide);
+    font-stretch: 125%;
+    letter-spacing: -0.02em;
+    white-space: pre;
+    color: #000;
+    font-synthesis: none;
+  }
+
+  .print {
+    padding: 0 7cqi;
+  }
+
+  .texture {
+    position: absolute;
+    inset: 0;
+    opacity: 0.09;
+    background: repeating-radial-gradient(circle at 50% 135%, var(--ink) 0 0.25cqi, transparent 0.25cqi 1.6cqi);
+    mask: linear-gradient(transparent 52cqi, #000 62cqi, #000 112cqi, transparent 122cqi);
+  }
+
+  .head {
+    position: absolute;
+    inset: 14cqi 7cqi auto;
+    display: flex;
+    justify-content: space-between;
+    font: 600 2.8cqi / 1 var(--wide);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .who {
+    position: absolute;
+    inset: 60cqi 7cqi auto;
+  }
+
+  .name {
+    margin: 0;
+    padding-right: 26cqi;
+    font: 800 7cqi / 1.05 var(--wide);
+    font-stretch: 112%;
+    letter-spacing: -0.02em;
+    overflow-wrap: anywhere;
+  }
+
+  .role {
+    display: flex;
+    align-items: center;
+    gap: 2cqi;
+    margin: 2.2cqi 0 0;
+    padding-right: 26cqi;
+    font-size: 3.4cqi;
+    color: var(--muted);
+  }
+
+  .tag {
+    flex: none;
+    padding: 0.8cqi 2.2cqi;
+    border-radius: 99px;
+    background: var(--ink);
+    color: #fff;
+    font: 700 2.5cqi / 1.2 var(--wide);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .role span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .holo {
+    position: absolute;
+    right: -1cqi;
+    top: 50%;
+    width: 22cqi;
+    aspect-ratio: 1;
+    translate: 0 -50%;
+    background: linear-gradient(115deg, #f877b8, #64def7, #fbef6a, #bd84f5, #55f1d7, #f877b8)
+      calc(50% + var(--x, 0) * 50%) calc(50% + var(--y, 0) * 50%) / 320% 320%;
+    mask: url("/logo.svg") center / contain no-repeat;
+  }
+
+  .grid {
+    position: absolute;
+    inset: 90cqi 7cqi auto;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 0.8fr;
+    gap: 3cqi;
+    margin: 0;
+    padding-top: 4cqi;
+    border-top: 1px solid var(--line);
+  }
+
+  .grid dt {
+    font: 600 2.4cqi / 1 var(--wide);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .grid dd {
+    margin: 1.4cqi 0 0;
+    font-size: 3.6cqi;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  .stub {
+    position: absolute;
+    inset: 121.6cqi 0 0;
+    display: flex;
+    align-items: center;
+    gap: 6cqi;
+    padding: 0 9cqi;
+    border-top: 1.5px dashed var(--line);
+    margin-inline: 4cqi;
+  }
+
+  .qr {
+    flex: none;
+    width: 26cqi;
+    aspect-ratio: 1;
+    fill: var(--ink);
+  }
+
+  [data-state="preview"] .qr {
+    opacity: 0.18;
+    filter: blur(0.5cqi);
+  }
+
+  .serial {
+    display: grid;
+    gap: 1.6cqi;
+    font: 600 3cqi / 1 var(--wide);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .serial small {
+    font: 500 2.8cqi / 1.3 system-ui, sans-serif;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+
+  .stamp {
+    position: absolute;
+    right: 5cqi;
+    top: 30%;
+    padding: 1.5cqi 3cqi;
+    border: 0.7cqi solid #d93a2b;
+    border-radius: 2cqi;
+    color: #d93a2b;
+    font: 900 6cqi / 1 system-ui, sans-serif;
+    letter-spacing: 0.1em;
+    translate: 0 -50%;
+    rotate: -14deg;
+    mix-blend-mode: multiply;
+    opacity: 0.85;
+  }
+
+  .glare {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at calc(50% + var(--x, 0) * 45%) calc(30% + var(--y, 0) * 40%),
+      rgb(255 255 255 / 0.55),
+      transparent 55%
+    );
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .aurora {
+      animation: none;
+    }
+  }
+</style>

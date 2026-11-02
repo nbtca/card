@@ -1,0 +1,136 @@
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("/fonts/bebas-neue-latin-400.woff2") format("woff2");
+  font-display: swap;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --brand: #004b86;
+  --accent: #4ea8ff;
+  --display: "Bebas Neue", "Arial Narrow", Impact, system-ui, sans-serif;
+  --fg: #e9edf3;
+  --muted: rgb(233 237 243 / 0.6);
+  --line: rgb(255 255 255 / 0.12);
+  --panel: rgb(255 255 255 / 0.04);
+  color-scheme: dark;
+  background: #07090d;
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  padding-inline: 16px;
+}
+
+body::before {
+  --grid: rgb(255 255 255 / 0.07);
+  --size: 56px;
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px var(--size)) 50% 0 / var(--size) var(--size),
+    linear-gradient(var(--grid) 1px, transparent 1px var(--size)) 50% 0 / var(--size) var(--size);
+  mask: radial-gradient(90% 70% at 50% 0%, #fff, transparent);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+a {
+  color: inherit;
+}
+
+h1,
+h2 {
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-height: 2.75rem;
+  padding: 0 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: var(--fg);
+  color: #07090d;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button.ghost {
+  background: transparent;
+  color: var(--fg);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.form label {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.form :is(input:not([type="checkbox"], [type="range"]), textarea, select) {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--panel);
+  color: var(--fg);
+  font: inherit;
+}
+
+.form small {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.form .check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.notice {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--panel);
+}
+
+.notice.error {
+  border-color: rgb(255 107 74 / 0.5);
+  color: #ffb4a3;
+}

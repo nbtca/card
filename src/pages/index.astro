@@ -1,0 +1,133 @@
+---
+import { countMembers, db, formatTime, getMember } from "../lib/db"
+import MemberCard from "../cards/MemberCard.astro"
+import Base from "../layouts/Base.astro"
+
+const { user } = Astro.locals
+const me = user?.member ? await getMember(user.member) : null
+const { results: events } = await db()
+  .prepare("SELECT slug, title, starts_at, venue FROM events WHERE open = 1 AND starts_at >= ? ORDER BY starts_at LIMIT 6")
+  .bind(new Date(Date.now() - 864e5).toISOString())
+  .all<{ slug: string; title: string; starts_at: string; venue: string }>()
+const count = user?.member ? await countMembers() : null
+---
+
+<Base title="NBTCA 卡片">
+  <main>
+    <section class="hero">
+      <div class="copy">
+        <h1>每个人都有一张卡</h1>
+        <p class="muted">
+          社员卡是你在计算机协会的身份证明，只有登录的社员能看到。活动通行证人人都能领取，入场时由工作人员扫码核销。
+        </p>
+        <div class="actions">
+          {me
+            ? <a class="button" href={`/members/${me.member_id}`}>查看我的社员卡</a>
+            : user
+              ? <a class="button" href="/e">去看看活动</a>
+              : <a class="button" href="/login?next=/members">社员登录</a>}
+          {me && <a class="button ghost" href="/me">装扮卡片</a>}
+          {count !== null && <a class="button ghost" href="/members">全部 {count} 位社员</a>}
+        </div>
+      </div>
+      {me && <div class="preview"><MemberCard member={me} size="thumb" /></div>}
+    </section>
+
+    <section class="events">
+      <h2>近期活动</h2>
+      {events.length
+        ? (
+            <ul>
+              {events.map((e) => (
+                <li>
+                  <a href={`/e/${e.slug}`}>
+                    <strong>{e.title}</strong>
+                    <span class="muted">
+                      {formatTime(e.starts_at)} · {e.venue}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )
+        : <p class="muted">最近还没有开放报名的活动。</p>}
+    </section>
+  </main>
+</Base>
+
+<style>
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-block: 8vh 10vh;
+    display: grid;
+    gap: 5rem;
+  }
+
+  .hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3rem;
+  }
+
+  .copy {
+    flex: 1 1 22rem;
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  h1 {
+    font-size: clamp(2.2rem, 7vw, 3.6rem);
+  }
+
+  .copy p {
+    max-width: 30em;
+    margin: 0;
+    line-height: 1.8;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .preview {
+    flex: 0 1 280px;
+    margin-inline: auto;
+  }
+
+  .events {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li a {
+    display: grid;
+    gap: 0.4rem;
+    padding: 1.1rem 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: var(--panel);
+    text-decoration: none;
+  }
+
+  li a:hover {
+    border-color: rgb(255 255 255 / 0.3);
+  }
+
+  li span {
+    font-size: 0.9rem;
+  }
+</style>

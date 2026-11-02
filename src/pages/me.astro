@@ -1,0 +1,175 @@
+---
+import MemberCard from "../cards/MemberCard.astro"
+import Base from "../layouts/Base.astro"
+import { db, getMember } from "../lib/db"
+
+const id = Astro.locals.user!.member!
+let saved = false
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData()
+  const text = (name: string, max: number) => String(form.get(name) ?? "").trim().slice(0, max) || null
+  const hue = Math.round(Number(form.get("hue")))
+  await db()
+    .prepare("UPDATE members SET word = ?, motto = ?, hue = ? WHERE member_id = ?")
+    .bind(text("word", 12), text("motto", 40), Number.isFinite(hue) ? Math.min(360, Math.max(0, hue)) : 210, id)
+    .run()
+  saved = true
+}
+
+const member = (await getMember(id))!
+---
+
+<Base title="装扮我的卡片 · NBTCA">
+  <main>
+    <div class="preview">
+      <MemberCard member={member} size="thumb" />
+    </div>
+    <section>
+      <h1>装扮我的卡片</h1>
+      <p class="muted">姓名、部门和身份来自维修系统，每次登录时会自动同步。下面这些由你自己决定。</p>
+      {saved && <p class="notice">已保存。</p>}
+      <form class="form" method="post">
+        <label>
+          卡面大字
+          <input name="word" maxlength="12" value={member.word ?? ""} placeholder={member.alias} />
+        </label>
+        <label>
+          个性签名
+          <input name="motto" maxlength="40" value={member.motto ?? ""} placeholder="To be at the intersection of technology and liberal arts." />
+        </label>
+        <label>
+          主色调
+          <input name="hue" type="range" min="0" max="360" value={member.hue} data-hue />
+        </label>
+        <button class="button">保存</button>
+      </form>
+
+      <div class="uploads">
+        {[
+          { kind: "portrait", label: "人像", hint: "请使用去掉背景的透明 PNG 或 WebP，人物靠画面底部。", key: member.portrait },
+          { kind: "background", label: "背景", hint: "竖版照片效果最好，比例约 5:7。", key: member.background },
+        ].map(({ kind, label, hint, key }) => (
+          <div class="upload">
+            <strong>{label}</strong>
+            <span class="muted">{hint}</span>
+            <div class="row">
+              <label class="button ghost">
+                {key ? "更换" : "上传"}
+                <input type="file" accept="image/png,image/webp,image/jpeg" data-upload={kind} hidden />
+              </label>
+              {key && <button class="button ghost" type="button" data-remove={kind}>移除</button>}
+            </div>
+          </div>
+        ))}
+        <p class="notice" data-status hidden />
+      </div>
+    </section>
+  </main>
+</Base>
+
+<script>
+  const MAX_W = 1000
+  const MAX_H = 1400
+  const status = document.querySelector<HTMLElement>("[data-status]")!
+  const show = (text: string) => {
+    status.textContent = text
+    status.hidden = false
+  }
+
+  document.querySelector<HTMLInputElement>("[data-hue]")?.addEventListener("input", (e) => {
+    document.querySelector<HTMLElement>("[data-card]")?.style.setProperty("--hue", (e.target as HTMLInputElement).value)
+  })
+
+  // Safari cannot encode WebP and returns PNG, so the server accepts both.
+  async function encode(file: File) {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(1, MAX_W / bitmap.width, MAX_H / bitmap.height)
+    const canvas = new OffscreenCanvas(Math.round(bitmap.width * scale), Math.round(bitmap.height * scale))
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    return canvas.convertToBlob({ type: "image/webp", quality: 0.86 })
+  }
+
+  for (const input of document.querySelectorAll<HTMLInputElement>("[data-upload]")) {
+    input.addEventListener("change", async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      show("正在处理图片…")
+      try {
+        const body = await encode(file)
+        const response = await fetch(`/api/me/media?kind=${input.dataset.upload}`, { method: "PUT", body })
+        if (!response.ok) throw new Error(await response.text())
+        location.reload()
+      } catch (error) {
+        show(`上传失败，${error instanceof Error ? error.message : error}`)
+      }
+    })
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-remove]")) {
+    button.addEventListener("click", async () => {
+      const response = await fetch(`/api/me/media?kind=${button.dataset.remove}`, { method: "DELETE" })
+      if (response.ok) location.reload()
+      else show("移除失败，请稍后再试。")
+    })
+  }
+</script>
+
+<style>
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-block: 4vh 10vh;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 3rem 5rem;
+  }
+
+  .preview {
+    position: sticky;
+    top: 6rem;
+    flex: 0 1 300px;
+  }
+
+  section {
+    flex: 1 1 22rem;
+    max-width: 30rem;
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  section > p {
+    margin: 0;
+    line-height: 1.7;
+  }
+
+  .uploads {
+    display: grid;
+    gap: 1.25rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .upload {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .upload span {
+    font-size: 0.85rem;
+  }
+
+  .row {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.4rem;
+  }
+
+  @media (max-width: 760px) {
+    .preview {
+      position: static;
+    }
+  }
+</style>
