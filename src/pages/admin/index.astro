@@ -72,9 +72,9 @@ const passes = event
 ---
 
 <Base title="管理 · NBTCA">
-  <main>
+  <main class="wrap">
     <nav class="tabs"><a href="/admin" aria-current="page">活动</a><a href="/admin/members">社员名单</a></nav>
-    <section class="list">
+    <section class="panel list">
       <div class="heading">
         <h1>活动</h1>
         <a class="button ghost" href="/admin">新建活动</a>
@@ -95,7 +95,7 @@ const passes = event
       </table>
     </section>
 
-    <section>
+    <section class="panel">
       <h2>{event ? `编辑「${event.title}」` : "新建活动"}</h2>
       {event && <p><a href={`/e/${event.slug}`}>查看活动页</a></p>}
       {error && <p class="notice error">{error}</p>}
@@ -133,7 +133,7 @@ const passes = event
     </section>
 
     {event && (
-      <section>
+      <section class="panel">
         <h2>已领取 {passes.length} 张</h2>
         <table>
           <thead><tr><th>编号</th><th>姓名</th><th>领取</th><th>入场</th></tr></thead>
@@ -155,11 +155,9 @@ const passes = event
 
 <style>
   main {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding-block: 4vh 10vh;
+    padding-block: 3rem;
     display: grid;
-    gap: 3.5rem;
+    gap: 1.5rem;
   }
 
   section {

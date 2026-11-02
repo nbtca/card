@@ -1,90 +1,164 @@
 ---
-import EventList from "../components/EventList.astro"
-import { countMembers, upcomingEvents } from "../lib/db"
+import { passDesign } from "../cards/pass"
 import MemberCard from "../cards/MemberCard.astro"
+import EventList from "../components/EventList.astro"
 import Base from "../layouts/Base.astro"
+import { countMembers, upcomingEvents } from "../lib/db"
+import { showcaseEvent, showcaseMember } from "../lib/showcase"
 
 const { user } = Astro.locals
 const me = user?.member ?? null
 const events = await upcomingEvents(6)
-const count = user?.member ? await countMembers() : null
+const count = me ? await countMembers() : null
+const featured = events[0] ?? showcaseEvent()
+const Featured = passDesign(featured.design)
 ---
 
-<Base title="NBTCA 卡片">
-  <main>
+<Base title="NBTCA Cards">
+  <main class="wrap">
     <section class="hero">
       <div class="copy">
-        <h1>每个人都有一张卡</h1>
-        <p class="muted">
-          社员卡是你在计算机协会的身份证明，只有登录的社员能看到。活动通行证人人都能领取，入场时由工作人员扫码核销。
+        <p class="eyebrow reveal">Computer Association · NingboTech</p>
+        <h1 class="title reveal" style="--i: 1">把每一次相遇<br />做成一张卡</h1>
+        <p class="lede reveal" style="--i: 2">
+          社员卡是你在计算机协会的身份，活动券记下你去过的每一场活动。移动鼠标，或者拿起手机晃一晃，它们会跟着你动。
         </p>
-        <div class="actions">
+        <div class="actions reveal" style="--i: 3">
           {me
-            ? <a class="button" href={`/members/${me.id}`}>查看我的社员卡</a>
-            : user
-              ? <a class="button" href="/e">去看看活动</a>
-              : <a class="button" href="/login?next=/members">社员登录</a>}
-          {me && <a class="button ghost" href="/me">装扮卡片</a>}
-          {count !== null && <a class="button ghost" href="/members">全部 {count} 位社员</a>}
+            ? <a class="button" href={`/members/${me.id}`}>看我的社员卡</a>
+            : <a class="button" href={events.length ? `/e/${featured.slug}` : "/e"}>去领活动券</a>}
+          {me
+            ? <a class="button ghost" href="/members">全部 {count} 位社员</a>
+            : !user && <a class="button ghost" href="/login?next=/members">社员登录</a>}
         </div>
       </div>
-      {me && <div class="preview"><MemberCard member={me} size="thumb" /></div>}
+
+      <div class="fan">
+        <div class="slot member"><MemberCard member={me ?? showcaseMember()} size="full" /></div>
+        <div class="slot pass"><Featured event={featured} pass={null} holder={user?.name ?? "你的名字"} guest={!me} /></div>
+        <div class="floor" />
+      </div>
     </section>
 
     <section class="events">
-      <h2>近期活动</h2>
-      {events.length ? <EventList events={events} /> : <p class="muted">最近没有活动。</p>}
+      <header>
+        <p class="eyebrow">Upcoming</p>
+        <h2>近期活动</h2>
+        <a class="more" href="/e">全部活动 →</a>
+      </header>
+      {events.length ? <EventList events={events} /> : <p class="muted">最近还没有活动，过几天再来看看。</p>}
     </section>
   </main>
 </Base>
 
 <style>
-  main {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding-block: 8vh 10vh;
-    display: grid;
-    gap: 5rem;
-  }
-
   .hero {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: center;
-    justify-content: space-between;
-    gap: 3rem;
+    gap: 2rem;
+    min-height: min(820px, calc(100svh - 6rem));
+    padding-block: 2rem 4rem;
   }
 
   .copy {
-    flex: 1 1 22rem;
     display: grid;
-    gap: 1.25rem;
-  }
-
-  h1 {
-    font-size: clamp(2.2rem, 7vw, 3.6rem);
-  }
-
-  .copy p {
-    max-width: 30em;
-    margin: 0;
-    line-height: 1.8;
+    gap: 1.6rem;
   }
 
   .actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
+    margin-top: 0.5rem;
   }
 
-  .preview {
-    flex: 0 1 280px;
-    margin-inline: auto;
+  .fan {
+    position: relative;
+    width: min(560px, 100%);
+    aspect-ratio: 1;
+    justify-self: center;
+  }
+
+  .slot {
+    position: absolute;
+    width: 50%;
+    animation: float 7s ease-in-out infinite;
+  }
+
+  .slot.member {
+    left: 2%;
+    top: 6%;
+    rotate: -10deg;
+  }
+
+  .slot.pass {
+    right: 2%;
+    top: 12%;
+    rotate: 8deg;
+    z-index: 1;
+    animation-delay: -3.5s;
+  }
+
+  .slot :global(.card.full),
+  .slot :global(.pass-card) {
+    width: 100%;
+    rotate: 0deg;
+  }
+
+  .floor {
+    position: absolute;
+    inset: auto 10% 0;
+    height: 14%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgb(59 141 255 / 0.35), transparent);
+    filter: blur(20px);
+  }
+
+  @keyframes float {
+    50% {
+      translate: 0 -14px;
+    }
   }
 
   .events {
     display: grid;
-    gap: 1.25rem;
+    gap: 2.5rem;
+    padding-top: 2rem;
   }
 
+  .events header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 0.6rem 1rem;
+  }
+
+  .events h2 {
+    grid-column: 1;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+  }
+
+  .more {
+    grid-column: 2;
+    grid-row: 2;
+    text-decoration: none;
+    color: var(--muted);
+  }
+
+  .more:hover {
+    color: var(--fg);
+  }
+
+  @media (max-width: 860px) {
+    .hero {
+      grid-template-columns: 1fr;
+      min-height: 0;
+      padding-top: 3rem;
+    }
+
+    .fan {
+      width: min(440px, 100%);
+    }
+  }
 </style>

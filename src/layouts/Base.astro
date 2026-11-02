@@ -6,9 +6,15 @@ interface Props {
   description?: string
 }
 
-const { title, description = "浙大宁波理工学院计算机协会的社员卡与活动通行证。" } = Astro.props
+const { title, description = "浙大宁波理工学院计算机协会的社员卡与活动券。" } = Astro.props
 const { user } = Astro.locals
 const path = Astro.url.pathname
+const links = [
+  user?.member && { href: "/members", label: "社员" },
+  { href: "/e", label: "活动" },
+  user?.member && { href: "/scan", label: "核销" },
+  user?.admin && { href: "/admin", label: "管理" },
+].filter((l) => !!l)
 ---
 
 <!doctype html>
@@ -20,44 +26,82 @@ const path = Astro.url.pathname
     <meta name="description" content={description} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta name="theme-color" content="#07090d" />
+    <meta name="theme-color" content="#05060a" />
     <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <link rel="preload" href="/fonts/archivo-latin-wdth.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
-    <nav>
-      <a class="home" href="/" aria-label="首页"><span class="ring" /></a>
-      <div class="links">
-        {user?.member && <a href="/members" aria-current={path.startsWith("/members") ? "page" : undefined}>社员</a>}
-        <a href="/e" aria-current={path.startsWith("/e") ? "page" : undefined}>活动</a>
-        {user?.member && <a href="/scan" aria-current={path === "/scan" ? "page" : undefined}>核销</a>}
-        {user?.admin && <a href="/admin" aria-current={path.startsWith("/admin") ? "page" : undefined}>管理</a>}
+    <header>
+      <nav class="wrap">
+        <a class="brand" href="/" aria-label="首页">
+          <span class="ring" />
+          <span>NBTCA <b>Cards</b></span>
+        </a>
+        <div class="links">
+          {links.map(({ href, label }) => (
+            <a href={href} aria-current={path === href || path.startsWith(`${href}/`) ? "page" : undefined}>{label}</a>
+          ))}
+        </div>
         {user
-          ? <a href="/logout" class="muted">退出</a>
-          : <a href={`/login?next=${encodeURIComponent(path)}`}>登录</a>}
-      </div>
-    </nav>
+          ? (
+              <a class="me" href={user.member ? "/me" : "/e"} title={user.email}>
+                <span class="avatar" style={`--hue: ${user.member?.hue ?? 210}`}>{[...user.name][0]}</span>
+                <span class="who">{user.name}</span>
+              </a>
+            )
+          : <a class="me signin" href={`/login?next=${encodeURIComponent(path)}`}>登录</a>}
+      </nav>
+    </header>
     <slot />
+    <footer class="wrap">
+      <span class="ring" />
+      <p>浙大宁波理工学院计算机协会</p>
+      {user && <a href="/logout">退出登录</a>}
+    </footer>
     <script src="../cards/tilt.ts"></script>
   </body>
 </html>
 
 <style>
-  nav {
+  header {
     position: sticky;
-    top: env(safe-area-inset-top, 0px);
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    max-width: 1080px;
-    margin: 0 auto;
-    padding-block: 1rem;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    z-index: 20;
+    padding-block: 12px;
   }
 
-  .home .ring {
+  nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem;
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    background: rgb(10 12 18 / 0.6);
+    backdrop-filter: blur(18px) saturate(1.4);
+    box-shadow: 0 20px 40px -24px rgb(0 0 0 / 0.8);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.25rem 0.8rem 0.25rem 0.3rem;
+    text-decoration: none;
+    font: 600 0.82rem / 1 var(--wide);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .brand b {
+    font-weight: 800;
+    color: var(--glow);
+  }
+
+  .ring {
     display: block;
-    width: 36px;
+    width: 30px;
     aspect-ratio: 1;
     background: currentColor;
     mask: url("/logo.svg") center / contain no-repeat;
@@ -65,17 +109,87 @@ const path = Astro.url.pathname
 
   .links {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 1.25rem;
-    font-size: 0.95rem;
+    gap: 0.15rem;
+    margin-inline: auto;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
-  .links a {
+  .links a,
+  .me {
+    padding: 0.55rem 0.9rem;
+    border-radius: 99px;
     text-decoration: none;
-    opacity: 0.75;
+    font-size: 0.92rem;
+    color: var(--muted);
+    white-space: nowrap;
+    transition: background 0.2s, color 0.2s;
   }
 
-  .links a:is(:hover, :focus-visible, [aria-current]) {
-    opacity: 1;
+  .links a:hover,
+  .links a[aria-current] {
+    color: var(--fg);
+    background: rgb(255 255 255 / 0.08);
+  }
+
+  .me {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.25rem 0.9rem 0.25rem 0.25rem;
+    color: var(--fg);
+  }
+
+  .me:hover {
+    background: rgb(255 255 255 / 0.08);
+  }
+
+  .me.signin {
+    padding-inline: 1.1rem;
+    background: var(--fg);
+    color: var(--bg);
+    font-weight: 650;
+  }
+
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: linear-gradient(135deg, oklch(0.7 0.16 var(--hue)), oklch(0.45 0.16 calc(var(--hue) + 40)));
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+    margin-top: 6rem;
+    padding-block: 2rem calc(env(safe-area-inset-bottom, 0px) + 2rem);
+    border-top: 1px solid var(--line);
+    font-size: 0.85rem;
+    color: var(--faint);
+  }
+
+  footer p {
+    margin: 0 auto 0 0;
+  }
+
+  footer .ring {
+    width: 22px;
+  }
+
+  @media (max-width: 640px) {
+    .brand span:last-child,
+    .who {
+      display: none;
+    }
+
+    .me {
+      padding-right: 0.25rem;
+    }
   }
 </style>

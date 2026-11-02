@@ -3,14 +3,16 @@ import { ticket, type PassProps } from "../pass"
 
 type Props = PassProps
 
-const { event, pass, holder, guest } = Astro.props
+const { event, pass, holder, guest, size = "full" } = Astro.props
+const Tag = size === "thumb" ? "a" : "div"
 const { state, date, day, time, serial, redeemedAt: redeemed, video, qr } = ticket(Astro.props, Astro.url.origin)
 const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.05 : 0.78), 0)
 ---
 
-<div
-  class="pass-card"
-  data-card="full"
+<Tag
+  class:list={["pass-card", size]}
+  href={size === "thumb" ? `/e/${event.slug}` : undefined}
+  data-card={size === "thumb" ? "thumb" : "stage"}
   data-state={state}
   style={`--fit: min(34cqi, ${(84 / Math.max(units, 1)).toFixed(2)}cqi)`}
 >
@@ -18,7 +20,7 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     <article class="card" aria-label={`${event.title} 通行证`}>
       <div class="plane footage">
         {video
-          ? <video src={video} muted loop autoplay playsinline preload="auto" aria-hidden="true" />
+          ? <video src={video} muted loop playsinline preload={size === "thumb" ? "metadata" : "auto"} aria-hidden="true" />
           : <div class="aurora" />}
       </div>
       <div class="knockout" aria-hidden="true">
@@ -59,17 +61,9 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
       <div class="glare" />
     </article>
   </div>
-</div>
+</Tag>
 
 <style>
-  @font-face {
-    font-family: "Archivo";
-    src: url("/fonts/archivo-latin-wdth.woff2") format("woff2-variations");
-    font-weight: 100 900;
-    font-stretch: 62% 125%;
-    font-display: swap;
-  }
-
   .pass-card {
     --ink: #0b0d12;
     --muted: rgb(11 13 18 / 0.55);
@@ -77,12 +71,19 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     --wide: "Archivo", system-ui, -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
     --die: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 800' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M24 0H476A24 24 0 0 1 500 24V590A18 18 0 0 0 500 626V776A24 24 0 0 1 476 800H24A24 24 0 0 1 0 776V626A18 18 0 0 0 0 590V24A24 24 0 0 1 24 0ZM212 30H288A11 11 0 0 1 288 52H212A11 11 0 0 1 212 30Z'/%3E%3C/svg%3E");
     position: relative;
+    display: block;
     width: min(360px, 100%, (100svh - 10rem) * 5 / 8);
     aspect-ratio: 5 / 8;
     perspective: 1400px;
     container-type: inline-size;
     color: var(--ink);
     rotate: -1.5deg;
+    text-decoration: none;
+  }
+
+  .pass-card.thumb {
+    width: 100%;
+    rotate: 0deg;
   }
 
   .tilt {

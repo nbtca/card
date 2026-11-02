@@ -18,7 +18,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
 <Tag
   class:list={["card", size]}
   href={full ? undefined : `/members/${member.id}`}
-  data-card={full ? "full" : "thumb"}
+  data-card={full ? "stage" : "thumb"}
   style={`--hue: ${hue}; --fit: min(46cqi, ${(88 / Math.max(units, 1)).toFixed(2)}cqi)`}
   aria-label={full ? "翻转社员卡" : `${name} 的社员卡`}
   {...full && { role: "button", tabindex: 0, "aria-pressed": "false" }}
@@ -87,7 +87,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
 }
 
 .card.full {
-  width: min(420px, 100%, (100svh - 9rem) * 5 / 7);
+  width: min(400px, 100%, (100svh - 22rem) * 5 / 7);
   cursor: pointer;
 }
 

@@ -6,6 +6,7 @@ export interface PassProps {
   pass: Pass | null
   holder: string
   guest: boolean
+  size?: "thumb" | "full"
 }
 
 export function ticket({ event, pass }: PassProps, origin: string) {

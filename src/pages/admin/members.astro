@@ -75,9 +75,9 @@ if (editing && !member) return Astro.redirect("/admin/members")
 ---
 
 <Base title="社员名单 · NBTCA">
-  <main>
+  <main class="wrap">
     <nav class="tabs"><a href="/admin">活动</a><a href="/admin/members" aria-current="page">社员名单</a></nav>
-    <section>
+    <section class="panel">
       <h1>社员名单</h1>
       <p class="muted">只有名单里的邮箱登录后才算社员。登录用的是 Logto 账号的邮箱。</p>
       {error && <p class="notice error">{error}</p>}
@@ -98,7 +98,7 @@ if (editing && !member) return Astro.redirect("/admin/members")
       </table>
     </section>
 
-    <section>
+    <section class="panel">
       <h2>{member ? `编辑「${member.name}」` : "添加社员"}</h2>
       <form class="form" method="post">
         <label>邮箱<input name="email" type="email" required value={member?.email} /></label>
@@ -116,7 +116,7 @@ if (editing && !member) return Astro.redirect("/admin/members")
     </section>
 
     {!member && (
-      <section>
+      <section class="panel">
         <h2>批量导入</h2>
         <form class="form" method="post">
           <label>
@@ -133,11 +133,9 @@ if (editing && !member) return Astro.redirect("/admin/members")
 
 <style>
   main {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding-block: 4vh 10vh;
+    padding-block: 3rem;
     display: grid;
-    gap: 3.5rem;
+    gap: 1.5rem;
   }
 
   section {

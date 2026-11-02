@@ -1,7 +1,7 @@
 ---
 import MemberCard from "../cards/MemberCard.astro"
 import Base from "../layouts/Base.astro"
-import { db, getMember } from "../lib/db"
+import { db, getMember, mediaUrl } from "../lib/db"
 
 const id = Astro.locals.user!.member!.id
 let saved = false
@@ -18,68 +18,105 @@ if (Astro.request.method === "POST") {
 }
 
 const member = (await getMember(id))!
+const swatches = [212, 248, 280, 320, 350, 18, 42, 140, 172, 196]
+const uploads = [
+  { kind: "portrait", label: "人像", hint: "去掉背景的透明 PNG 或 WebP，人物站在画面底部。", key: member.portrait },
+  { kind: "background", label: "背景", hint: "竖版照片效果最好，比例大约 5:7。", key: member.background },
+]
 ---
 
 <Base title="装扮我的卡片 · NBTCA">
-  <main>
-    <div class="preview">
-      <MemberCard member={member} size="thumb" />
+  <main class="wrap" style={`--hue: ${member.hue}`}>
+    <div class="stage">
+      <MemberCard member={member} size="full" />
+      <p class="hint">点击卡片看背面</p>
     </div>
-    <section>
-      <h1>装扮我的卡片</h1>
-      <p class="muted">姓名、部门和身份由管理员登记，需要修改时请联系管理员。下面这些由你自己决定。</p>
-      {saved && <p class="notice">已保存。</p>}
-      <form class="form" method="post">
+
+    <div class="editor">
+      <header class="reveal">
+        <p class="eyebrow">Customize</p>
+        <h1>装扮我的卡片</h1>
+        <p class="muted">姓名、部门和身份由管理员登记。下面这些由你决定，改动会立刻出现在左边的卡片上。</p>
+      </header>
+
+      {saved && <p class="notice reveal">已保存，所有人看到的都是新卡面了。</p>}
+
+      <form class="panel form reveal" style="--i: 1" method="post">
         <label>
           卡面大字
-          <input name="word" maxlength="12" value={member.word ?? ""} placeholder={member.alias} />
+          <input name="word" maxlength="12" value={member.word ?? ""} placeholder={member.alias} data-live="word" />
         </label>
         <label>
           个性签名
-          <input name="motto" maxlength="40" value={member.motto ?? ""} placeholder="To be at the intersection of technology and liberal arts." />
+          <input name="motto" maxlength="40" value={member.motto ?? ""} placeholder="To be at the intersection of technology and liberal arts." data-live="motto" />
         </label>
-        <label>
-          主色调
-          <input name="hue" type="range" min="0" max="360" value={member.hue} data-hue />
-        </label>
-        <button class="button">保存</button>
+        <div class="hues">
+          <span>主色调</span>
+          <div class="swatches">
+            {swatches.map((h) => (
+              <button type="button" class="swatch" style={`--h: ${h}`} data-hue={h} aria-label={`色相 ${h}`} aria-pressed={String(h === member.hue)} />
+            ))}
+          </div>
+          <input name="hue" type="range" min="0" max="360" value={member.hue} data-live="hue" aria-label="自定义色相" />
+        </div>
+        <button class="button">保存卡面</button>
       </form>
 
-      <div class="uploads">
-        {[
-          { kind: "portrait", label: "人像", hint: "请使用去掉背景的透明 PNG 或 WebP，人物靠画面底部。", key: member.portrait },
-          { kind: "background", label: "背景", hint: "竖版照片效果最好，比例约 5:7。", key: member.background },
-        ].map(({ kind, label, hint, key }) => (
+      <section class="panel uploads reveal" style="--i: 2">
+        {uploads.map(({ kind, label, hint, key }) => (
           <div class="upload">
-            <strong>{label}</strong>
-            <span class="muted">{hint}</span>
-            <div class="row">
-              <label class="button ghost">
-                {key ? "更换" : "上传"}
-                <input type="file" accept="image/png,image/webp,image/jpeg" data-upload={kind} hidden />
-              </label>
-              {key && <button class="button ghost" type="button" data-remove={kind}>移除</button>}
+            <div class="thumb" style={key ? `background-image: url(${mediaUrl(key)})` : undefined} data-kind={kind} />
+            <div class="text">
+              <strong>{label}</strong>
+              <span>{hint}</span>
+              <div class="row">
+                <label class="button ghost">
+                  {key ? "更换" : "上传"}
+                  <input type="file" accept="image/png,image/webp,image/jpeg" data-upload={kind} hidden />
+                </label>
+                {key && <button class="button ghost" type="button" data-remove={kind}>移除</button>}
+              </div>
             </div>
           </div>
         ))}
         <p class="notice" data-status hidden />
-      </div>
-    </section>
+      </section>
+    </div>
   </main>
 </Base>
 
 <script>
   const MAX_W = 1000
   const MAX_H = 1400
+  const card = document.querySelector<HTMLElement>("[data-card]")!
+  const main = document.querySelector<HTMLElement>("main")!
   const status = document.querySelector<HTMLElement>("[data-status]")!
   const show = (text: string) => {
     status.textContent = text
     status.hidden = false
   }
 
-  document.querySelector<HTMLInputElement>("[data-hue]")?.addEventListener("input", (e) => {
-    document.querySelector<HTMLElement>("[data-card]")?.style.setProperty("--hue", (e.target as HTMLInputElement).value)
+  const hue = document.querySelector<HTMLInputElement>("[data-live=hue]")!
+  const setHue = (value: string) => {
+    hue.value = value
+    card.style.setProperty("--hue", value)
+    main.style.setProperty("--hue", value)
+    document.querySelectorAll<HTMLElement>("[data-hue]").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.hue === value)))
+  }
+  hue.addEventListener("input", () => setHue(hue.value))
+  document.querySelectorAll<HTMLElement>("[data-hue]").forEach((s) => s.addEventListener("click", () => setHue(s.dataset.hue!)))
+
+  const word = card.querySelector<HTMLElement>("[data-fit]")!
+  const motto = card.querySelector<HTMLElement>(".motto")
+  const live = (name: string, apply: (value: string) => void) => {
+    const input = document.querySelector<HTMLInputElement>(`[data-live=${name}]`)!
+    input.addEventListener("input", () => apply(input.value.trim() || input.placeholder))
+  }
+  live("word", (value) => {
+    word.textContent = value
+    dispatchEvent(new Event("card:refit"))
   })
+  if (motto) live("motto", (value) => (motto.textContent = value))
 
   // Safari cannot encode WebP and returns PNG, so the server accepts both.
   async function encode(file: File) {
@@ -117,58 +154,159 @@ const member = (await getMember(id))!
 
 <style>
   main {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding-block: 4vh 10vh;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 3rem 5rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 3rem 4rem;
+    padding-block: 3rem;
   }
 
-  .preview {
+  .stage {
     position: sticky;
-    top: 6rem;
-    flex: 0 1 300px;
+    top: 7rem;
+    display: grid;
+    justify-items: center;
+    gap: 1.25rem;
   }
 
-  section {
-    flex: 1 1 22rem;
-    max-width: 30rem;
+  .stage::before {
+    content: "";
+    position: absolute;
+    inset: 5% 0 10%;
+    z-index: -1;
+    background: radial-gradient(closest-side, oklch(0.6 0.16 var(--hue) / 0.35), transparent);
+    filter: blur(30px);
+    transition: background 0.4s;
+  }
+
+  .hint {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--faint);
+  }
+
+  .editor {
     display: grid;
     gap: 1.5rem;
   }
 
-  section > p {
+  header {
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  header h1 {
+    font-size: clamp(2rem, 4vw, 2.8rem);
+  }
+
+  header p {
     margin: 0;
     line-height: 1.7;
+  }
+
+  .hues {
+    display: grid;
+    gap: 0.75rem;
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+
+  .swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .swatch {
+    width: 2.1rem;
+    aspect-ratio: 1;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    background: linear-gradient(135deg, oklch(0.72 0.15 var(--h)), oklch(0.42 0.16 calc(var(--h) + 30)));
+    cursor: pointer;
+    transition: scale 0.2s var(--ease);
+  }
+
+  .swatch:hover {
+    scale: 1.1;
+  }
+
+  .swatch[aria-pressed="true"] {
+    border-color: var(--fg);
+    box-shadow: 0 0 0 3px rgb(255 255 255 / 0.15);
+  }
+
+  input[type="range"] {
+    width: 100%;
+    height: 0.6rem;
+    border-radius: 99px;
+    appearance: none;
+    background: linear-gradient(90deg in oklch longer hue, oklch(0.7 0.15 0), oklch(0.7 0.15 360));
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    width: 1.3rem;
+    aspect-ratio: 1;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    appearance: none;
+    background: oklch(0.65 0.16 var(--hue));
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
   }
 
   .uploads {
     display: grid;
     gap: 1.25rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--line);
   }
 
   .upload {
     display: grid;
-    gap: 0.4rem;
+    grid-template-columns: 5.5rem 1fr;
+    gap: 1.1rem;
+    align-items: center;
   }
 
-  .upload span {
-    font-size: 0.85rem;
+  .thumb {
+    aspect-ratio: 5 / 7;
+    border: 1px dashed var(--line);
+    border-radius: 0.8rem;
+    background: rgb(255 255 255 / 0.03) center / cover no-repeat;
+  }
+
+  .thumb[data-kind="portrait"] {
+    background-size: contain;
+    background-position: center bottom;
+  }
+
+  .text {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .text span {
+    font-size: 0.82rem;
+    color: var(--faint);
   }
 
   .row {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     margin-top: 0.4rem;
   }
 
-  @media (max-width: 760px) {
-    .preview {
+  .row .button {
+    min-height: 2.3rem;
+    padding-inline: 1rem;
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 860px) {
+    main {
+      grid-template-columns: 1fr;
+    }
+
+    .stage {
       position: static;
     }
   }

@@ -81,11 +81,17 @@ export const ZONE = "Asia/Shanghai"
 export const formatTime = (iso: string) =>
   new Date(iso).toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short", timeZone: ZONE })
 
-export function formatRange(from: string, until: string) {
-  const day = (iso: string) => new Date(iso).toLocaleDateString("zh-CN", { timeZone: ZONE })
-  const clock = new Date(until).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: ZONE })
-  return day(from) === day(until) ? `${formatTime(from)}–${clock}` : `${formatTime(from)} 至 ${formatTime(until)}`
-}
+export const formatShort = (iso: string) =>
+  new Date(iso).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: ZONE })
+
+export const formatClock = (iso: string) =>
+  new Date(iso).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: ZONE })
+
+export const sameDay = (a: string, b: string) =>
+  new Date(a).toLocaleDateString("zh-CN", { timeZone: ZONE }) === new Date(b).toLocaleDateString("zh-CN", { timeZone: ZONE })
+
+export const formatRange = (from: string, until: string) =>
+  sameDay(from, until) ? `${formatTime(from)}–${formatClock(until)}` : `${formatTime(from)} 至 ${formatTime(until)}`
 
 export const mediaUrl = (key: string | null) => (key ? `/media/${key}` : null)
 

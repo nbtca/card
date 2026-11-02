@@ -9,24 +9,74 @@ const mine = member.id === Astro.locals.user?.member?.id
 ---
 
 <Base title={`${member.name} · NBTCA 社员卡`}>
-  <main>
-    <MemberCard member={member} size="full" />
-    <p class="muted">点击卡片翻面{mine && <> · <a href="/me">装扮我的卡片</a></>}</p>
+  <main class="wrap" style={`--hue: ${member.hue}`}>
+    <div class="stage">
+      <div class="beam" />
+      <MemberCard member={member} size="full" />
+      <div class="floor" />
+    </div>
+    <div class="caption reveal">
+      <h1>{member.name}</h1>
+      <p class="muted">{[member.section, member.role].filter(Boolean).join(" · ")} · {member.joined} 年入会</p>
+      <p class="hint">点击卡片翻到背面</p>
+      {mine && <a class="button ghost" href="/me">装扮我的卡片</a>}
+    </div>
   </main>
 </Base>
 
 <style>
   main {
-    min-height: calc(100svh - 5rem);
     display: grid;
-    align-content: center;
     justify-items: center;
-    gap: 2rem;
-    padding-block: 2rem;
+    gap: 2.5rem;
+    padding-block: 3rem 2rem;
   }
 
-  p {
+  .stage {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    width: 100%;
+  }
+
+  .beam {
+    position: absolute;
+    inset: -10% 0 0;
+    z-index: -1;
+    background: conic-gradient(from 180deg at 50% -10%, transparent 160deg, oklch(0.7 0.14 var(--hue) / 0.25) 180deg, transparent 200deg);
+    mask: linear-gradient(#000 40%, transparent);
+  }
+
+  .floor {
+    width: min(380px, 80%);
+    height: 40px;
+    margin-top: 1.5rem;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, oklch(0.6 0.16 var(--hue) / 0.5), transparent);
+    filter: blur(14px);
+  }
+
+  .caption {
+    display: grid;
+    justify-items: center;
+    gap: 0.6rem;
+    text-align: center;
+  }
+
+  h1 {
+    font-size: clamp(1.8rem, 4vw, 2.4rem);
+  }
+
+  .caption p {
     margin: 0;
-    font-size: 0.85rem;
+  }
+
+  .hint {
+    font-size: 0.82rem;
+    color: var(--faint);
+  }
+
+  .caption .button {
+    margin-top: 0.75rem;
   }
 </style>

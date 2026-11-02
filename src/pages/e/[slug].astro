@@ -1,7 +1,7 @@
 ---
 import { passDesign } from "../../cards/pass"
 import Base from "../../layouts/Base.astro"
-import { checkInPhase, claimPhase, db, formatRange, formatTime, getEvent, randomId, type Pass } from "../../lib/db"
+import { checkInPhase, claimPhase, db, formatClock, formatRange, formatShort, formatTime, getEvent, randomId, sameDay, ZONE, type Pass } from "../../lib/db"
 
 const event = await getEvent(Astro.params.slug!)
 if (!event) return new Response(null, { status: 404 })
@@ -26,7 +26,7 @@ if (Astro.request.method === "POST") {
     )
     .bind(randomId(), event.slug, user.email, name, Date.now(), new Date().toISOString())
     .run()
-  if (await findPass()) return Astro.redirect(Astro.url.pathname, 303)
+  if (await findPass()) return Astro.redirect(`${Astro.url.pathname}?issued`, 303)
 }
 
 const pass = await findPass()
@@ -37,75 +37,315 @@ const passNotice = pass?.redeemed_at
   ? `你已经在 ${formatTime(new Date(pass.redeemed_at).toISOString())} 入场。`
   : checkInPhase(event) === "ended"
     ? "活动已经结束了。"
-    : "这是你的通行证。入场时把卡片底部的二维码给工作人员扫一下就好，活动开始前一小时起可以核销。"
+    : "这是你的活动券。入场时把底部的二维码给工作人员扫一下就好，活动开始前一小时起可以核销。"
 const Design = passDesign(event.design)
+
+const now = Date.now()
+const milestones = [
+  { at: event.claim_from, label: "开放领取" },
+  { at: event.claim_until, label: "停止领取" },
+  { at: event.starts_at, label: "活动开始" },
+  { at: event.ends_at, label: "活动结束" },
+].map((m) => ({ ...m, done: Date.parse(m.at) <= now }))
+const next = milestones.find((m) => !m.done)
+const start = new Date(event.starts_at)
+const local = (options: Intl.DateTimeFormatOptions) => start.toLocaleString("en-US", { timeZone: ZONE, ...options })
+const chip = {
+  upcoming: { tone: "warn", text: "即将开放领取" },
+  open: { tone: "ok", text: full ? "名额已满" : "正在领取" },
+  closed: { tone: "", text: "领取已截止" },
+}[phase]
 ---
 
-<Base title={`${event.title} · NBTCA`} description={event.summary || `${formatTime(event.starts_at)}，${event.venue}`}>
-  <main>
-    <Design event={event} pass={pass} holder={pass?.name ?? user?.name ?? "你的名字"} guest={!user?.member} />
-    <section>
-      <h1>{event.title}</h1>
-      <p class="muted">{formatRange(event.starts_at, event.ends_at)} · {event.venue}</p>
-      {event.summary && <p class="summary">{event.summary}</p>}
-      {pass
-        ? <p class="notice">{passNotice}</p>
-        : phase === "upcoming"
-          ? <p class="notice">{formatTime(event.claim_from)} 开放领取，到时再来吧。</p>
-          : phase === "closed"
-            ? <p class="notice">领取已经在 {formatTime(event.claim_until)} 截止。</p>
-            : full
-            ? <p class="notice">名额已经领完了。</p>
-            : user
-              ? (
-                  <form class="form claim" method="post">
-                    {!user.member && <label>印在通行证上的名字<input name="name" maxlength="20" required value={user.name} /></label>}
-                    <button class="button">领取通行证</button>
-                  </form>
-                )
-              : <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>登录后领取通行证</a>}
-      <p class="muted small">
-        领取时间 {formatRange(event.claim_from, event.claim_until)}{event.capacity !== null && `，已领取 ${claimed} / ${event.capacity}`}
-      </p>
+<Base title={`${event.title} · NBTCA`} description={event.summary || `${formatRange(event.starts_at, event.ends_at)}，${event.venue}`}>
+  <main class="wrap">
+    <div class="stage" data-issued={Astro.url.searchParams.has("issued") ? "" : undefined}>
+      <Design event={event} pass={pass} holder={pass?.name ?? user?.name ?? "你的名字"} guest={!user?.member} />
+      <div class="spot" />
+    </div>
+
+    <section class="info">
+      <span class="chip reveal" data-tone={pass ? "ok" : chip.tone}>{pass ? "已领取" : chip.text}</span>
+      <h1 class="reveal" style="--i: 1">{event.title}</h1>
+
+      <div class="when reveal" style="--i: 2">
+        <span class="day">{local({ month: "2-digit" })}.{local({ day: "2-digit" })}</span>
+        <span class="meta">
+          <b>{local({ weekday: "long" })}</b>
+          <span>
+            {sameDay(event.starts_at, event.ends_at)
+              ? `${formatClock(event.starts_at)}–${formatClock(event.ends_at)}`
+              : `${formatClock(event.starts_at)} 开始，${formatTime(event.ends_at)} 结束`}
+          </span>
+          <span>{event.venue}</span>
+        </span>
+      </div>
+
+      {event.summary && <p class="summary reveal" style="--i: 3">{event.summary}</p>}
+
+      <ol class="timeline reveal" style="--i: 4">
+        {milestones.map((m) => (
+          <li data-done={m.done ? "" : undefined} data-next={m === next ? "" : undefined}>
+            <span class="dot" />
+            <b>{m.label}</b>
+            <span>{formatShort(m.at)}</span>
+          </li>
+        ))}
+      </ol>
+
+      {next && (
+        <p class="countdown reveal" style="--i: 5" data-target={next.at}>
+          距{next.label}还有 <span data-left>…</span>
+        </p>
+      )}
+
+      <div class="act reveal" style="--i: 6">
+        {pass
+          ? <p class="notice">{passNotice}</p>
+          : phase === "upcoming"
+            ? <p class="notice">{formatTime(event.claim_from)} 开放领取，到时再来吧。</p>
+            : phase === "closed"
+              ? <p class="notice">领取已经在 {formatTime(event.claim_until)} 截止。</p>
+              : full
+                ? <p class="notice">名额已经领完了。</p>
+                : user
+                  ? (
+                      <form class="form claim" method="post">
+                        {!user.member && <label>印在券上的名字<input name="name" maxlength="20" required value={user.name} /></label>}
+                        <button class="button">领取活动券</button>
+                      </form>
+                    )
+                  : <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>登录后领取活动券</a>}
+        {event.capacity !== null && (
+          <div class="meter" style={`--fill: ${Math.min(1, claimed / event.capacity)}`}>
+            <span />
+            <small>已领取 {claimed} / {event.capacity}</small>
+          </div>
+        )}
+      </div>
     </section>
   </main>
 </Base>
 
+<script>
+  const el = document.querySelector<HTMLElement>("[data-target]")
+  if (el) {
+    const left = el.querySelector("[data-left]")!
+    const target = Date.parse(el.dataset.target!)
+    const pad = (n: number) => String(n).padStart(2, "0")
+    const tick = () => {
+      const s = Math.max(0, Math.floor((target - Date.now()) / 1000))
+      const d = Math.floor(s / 86400)
+      left.textContent = `${d ? `${d} 天 ` : ""}${pad(Math.floor(s / 3600) % 24)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`
+      if (s === 0) location.reload()
+    }
+    tick()
+    setInterval(tick, 1000)
+  }
+  if (location.search === "?issued") history.replaceState(null, "", location.pathname)
+</script>
+
 <style>
   main {
-    max-width: 1080px;
-    min-height: calc(100svh - 5rem);
-    margin: 0 auto;
-    padding-block: 2rem 4rem;
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
     align-items: center;
-    justify-content: center;
     gap: 3rem 5rem;
+    min-height: calc(100svh - 8rem);
+    padding-block: 2rem 4rem;
   }
 
-  section {
-    flex: 0 1 24rem;
+  .stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding-block: 2rem;
+  }
+
+  .spot {
+    position: absolute;
+    inset: 10% 5% -5%;
+    z-index: -1;
+    background: radial-gradient(closest-side, rgb(59 141 255 / 0.28), transparent);
+    filter: blur(30px);
+  }
+
+  .stage[data-issued] > :global(:first-child) {
+    animation: issue 1.4s var(--ease) both;
+  }
+
+  @keyframes issue {
+    0% {
+      opacity: 0;
+      translate: 0 -40%;
+      scale: 0.85;
+      filter: brightness(2);
+    }
+    60% {
+      opacity: 1;
+      filter: brightness(1.2);
+    }
+  }
+
+  .info {
     display: grid;
     justify-items: start;
-    gap: 1rem;
-  }
-
-  section p {
-    margin: 0;
-    line-height: 1.7;
+    gap: 1.6rem;
   }
 
   h1 {
-    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    font-size: clamp(2.2rem, 5vw, 3.6rem);
+    line-height: 1.05;
+  }
+
+  .when {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .day {
+    font: 800 clamp(3.2rem, 7vw, 5rem) / 0.85 var(--wide);
+    font-stretch: 125%;
+    letter-spacing: -0.03em;
+    background: linear-gradient(120deg, #fff 30%, var(--glow));
+    background-clip: text;
+    color: transparent;
+  }
+
+  .meta {
+    display: grid;
+    gap: 0.3rem;
+    padding-left: 1.25rem;
+    border-left: 1px solid var(--line);
+    font-size: 0.92rem;
+    color: var(--muted);
+  }
+
+  .meta b {
+    font: 700 0.78rem / 1 var(--wide);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--fg);
+  }
+
+  .summary {
+    margin: 0;
+    max-width: 32em;
+    line-height: 1.8;
+    color: var(--muted);
+  }
+
+  .timeline {
+    --dot: 0.7rem;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .timeline li {
+    position: relative;
+    display: grid;
+    gap: 0.35rem;
+    padding-top: 1.5rem;
+    font-size: 0.78rem;
+    color: var(--faint);
+  }
+
+  .timeline li::before {
+    content: "";
+    position: absolute;
+    top: calc(var(--dot) / 2 - 1px);
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--line);
+  }
+
+  .timeline li[data-done]::before {
+    background: var(--glow);
+  }
+
+  .timeline .dot {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    width: var(--dot);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--line);
+  }
+
+  .timeline li[data-done] .dot {
+    background: var(--glow);
+    border-color: var(--glow);
+  }
+
+  .timeline li[data-next] .dot {
+    border-color: var(--glow);
+    box-shadow: 0 0 0 5px rgb(59 141 255 / 0.2);
+  }
+
+  .timeline b {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .timeline li:is([data-done], [data-next]) b {
+    color: var(--fg);
+  }
+
+  .countdown {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .countdown span {
+    font: 700 1.05rem / 1 var(--wide);
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+  }
+
+  .act {
+    display: grid;
+    gap: 1rem;
+    width: 100%;
+    max-width: 26rem;
   }
 
   .claim {
-    width: 100%;
     justify-items: start;
   }
 
-  .small {
-    font-size: 0.85rem;
+  .meter {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .meter span {
+    height: 4px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--glow) calc(var(--fill) * 100%), var(--line) 0);
+  }
+
+  .meter small {
+    font-size: 0.8rem;
+    color: var(--faint);
+  }
+
+  @media (max-width: 900px) {
+    main {
+      grid-template-columns: 1fr;
+    }
+
+    .timeline {
+      grid-template-columns: repeat(2, 1fr);
+      row-gap: 1.25rem;
+    }
   }
 </style>

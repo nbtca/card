@@ -6,30 +6,38 @@ const events = await listEvents()
 ---
 
 <Base title="核销 · NBTCA">
-  <main>
-    <h1>核销</h1>
-    <div class="viewfinder">
+  <main class="wrap">
+    <header class="reveal">
+      <p class="eyebrow">Check-in</p>
+      <h1>扫码核销</h1>
+    </header>
+    <div class="viewfinder reveal" style="--i: 1">
       <video muted playsinline data-video></video>
+      <span class="corners" aria-hidden="true" />
+      <span class="line" aria-hidden="true" />
       <button class="button" type="button" data-start>打开摄像头</button>
     </div>
     <output class="result" data-result hidden>
+      <span class="icon" aria-hidden="true" />
       <strong data-headline></strong>
       <span data-detail></span>
     </output>
-    <form class="form manual" data-manual>
-      <p class="muted">扫不出来时，可以按通行证上的编号核销。</p>
-      <label>
-        活动
-        <select name="event" required>
-          {events.map((e) => <option value={e.slug}>{e.title}</option>)}
-        </select>
-      </label>
-      <label>
-        编号
-        <input name="serial" type="number" min="1" inputmode="numeric" required />
-      </label>
-      <button class="button ghost">核销</button>
-    </form>
+    <details class="panel manual reveal" style="--i: 2">
+      <summary>扫不出来？按编号核销</summary>
+      <form class="form" data-manual>
+        <label>
+          活动
+          <select name="event" required>
+            {events.map((e) => <option value={e.slug}>{e.title}</option>)}
+          </select>
+        </label>
+        <label>
+          券上的编号
+          <input name="serial" type="number" min="1" inputmode="numeric" required />
+        </label>
+        <button class="button ghost">核销</button>
+      </form>
+    </details>
   </main>
 </Base>
 
@@ -54,6 +62,8 @@ const events = await listEvents()
     const response = await fetch("/api/redeem", { method: "POST", body: JSON.stringify(body) })
     const outcome: Outcome = response.status === 404 ? { status: "unknown" } : await response.json()
     result.dataset.status = outcome.status
+    result.hidden = true
+    void result.offsetWidth
     result.hidden = false
     headline.textContent = {
       ok: "核销成功",
@@ -142,11 +152,19 @@ const events = await listEvents()
 
 <style>
   main {
-    max-width: 32rem;
-    margin: 0 auto;
-    padding-block: 4vh 10vh;
+    max-width: 30rem;
     display: grid;
     gap: 1.5rem;
+    padding-block: 2rem;
+  }
+
+  header {
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  h1 {
+    font-size: 2rem;
   }
 
   .viewfinder {
@@ -155,9 +173,11 @@ const events = await listEvents()
     display: grid;
     place-items: center;
     overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: 1.25rem;
-    background: var(--panel);
+    border-radius: 2rem;
+    background:
+      radial-gradient(closest-side, rgb(59 141 255 / 0.15), transparent),
+      rgb(255 255 255 / 0.03);
+    box-shadow: 0 0 0 1px var(--line) inset, 0 30px 60px -30px rgb(0 0 0 / 0.8);
   }
 
   video {
@@ -168,41 +188,107 @@ const events = await listEvents()
     object-fit: cover;
   }
 
+  .corners {
+    --c: rgb(255 255 255 / 0.85);
+    --l: 2.4rem;
+    position: absolute;
+    inset: 14%;
+    background:
+      linear-gradient(var(--c), var(--c)) 0 0 / var(--l) 3px,
+      linear-gradient(var(--c), var(--c)) 0 0 / 3px var(--l),
+      linear-gradient(var(--c), var(--c)) 100% 0 / var(--l) 3px,
+      linear-gradient(var(--c), var(--c)) 100% 0 / 3px var(--l),
+      linear-gradient(var(--c), var(--c)) 0 100% / var(--l) 3px,
+      linear-gradient(var(--c), var(--c)) 0 100% / 3px var(--l),
+      linear-gradient(var(--c), var(--c)) 100% 100% / var(--l) 3px,
+      linear-gradient(var(--c), var(--c)) 100% 100% / 3px var(--l);
+    background-repeat: no-repeat;
+    pointer-events: none;
+  }
+
+  .line {
+    position: absolute;
+    inset: 14% 14% auto;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--glow), transparent);
+    box-shadow: 0 0 16px var(--glow);
+    animation: sweep 2.4s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
+
+  @keyframes sweep {
+    to {
+      translate: 0 calc(72cqw - 2px);
+    }
+  }
+
+  .viewfinder {
+    container-type: inline-size;
+  }
+
+  [data-start] {
+    position: relative;
+  }
+
   .result {
+    --tone: var(--ok);
+    position: sticky;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+    z-index: 5;
     display: grid;
-    gap: 0.4rem;
-    padding: 1.1rem 1.25rem;
-    border-radius: 1rem;
-    border: 1px solid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.25rem 1rem;
+    padding: 1.25rem 1.4rem;
+    border-radius: 1.5rem;
+    background: color-mix(in oklch, var(--tone) 18%, #0b0d12);
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--tone) 50%, transparent) inset, 0 24px 50px -20px rgb(0 0 0 / 0.9);
+    animation: rise 0.45s var(--ease);
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      translate: 0 30px;
+    }
+  }
+
+  .icon {
+    grid-row: span 2;
+    width: 2.75rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--tone);
+    mask: radial-gradient(closest-side, #000 98%, transparent);
   }
 
   .result strong {
-    font-size: 1.4rem;
+    font-size: 1.35rem;
+    color: var(--tone);
   }
 
-  [data-status="ok"] {
-    border-color: #3ecf8e;
-    background: rgb(62 207 142 / 0.12);
+  .result span:last-child {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--muted);
   }
 
   [data-status="already"],
   [data-status="early"] {
-    border-color: #f5b83d;
-    background: rgb(245 184 61 / 0.12);
+    --tone: var(--warn);
   }
 
   [data-status="unknown"],
   [data-status="ended"] {
-    border-color: #ff6b4a;
-    background: rgb(255 107 74 / 0.12);
+    --tone: var(--bad);
   }
 
-  .manual {
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--line);
+  .manual summary {
+    cursor: pointer;
+    color: var(--muted);
   }
 
-  .manual p {
-    margin: 0;
+  .manual[open] summary {
+    margin-bottom: 1.25rem;
   }
 </style>

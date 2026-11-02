@@ -4,51 +4,89 @@ import Base from "../../layouts/Base.astro"
 import { listMembers } from "../../lib/db"
 
 const members = await listMembers()
+const sections = new Set(members.map((m) => m.section).filter(Boolean)).size
 ---
 
 <Base title="社员 · NBTCA">
-  <main>
+  <main class="wrap">
     <header>
-      <h1>社员</h1>
-      <p class="muted">社员第一次登录后，卡片就会出现在这里。这一页只有社员能看到。</p>
+      <div>
+        <p class="eyebrow reveal">Members</p>
+        <h1 class="title reveal" style="--i: 1">社员墙</h1>
+      </div>
+      <dl class="stats reveal" style="--i: 2">
+        <div><dt>社员</dt><dd>{members.length}</dd></div>
+        <div><dt>部门</dt><dd>{sections}</dd></div>
+      </dl>
     </header>
     <ul>
-      {members.map((member) => <li><MemberCard member={member} size="thumb" /></li>)}
+      {members.map((member, i) => (
+        <li class="reveal" style={`--i: ${Math.min(i, 12)}; --r: ${((i * 7) % 5) - 2}deg`}>
+          <MemberCard member={member} size="thumb" />
+        </li>
+      ))}
     </ul>
   </main>
 </Base>
 
 <style>
   main {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding-block: 6vh 10vh;
+    display: grid;
+    gap: 4rem;
+    padding-block: 4rem;
   }
 
   header {
-    display: grid;
-    gap: 0.75rem;
-    margin-bottom: 3rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 2rem;
   }
 
-  header p {
+  header > div {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .stats {
+    display: flex;
+    gap: 2.5rem;
     margin: 0;
+  }
+
+  .stats dt {
+    font-size: 0.8rem;
+    color: var(--faint);
+  }
+
+  .stats dd {
+    margin: 0.3rem 0 0;
+    font: 800 2.6rem / 1 var(--wide);
+    font-stretch: 125%;
   }
 
   ul {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
-    gap: 3rem 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+    gap: 3rem 2.25rem;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
   li {
-    width: 100%;
-    max-width: 300px;
-    justify-self: center;
+    rotate: var(--r);
+    transition: rotate 0.5s var(--ease), translate 0.5s var(--ease), scale 0.5s var(--ease);
     content-visibility: auto;
-    contain-intrinsic-size: auto 300px auto 420px;
+    contain-intrinsic-size: auto 300px;
+  }
+
+  li:hover,
+  li:focus-within {
+    rotate: 0deg;
+    translate: 0 -10px;
+    scale: 1.04;
+    z-index: 1;
   }
 </style>

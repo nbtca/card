@@ -7,18 +7,25 @@ const events = await upcomingEvents()
 ---
 
 <Base title="活动 · NBTCA">
-  <main>
-    <h1>活动</h1>
-    {events.length ? <EventList events={events} /> : <p class="muted">最近没有活动。</p>}
+  <main class="wrap">
+    <header>
+      <p class="eyebrow reveal">Events</p>
+      <h1 class="title reveal" style="--i: 1">活动</h1>
+      <p class="lede reveal" style="--i: 2">每场活动都有一张专属的券。在开放时间里领一张，活动当天出示给工作人员扫码入场。</p>
+    </header>
+    {events.length ? <EventList events={events} /> : <p class="muted">最近还没有活动，过几天再来看看。</p>}
   </main>
 </Base>
 
 <style>
   main {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding-block: 6vh 10vh;
     display: grid;
-    gap: 2rem;
+    gap: 4rem;
+    padding-block: 4rem;
+  }
+
+  header {
+    display: grid;
+    gap: 1.2rem;
   }
 </style>

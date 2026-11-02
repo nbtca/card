@@ -29,6 +29,7 @@ const words = document.querySelectorAll<HTMLElement>("[data-fit]")
 const refit = () => words.forEach(fit)
 document.fonts.ready.then(refit)
 new ResizeObserver(refit).observe(document.documentElement)
+addEventListener("card:refit", refit)
 
 for (const card of document.querySelectorAll<HTMLElement>("[data-card=thumb]")) {
   const aim = follow(card)
@@ -39,10 +40,21 @@ for (const card of document.querySelectorAll<HTMLElement>("[data-card=thumb]")) 
   card.addEventListener("pointerleave", () => aim(0, 0))
 }
 
-const full = document.querySelector<HTMLElement>("[data-card=full]")
+// Many looping videos on one page would decode at once; only cards on screen play.
+const videos = new IntersectionObserver((entries) => {
+  for (const { target, isIntersecting } of entries) {
+    const video = target as HTMLVideoElement
+    if (isIntersecting && motion.matches) video.play().catch(() => {})
+    else video.pause()
+  }
+})
+document.querySelectorAll("[data-card] video").forEach((v) => videos.observe(v))
 
-if (full) {
-  const aim = follow(full)
+const stage = [...document.querySelectorAll<HTMLElement>("[data-card=stage]")]
+
+if (stage.length) {
+  const aims = stage.map(follow)
+  const aim = (x: number, y: number) => aims.forEach((a) => a(x, y))
   addEventListener("pointermove", (e) => {
     if (e.pointerType === "mouse") aim(toUnit(e.clientX, 0, innerWidth), toUnit(e.clientY, 0, innerHeight))
   })
@@ -57,7 +69,7 @@ if (full) {
   const request = (DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> })
     .requestPermission
   if (request) {
-    full.addEventListener(
+    addEventListener(
       "click",
       () => request().then((state) => state === "granted" && addEventListener("deviceorientation", orient), () => {}),
       { once: true },
@@ -65,17 +77,17 @@ if (full) {
   } else {
     addEventListener("deviceorientation", orient)
   }
+}
 
-  if (full.getAttribute("role") === "button") {
-    const flip = () => {
-      full.toggleAttribute("data-flipped")
-      full.setAttribute("aria-pressed", String(full.hasAttribute("data-flipped")))
-    }
-    full.addEventListener("click", flip)
-    full.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" && e.key !== " ") return
-      e.preventDefault()
-      flip()
-    })
+for (const card of document.querySelectorAll<HTMLElement>("[data-card][role=button]")) {
+  const flip = () => {
+    card.toggleAttribute("data-flipped")
+    card.setAttribute("aria-pressed", String(card.hasAttribute("data-flipped")))
   }
+  card.addEventListener("click", flip)
+  card.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return
+    e.preventDefault()
+    flip()
+  })
 }

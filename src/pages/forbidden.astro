@@ -4,19 +4,41 @@ Astro.response.status = 403
 ---
 
 <Base title="仅限社员 · NBTCA">
-  <main>
-    <h1>这里只对社员开放</h1>
-    <p class="muted">你已经登录，但这个账号的邮箱不在社员名单里。如果你是社员，请把登录用的邮箱发给管理员登记。</p>
-    <p><a class="button ghost" href="/logout">换个账号登录</a></p>
+  <main class="wrap">
+    <section class="panel reveal">
+      <p class="eyebrow">Members only</p>
+      <h1>这里只对社员开放</h1>
+      <p class="muted">你已经登录，但登录用的邮箱不在社员名单里。如果你是社员，请把这个邮箱发给管理员登记。</p>
+      <div class="row">
+        <a class="button" href="/e">先去看看活动</a>
+        <a class="button ghost" href="/logout">换个账号</a>
+      </div>
+    </section>
   </main>
 </Base>
 
 <style>
   main {
-    max-width: 32rem;
-    margin: 18vh auto;
+    display: grid;
+    place-items: center;
+    min-height: 60svh;
+  }
+
+  section {
     display: grid;
     gap: 1rem;
+    max-width: 30rem;
     line-height: 1.7;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
   }
 </style>
