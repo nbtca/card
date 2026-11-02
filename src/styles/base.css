@@ -111,6 +111,28 @@ h2 {
   font: inherit;
 }
 
+.form fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+}
+
+.form legend {
+  padding-inline: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.form fieldset p {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
 .form > .button {
   justify-self: start;
 }

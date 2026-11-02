@@ -1,5 +1,5 @@
 import { encode } from "uqr"
-import { mediaUrl, ZONE, type Event, type Pass } from "../lib/db"
+import { checkInPhase, mediaUrl, ZONE, type Event, type Pass } from "../lib/db"
 
 export interface PassProps {
   event: Event
@@ -13,7 +13,7 @@ export function ticket({ event, pass }: PassProps, origin: string) {
   // Staff can scan this with any camera app: the URL opens the check-in page.
   const qr = encode(pass ? `${origin}/scan#${pass.id}` : `${origin}/e/${event.slug}`, { ecc: "M", border: 0 })
   return {
-    state: pass ? (pass.redeemed_at ? "redeemed" : "valid") : "preview",
+    state: !pass ? "preview" : pass.redeemed_at ? "redeemed" : checkInPhase(event) === "ended" ? "expired" : "valid",
     date: when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: ZONE }),
     day: when.toLocaleDateString("zh-CN", { month: "long", day: "numeric", timeZone: ZONE }),
     time: when.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: ZONE }),

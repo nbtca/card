@@ -2,7 +2,7 @@
 import { env } from "cloudflare:workers"
 import { passDesigns } from "../../cards/pass"
 import Base from "../../layouts/Base.astro"
-import { db, formatTime, getEvent, randomId, type Pass } from "../../lib/db"
+import { claimPhase, db, formatRange, formatTime, getEvent, randomId, type Event, type Pass } from "../../lib/db"
 
 const MAX_VIDEO = 50 * 1024 * 1024
 const SHANGHAI = 8 * 3600e3
@@ -15,14 +15,19 @@ if (Astro.request.method === "POST") {
   const form = await Astro.request.formData()
   const text = (name: string) => String(form.get(name) ?? "").trim()
   const slug = editing ?? text("slug").toLowerCase()
-  const startsAt = new Date(`${text("starts_at")}:00+08:00`)
+  const time = (name: string) => new Date(`${text(name)}:00+08:00`)
+  const [claimFrom, claimUntil, startsAt, endsAt] = ["claim_from", "claim_until", "starts_at", "ends_at"].map(time) as [Date, Date, Date, Date]
   const capacity = text("capacity") ? Number(text("capacity")) : null
   const video = form.get("video")
   const design = Object.hasOwn(passDesigns, text("design")) ? text("design") : "default"
 
   if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(slug)) error = "链接名只能用小写字母、数字和连字符。"
   else if (!editing && (await getEvent(slug))) error = "这个链接名已经被用过了。"
-  else if (!text("title") || !text("word") || !text("venue") || Number.isNaN(startsAt.getTime())) error = "请把必填项填完整。"
+  else if (!text("title") || !text("word") || !text("venue") || [claimFrom, claimUntil, startsAt, endsAt].some((d) => Number.isNaN(d.getTime())))
+    error = "请把必填项填完整。"
+  else if (claimFrom >= claimUntil) error = "领券截止时间要晚于开始时间。"
+  else if (startsAt >= endsAt) error = "活动结束时间要晚于开始时间。"
+  else if (claimUntil > endsAt) error = "领券要在活动结束前截止。"
   else if (capacity !== null && !(capacity > 0)) error = "名额必须是正整数。"
   else if (video instanceof File && video.size > MAX_VIDEO) error = "视频不能超过 50MB。"
 
@@ -36,12 +41,16 @@ if (Astro.request.method === "POST") {
     }
     await db()
       .prepare(
-        `INSERT INTO events (slug, title, word, design, starts_at, venue, summary, video, capacity, open, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+        `INSERT INTO events (slug, title, word, design, venue, summary, video, capacity, claim_from, claim_until, starts_at, ends_at, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
          ON CONFLICT (slug) DO UPDATE SET
-           title = ?2, word = ?3, design = ?4, starts_at = ?5, venue = ?6, summary = ?7, video = ?8, capacity = ?9, open = ?10`,
+           title = ?2, word = ?3, design = ?4, venue = ?5, summary = ?6, video = ?7, capacity = ?8,
+           claim_from = ?9, claim_until = ?10, starts_at = ?11, ends_at = ?12`,
       )
-      .bind(slug, text("title"), text("word").slice(0, 16), design, startsAt.toISOString(), text("venue"), text("summary"), key, capacity, form.has("open") ? 1 : 0, Date.now())
+      .bind(
+        slug, text("title"), text("word").slice(0, 16), design, text("venue"), text("summary"), key, capacity,
+        claimFrom.toISOString(), claimUntil.toISOString(), startsAt.toISOString(), endsAt.toISOString(), Date.now(),
+      )
       .run()
     return Astro.redirect(`/admin?event=${slug}`, 303)
   }
@@ -49,12 +58,12 @@ if (Astro.request.method === "POST") {
 
 const { results: events } = await db()
   .prepare(
-    `SELECT e.slug, e.title, e.starts_at, e.open, e.capacity,
+    `SELECT e.*,
        COUNT(p.id) AS claimed, COUNT(p.redeemed_at) AS redeemed
      FROM events e LEFT JOIN passes p ON p.event = e.slug
      GROUP BY e.slug ORDER BY e.starts_at DESC`,
   )
-  .all<{ slug: string; title: string; starts_at: string; open: number; capacity: number | null; claimed: number; redeemed: number }>()
+  .all<Event & { claimed: number; redeemed: number }>()
 const event = editing ? await getEvent(editing) : null
 if (editing && !event) return Astro.redirect("/admin")
 const passes = event
@@ -71,12 +80,13 @@ const passes = event
         <a class="button ghost" href="/admin">新建活动</a>
       </div>
       <table>
-        <thead><tr><th>活动</th><th>时间</th><th>领取</th><th>入场</th></tr></thead>
+        <thead><tr><th>活动</th><th>活动时间</th><th>领券</th><th>领取</th><th>入场</th></tr></thead>
         <tbody>
           {events.map((e) => (
             <tr aria-current={e.slug === editing ? "true" : undefined}>
-              <td><a href={`/admin?event=${e.slug}`}>{e.title}</a>{!e.open && <span class="muted"> · 已关闭</span>}</td>
-              <td>{formatTime(e.starts_at)}</td>
+              <td><a href={`/admin?event=${e.slug}`}>{e.title}</a></td>
+              <td>{formatRange(e.starts_at, e.ends_at)}</td>
+              <td>{{ upcoming: "未开始", open: "进行中", closed: "已截止" }[claimPhase(e)]}</td>
               <td>{e.claimed}{e.capacity !== null && ` / ${e.capacity}`}</td>
               <td>{e.redeemed}</td>
             </tr>
@@ -102,12 +112,22 @@ const passes = event
           </select>
           <small>没有专门设计的活动都用 default，新设计由开发者加在 src/cards/passes/ 里。</small>
         </label>
-        <label>开始时间<input name="starts_at" type="datetime-local" required value={event && toLocal(event.starts_at)} /><small>按北京时间填写。</small></label>
+        <fieldset>
+          <legend>时间</legend>
+          <p class="muted">都按北京时间填写。领券窗口内才能领券，活动开始前一小时到活动结束之间才能核销。</p>
+          {[
+            ["claim_from", "开始领券"],
+            ["claim_until", "停止领券"],
+            ["starts_at", "活动开始"],
+            ["ends_at", "活动结束"],
+          ].map(([name, label]) => (
+            <label>{label}<input name={name} type="datetime-local" required value={event && toLocal(event[name as keyof Event] as string)} /></label>
+          ))}
+        </fieldset>
         <label>地点<input name="venue" required value={event?.venue} /></label>
         <label>简介<textarea name="summary" rows="3">{event?.summary}</textarea></label>
         <label>名额<input name="capacity" type="number" min="1" value={event?.capacity ?? ""} /><small>留空表示不限名额。</small></label>
         <label>卡面视频<input name="video" type="file" accept="video/mp4,video/webm" /><small>支持 50MB 以内的 MP4 或 WebM，不上传时使用默认的渐变动画。</small></label>
-        <label class="check"><input name="open" type="checkbox" checked={event ? event.open === 1 : true} />开放领取</label>
         <button class="button">保存</button>
       </form>
     </section>

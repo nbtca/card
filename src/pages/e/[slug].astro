@@ -1,7 +1,7 @@
 ---
 import { passDesign } from "../../cards/pass"
 import Base from "../../layouts/Base.astro"
-import { db, formatTime, getEvent, randomId, type Pass } from "../../lib/db"
+import { checkInPhase, claimPhase, db, formatRange, formatTime, getEvent, randomId, type Pass } from "../../lib/db"
 
 const event = await getEvent(Astro.params.slug!)
 if (!event) return new Response(null, { status: 404 })
@@ -12,7 +12,6 @@ const findPass = () =>
     ? db().prepare("SELECT * FROM passes WHERE event = ? AND email = ?").bind(event.slug, user.email).first<Pass>()
     : null
 
-let error = ""
 if (Astro.request.method === "POST") {
   if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`)
   const name = user.member?.name ?? (String((await Astro.request.formData()).get("name") ?? "").trim().slice(0, 20) || user.name)
@@ -21,19 +20,24 @@ if (Astro.request.method === "POST") {
       `INSERT INTO passes (id, event, email, name, serial, created_at)
        SELECT ?1, slug, ?3, ?4, COALESCE((SELECT MAX(serial) FROM passes WHERE event = ?2), 0) + 1, ?5
        FROM events
-       WHERE slug = ?2 AND open = 1
+       WHERE slug = ?2 AND claim_from <= ?6 AND claim_until >= ?6
          AND (capacity IS NULL OR (SELECT COUNT(*) FROM passes WHERE event = ?2) < capacity)
        ON CONFLICT (event, email) DO NOTHING`,
     )
-    .bind(randomId(), event.slug, user.email, name, Date.now())
+    .bind(randomId(), event.slug, user.email, name, Date.now(), new Date().toISOString())
     .run()
   if (await findPass()) return Astro.redirect(Astro.url.pathname, 303)
-  error = event.open ? "名额已经领完了。" : "这个活动已经停止领取。"
 }
 
 const pass = await findPass()
 const { n: claimed } = (await db().prepare("SELECT COUNT(*) AS n FROM passes WHERE event = ?").bind(event.slug).first<{ n: number }>())!
 const full = event.capacity !== null && claimed >= event.capacity
+const phase = claimPhase(event)
+const passNotice = pass?.redeemed_at
+  ? `你已经在 ${formatTime(new Date(pass.redeemed_at).toISOString())} 入场。`
+  : checkInPhase(event) === "ended"
+    ? "活动已经结束了。"
+    : "这是你的通行证。入场时把卡片底部的二维码给工作人员扫一下就好，活动开始前一小时起可以核销。"
 const Design = passDesign(event.design)
 ---
 
@@ -42,14 +46,15 @@ const Design = passDesign(event.design)
     <Design event={event} pass={pass} holder={pass?.name ?? user?.name ?? "你的名字"} guest={!user?.member} />
     <section>
       <h1>{event.title}</h1>
-      <p class="muted">{formatTime(event.starts_at)} · {event.venue}</p>
+      <p class="muted">{formatRange(event.starts_at, event.ends_at)} · {event.venue}</p>
       {event.summary && <p class="summary">{event.summary}</p>}
-      {error && <p class="notice error">{error}</p>}
       {pass
-        ? <p class="notice">这是你的通行证。入场时把卡片底部的二维码给工作人员扫一下就好。</p>
-        : !event.open
-          ? <p class="notice">这个活动已经停止领取通行证。</p>
-          : full
+        ? <p class="notice">{passNotice}</p>
+        : phase === "upcoming"
+          ? <p class="notice">{formatTime(event.claim_from)} 开放领取，到时再来吧。</p>
+          : phase === "closed"
+            ? <p class="notice">领取已经在 {formatTime(event.claim_until)} 截止。</p>
+            : full
             ? <p class="notice">名额已经领完了。</p>
             : user
               ? (
@@ -59,7 +64,9 @@ const Design = passDesign(event.design)
                   </form>
                 )
               : <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>登录后领取通行证</a>}
-      {event.capacity !== null && <p class="muted small">已领取 {claimed} / {event.capacity}</p>}
+      <p class="muted small">
+        领取时间 {formatRange(event.claim_from, event.claim_until)}{event.capacity !== null && `，已领取 ${claimed} / ${event.capacity}`}
+      </p>
     </section>
   </main>
 </Base>

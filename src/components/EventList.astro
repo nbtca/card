@@ -1,0 +1,69 @@
+---
+import { claimPhase, formatRange, formatTime, type Event } from "../lib/db"
+
+interface Props {
+  events: Event[]
+}
+
+const label = (e: Event) =>
+  ({ upcoming: `${formatTime(e.claim_from)} 开放领取`, open: "正在领取", closed: "领取已截止" })[claimPhase(e)]
+---
+
+<ul>
+  {Astro.props.events.map((e) => (
+    <li>
+      <a href={`/e/${e.slug}`}>
+        <span class="tag" data-phase={claimPhase(e)}>{label(e)}</span>
+        <strong>{e.title}</strong>
+        <span class="muted">{formatRange(e.starts_at, e.ends_at)} · {e.venue}</span>
+        {e.summary && <span>{e.summary}</span>}
+      </a>
+    </li>
+  ))}
+</ul>
+
+<style>
+  ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  a {
+    display: grid;
+    align-content: start;
+    justify-items: start;
+    gap: 0.5rem;
+    height: 100%;
+    padding: 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: var(--panel);
+    text-decoration: none;
+  }
+
+  a:hover {
+    border-color: rgb(255 255 255 / 0.3);
+  }
+
+  span {
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .tag {
+    padding: 0.1rem 0.6rem;
+    border-radius: 99px;
+    border: 1px solid var(--line);
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .tag[data-phase="open"] {
+    border-color: #3ecf8e;
+    color: #3ecf8e;
+  }
+</style>

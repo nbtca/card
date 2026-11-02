@@ -1,14 +1,12 @@
 ---
-import { countMembers, db, formatTime } from "../lib/db"
+import EventList from "../components/EventList.astro"
+import { countMembers, upcomingEvents } from "../lib/db"
 import MemberCard from "../cards/MemberCard.astro"
 import Base from "../layouts/Base.astro"
 
 const { user } = Astro.locals
 const me = user?.member ?? null
-const { results: events } = await db()
-  .prepare("SELECT slug, title, starts_at, venue FROM events WHERE open = 1 AND starts_at >= ? ORDER BY starts_at LIMIT 6")
-  .bind(new Date(Date.now() - 864e5).toISOString())
-  .all<{ slug: string; title: string; starts_at: string; venue: string }>()
+const events = await upcomingEvents(6)
 const count = user?.member ? await countMembers() : null
 ---
 
@@ -35,22 +33,7 @@ const count = user?.member ? await countMembers() : null
 
     <section class="events">
       <h2>近期活动</h2>
-      {events.length
-        ? (
-            <ul>
-              {events.map((e) => (
-                <li>
-                  <a href={`/e/${e.slug}`}>
-                    <strong>{e.title}</strong>
-                    <span class="muted">
-                      {formatTime(e.starts_at)} · {e.venue}
-                    </span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )
-        : <p class="muted">最近还没有开放报名的活动。</p>}
+      {events.length ? <EventList events={events} /> : <p class="muted">最近没有活动。</p>}
     </section>
   </main>
 </Base>
@@ -104,30 +87,4 @@ const count = user?.member ? await countMembers() : null
     gap: 1.25rem;
   }
 
-  ul {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
-    gap: 1rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  li a {
-    display: grid;
-    gap: 0.4rem;
-    padding: 1.1rem 1.25rem;
-    border: 1px solid var(--line);
-    border-radius: 1rem;
-    background: var(--panel);
-    text-decoration: none;
-  }
-
-  li a:hover {
-    border-color: rgb(255 255 255 / 0.3);
-  }
-
-  li span {
-    font-size: 0.9rem;
-  }
 </style>

@@ -42,11 +42,12 @@ const events = await listEvents()
   const time = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
 
   interface Outcome {
-    status: "ok" | "already" | "unknown"
+    status: "ok" | "already" | "unknown" | "early" | "ended"
     name?: string
     serial?: number
     title?: string
     redeemedAt?: number
+    startsAt?: string
   }
 
   async function redeem(body: { id: string } | { event: string; serial: number }) {
@@ -54,11 +55,21 @@ const events = await listEvents()
     const outcome: Outcome = response.status === 404 ? { status: "unknown" } : await response.json()
     result.dataset.status = outcome.status
     result.hidden = false
-    headline.textContent = { ok: "核销成功", already: "已经核销过", unknown: "无效的通行证" }[outcome.status]
-    detail.textContent =
-      outcome.status === "unknown"
-        ? "这张码不属于任何活动。"
-        : `${outcome.name} · ${outcome.title} · № ${String(outcome.serial).padStart(4, "0")}${outcome.status === "already" ? ` · ${time(outcome.redeemedAt!)} 已入场` : ""}`
+    headline.textContent = {
+      ok: "核销成功",
+      already: "已经核销过",
+      unknown: "无效的通行证",
+      early: "还没到核销时间",
+      ended: "活动已经结束",
+    }[outcome.status]
+    const who = `${outcome.name} · ${outcome.title} · № ${String(outcome.serial).padStart(4, "0")}`
+    detail.textContent = {
+      ok: who,
+      already: `${who} · ${time(outcome.redeemedAt!)} 已入场`,
+      unknown: "这张码不属于任何活动。",
+      early: `${who} · 活动开始前一小时起才能核销，活动 ${new Date(outcome.startsAt!).toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short" })} 开始`,
+      ended: `${who} · 这张券没有在活动期间使用`,
+    }[outcome.status]
     navigator.vibrate?.(outcome.status === "ok" ? 80 : [60, 60, 60])
   }
 
@@ -174,12 +185,14 @@ const events = await listEvents()
     background: rgb(62 207 142 / 0.12);
   }
 
-  [data-status="already"] {
+  [data-status="already"],
+  [data-status="early"] {
     border-color: #f5b83d;
     background: rgb(245 184 61 / 0.12);
   }
 
-  [data-status="unknown"] {
+  [data-status="unknown"],
+  [data-status="ended"] {
     border-color: #ff6b4a;
     background: rgb(255 107 74 / 0.12);
   }

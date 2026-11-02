@@ -34,6 +34,8 @@ Admins keep the roster at `/admin/members`, one member at a time or by pasting l
 
 ## Check-in
 
+An admin gives each event a claim window and a start and end time. Passes can be claimed only inside the window, and checked in from an hour before the event starts until it ends. A scan outside those hours says so and leaves the pass unused.
+
 Each pass carries a QR code for `https://card.nbtca.space/scan#<pass id>`. Staff can scan it on `/scan`, which uses `BarcodeDetector` where available and jsQR elsewhere, or with their phone's camera app, which opens the same page and checks the pass in. A pass checks in once; scanning it again shows when it was used. Passes can also be checked in by event and number.
 
 ## Setup

@@ -21,12 +21,14 @@ export interface Event {
   title: string
   word: string
   design: string
-  starts_at: string
   venue: string
   summary: string
   video: string | null
   capacity: number | null
-  open: number
+  claim_from: string
+  claim_until: string
+  starts_at: string
+  ends_at: string
 }
 
 export interface Pass {
@@ -58,10 +60,32 @@ export const getEvent = (slug: string) => db().prepare("SELECT * FROM events WHE
 export const listEvents = async () =>
   (await db().prepare("SELECT * FROM events ORDER BY starts_at DESC").all<Event>()).results
 
+export const upcomingEvents = async (limit = 50) =>
+  (
+    await db()
+      .prepare("SELECT * FROM events WHERE ends_at >= ? ORDER BY starts_at LIMIT ?")
+      .bind(new Date().toISOString(), limit)
+      .all<Event>()
+  ).results
+
+const CHECK_IN_LEAD = 60 * 60 * 1000
+
+export const claimPhase = (e: Event, now = Date.now()) =>
+  now < Date.parse(e.claim_from) ? "upcoming" : now > Date.parse(e.claim_until) ? "closed" : "open"
+
+export const checkInPhase = (e: Pick<Event, "starts_at" | "ends_at">, now = Date.now()) =>
+  now < Date.parse(e.starts_at) - CHECK_IN_LEAD ? "early" : now > Date.parse(e.ends_at) ? "ended" : "open"
+
 export const ZONE = "Asia/Shanghai"
 
 export const formatTime = (iso: string) =>
   new Date(iso).toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short", timeZone: ZONE })
+
+export function formatRange(from: string, until: string) {
+  const day = (iso: string) => new Date(iso).toLocaleDateString("zh-CN", { timeZone: ZONE })
+  const clock = new Date(until).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: ZONE })
+  return day(from) === day(until) ? `${formatTime(from)}–${clock}` : `${formatTime(from)} 至 ${formatTime(until)}`
+}
 
 export const mediaUrl = (key: string | null) => (key ? `/media/${key}` : null)
 
