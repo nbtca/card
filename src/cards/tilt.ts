@@ -50,6 +50,16 @@ const videos = new IntersectionObserver((entries) => {
 })
 document.querySelectorAll("[data-card] video").forEach((v) => videos.observe(v))
 
+let light = 0
+addEventListener("pointermove", (e) => {
+  if (light || e.pointerType !== "mouse") return
+  light = requestAnimationFrame(() => {
+    light = 0
+    document.documentElement.style.setProperty("--mx", `${e.clientX}px`)
+    document.documentElement.style.setProperty("--my", `${e.clientY}px`)
+  })
+})
+
 const stage = [...document.querySelectorAll<HTMLElement>("[data-card=stage]")]
 
 if (stage.length) {

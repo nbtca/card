@@ -61,9 +61,12 @@ const chip = {
 ---
 
 <Base title={`${event.title} · NBTCA`} description={event.summary || `${formatRange(event.starts_at, event.ends_at)}，${event.venue}`}>
+  <div class="backdrop" aria-hidden="true">
+    <div>{Array.from({ length: 8 }, () => <span>{event.word}</span>)}</div>
+  </div>
   <main class="wrap">
     <div class="stage" data-issued={Astro.url.searchParams.has("issued") ? "" : undefined}>
-      <Design event={event} pass={pass} holder={pass?.name ?? user?.name ?? "你的名字"} guest={!user?.member} />
+      <Design event={event} pass={pass} holder={pass?.name ?? user?.name ?? "你的名字"} guest={!user?.member} transitionName={`pass-${event.slug}`} />
       <div class="spot" />
     </div>
 
@@ -151,10 +154,78 @@ const chip = {
     tick()
     setInterval(tick, 1000)
   }
-  if (location.search === "?issued") history.replaceState(null, "", location.pathname)
+  if (location.search === "?issued") {
+    history.replaceState(null, "", location.pathname)
+    if (matchMedia("(prefers-reduced-motion: no-preference)").matches) {
+      const burst = document.createElement("div")
+      burst.className = "confetti"
+      const colors = ["#3b8dff", "#ff5fa2", "#ffd84a", "#3ecf8e", "#ffffff", "#a98bff"]
+      for (let i = 0; i < 90; i++) {
+        const bit = document.createElement("i")
+        bit.style.cssText = `--x:${(Math.random() - 0.5) * 120}vw;--y:${-30 - Math.random() * 60}vh;--r:${Math.random() * 900 - 450}deg;--d:${0.9 + Math.random() * 0.9}s;background:${colors[i % colors.length]};left:${30 + Math.random() * 40}%`
+        burst.append(bit)
+      }
+      document.body.append(burst)
+      setTimeout(() => burst.remove(), 2400)
+    }
+  }
 </script>
 
 <style>
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    display: grid;
+    align-content: center;
+    overflow: hidden;
+    pointer-events: none;
+    mask: radial-gradient(70% 60% at 50% 50%, #000, transparent);
+  }
+
+  .backdrop div {
+    display: flex;
+    gap: 0.3em;
+    width: max-content;
+    font: 900 clamp(10rem, 30vw, 26rem) / 1 var(--wide);
+    font-stretch: 125%;
+    letter-spacing: -0.04em;
+    text-transform: uppercase;
+    color: transparent;
+    -webkit-text-stroke: 1.5px rgb(255 255 255 / 0.07);
+    animation: drift 60s linear infinite;
+  }
+
+  @keyframes drift {
+    to {
+      translate: -50% 0;
+    }
+  }
+
+  :global(.confetti) {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+  }
+
+  :global(.confetti i) {
+    position: absolute;
+    top: 55%;
+    width: 0.55rem;
+    height: 0.9rem;
+    border-radius: 2px;
+    animation: pop var(--d) cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+  }
+
+  @keyframes pop {
+    to {
+      translate: var(--x) var(--y);
+      rotate: var(--r);
+      opacity: 0;
+    }
+  }
+
   main {
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);

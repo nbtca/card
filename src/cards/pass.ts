@@ -8,6 +8,9 @@ export interface PassProps {
   holder: string
   guest: boolean
   size?: "thumb" | "full"
+  transitionName?: string | null
+  // Lets the page spread the layers apart in 3D by setting --e from 0 to 1.
+  anatomy?: boolean
 }
 
 export function ticket({ event, pass }: PassProps, origin: string) {

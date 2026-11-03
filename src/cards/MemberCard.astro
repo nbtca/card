@@ -19,7 +19,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   class:list={["card", size]}
   href={full ? undefined : `/members/${member.id}`}
   data-card={full ? "stage" : "thumb"}
-  style={`--hue: ${hue}; --fit: min(46cqi, ${(88 / Math.max(units, 1)).toFixed(2)}cqi)`}
+  style={`--hue: ${hue}; --fit: min(46cqi, ${(88 / Math.max(units, 1)).toFixed(2)}cqi)${member.id ? `; view-transition-name: member-${member.id}` : ""}`}
   aria-label={full ? "翻转社员卡" : `${name} 的社员卡`}
   {...full && { role: "button", tabindex: 0, "aria-pressed": "false" }}
 >

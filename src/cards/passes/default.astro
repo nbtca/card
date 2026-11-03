@@ -3,7 +3,7 @@ import { ticket, type PassProps } from "../pass"
 
 type Props = PassProps
 
-const { event, pass, holder, guest, size = "full" } = Astro.props
+const { event, pass, holder, guest, size = "full", transitionName, anatomy } = Astro.props
 const Tag = size === "thumb" ? "a" : "div"
 const { state, date, day, time, serial, redeemedAt: redeemed, video, qr } = ticket(Astro.props, Astro.url.origin)
 const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.05 : 0.78), 0)
@@ -14,7 +14,8 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
   href={size === "thumb" ? `/e/${event.slug}` : undefined}
   data-card={size === "thumb" ? "thumb" : "stage"}
   data-state={state}
-  style={`--fit: min(34cqi, ${(84 / Math.max(units, 1)).toFixed(2)}cqi)`}
+  data-anatomy={anatomy ? "" : undefined}
+  style={`--fit: min(34cqi, ${(84 / Math.max(units, 1)).toFixed(2)}cqi)${transitionName ? `; view-transition-name: ${transitionName}` : ""}`}
 >
   <div class="tilt">
     <article class="card" aria-label={`${event.title} 通行证`}>
@@ -335,6 +336,80 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     );
     mix-blend-mode: overlay;
     pointer-events: none;
+  }
+
+  @property --e {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+
+  /* Masks and blend modes flatten 3D, so the exploded view moves the die cut onto each plane. */
+  [data-anatomy] .tilt {
+    transform-style: preserve-3d;
+    filter: none;
+    transform: rotateX(calc(var(--e) * 56deg + var(--y, 0) * -6deg)) rotateZ(calc(var(--e) * -34deg))
+      rotateY(calc(var(--x, 0) * 8deg)) scale(calc(1 - var(--e) * 0.18));
+  }
+
+  [data-anatomy] .card {
+    transform-style: preserve-3d;
+    isolation: auto;
+    mask: none;
+  }
+
+  [data-anatomy] :is(.footage, .sheet, .print, .glare) {
+    mask: var(--die) 0 0 / 100% 100% no-repeat;
+  }
+
+  [data-anatomy] .knockout {
+    transform-style: preserve-3d;
+  }
+
+  [data-anatomy] .sheet {
+    translate: 0 0 calc(var(--e) * 22cqi);
+    background: rgb(255 255 255 / calc(1 - var(--e) * 0.72));
+  }
+
+  [data-anatomy] .title {
+    translate: 0 0 calc(var(--e) * 44cqi);
+  }
+
+  [data-anatomy] .print {
+    translate: 0 0 calc(var(--e) * 66cqi);
+    background: rgb(255 255 255 / calc(var(--e) * 0.06));
+  }
+
+  [data-anatomy] .glare {
+    translate: 0 0 calc(var(--e) * 88cqi);
+  }
+
+  [data-anatomy][data-exploded] .knockout,
+  [data-anatomy][data-exploded] .glare {
+    mix-blend-mode: normal;
+  }
+
+  [data-anatomy][data-exploded] {
+    --ink: rgb(255 255 255 / 0.92);
+    --muted: rgb(255 255 255 / 0.6);
+    --line: rgb(255 255 255 / 0.3);
+  }
+
+  [data-anatomy][data-exploded] .word {
+    color: #fff;
+    text-shadow: 0 0 4cqi rgb(59 141 255 / 0.9);
+  }
+
+  [data-anatomy][data-exploded] .tag {
+    color: #05060a;
+  }
+
+  [data-anatomy] :is(.word, .print) {
+    transition: color 0.4s, text-shadow 0.4s;
+  }
+
+  [data-anatomy][data-exploded] :is(.footage, .sheet, .print, .glare) {
+    box-shadow: 0 0 0 2px rgb(140 190 255 / calc(var(--e) * 0.7)) inset;
   }
 
   @media (prefers-reduced-motion: reduce) {

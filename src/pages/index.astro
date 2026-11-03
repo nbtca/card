@@ -12,6 +12,14 @@ const events = await upcomingEvents(6)
 const count = me ? await countMembers() : null
 const featured = events[0] ?? showcaseEvent()
 const Featured = passDesign(featured.design)
+const words = [...new Set([...events.map((e) => e.word), "NBTCA", "fix", "CA101", "hack"])].slice(0, 6)
+const layers = [
+  { name: "视频层", text: "最底下是一段循环视频，没有视频时是一团流动的渐变。" },
+  { name: "白色底板", text: "整张铺满的白纸，和下面一层用 screen 模式混合，白色依旧是白色。" },
+  { name: "镂空大字", text: "黑色的字在 screen 混合下变成透明，视频就从字形里透出来。" },
+  { name: "印刷层", text: "名字、全息印章、时间地点和二维码，正常印在最上面。" },
+  { name: "光泽", text: "跟着指针移动的一层高光，让卡面看起来是一张真的卡。" },
+]
 ---
 
 <Base title="NBTCA Cards">
@@ -40,6 +48,32 @@ const Featured = passDesign(featured.design)
       </div>
     </section>
 
+    <div class="marquee" aria-hidden="true">
+      <div class="track">
+        {[0, 1].map(() => words.map((w, i) => <span class:list={{ outline: i % 2 === 1 }}>{w}</span>))}
+      </div>
+    </div>
+
+    <section class="anatomy" data-anatomy-scroll>
+      <div class="pin">
+        <div class="explain">
+          <p class="eyebrow">Anatomy</p>
+          <h2>一张券的五层</h2>
+          <ol>
+            {layers.map((l, i) => (
+              <li style={`--at: ${(i / layers.length).toFixed(2)}`}>
+                <b><span>0{i + 1}</span>{l.name}</b>
+                <p>{l.text}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div class="exploded">
+          <Featured event={featured} pass={null} holder={user?.name ?? "你的名字"} guest={!me} anatomy />
+        </div>
+      </div>
+    </section>
+
     <section class="events">
       <header>
         <p class="eyebrow">Upcoming</p>
@@ -50,6 +84,25 @@ const Featured = passDesign(featured.design)
     </section>
   </main>
 </Base>
+
+<script>
+  const section = document.querySelector<HTMLElement>("[data-anatomy-scroll]")
+  const pass = section?.querySelector<HTMLElement>("[data-anatomy]")
+  if (section && pass) {
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const { top, height } = section.getBoundingClientRect()
+      const progress = Math.min(1, Math.max(0, -top / (height - innerHeight)))
+      const e = Math.min(1, Math.max(0, (progress - 0.12) / 0.6))
+      const eased = 1 - (1 - e) ** 3
+      section.style.setProperty("--e", eased.toFixed(4))
+      pass.toggleAttribute("data-exploded", eased > 0.04)
+    }
+    addEventListener("scroll", () => (frame ||= requestAnimationFrame(update)), { passive: true })
+    update()
+  }
+</script>
 
 <style>
   .hero {
@@ -121,6 +174,112 @@ const Featured = passDesign(featured.design)
     }
   }
 
+  .marquee {
+    margin-inline: calc(50% - 50vw);
+    padding-block: 2rem;
+    overflow: hidden;
+    rotate: -3deg;
+    mask: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  }
+
+  .track {
+    display: flex;
+    gap: 0.35em;
+    width: max-content;
+    font: 900 clamp(4rem, 13vw, 12rem) / 0.9 var(--wide);
+    font-stretch: 125%;
+    letter-spacing: -0.03em;
+    text-transform: uppercase;
+    animation: marquee 28s linear infinite;
+  }
+
+  .track span {
+    background: linear-gradient(100deg, #fff, var(--glow) 60%, var(--pink));
+    background-clip: text;
+    color: transparent;
+  }
+
+  .track .outline {
+    background: none;
+    -webkit-text-stroke: 2px rgb(255 255 255 / 0.35);
+  }
+
+  @keyframes marquee {
+    to {
+      translate: -50% 0;
+    }
+  }
+
+  .anatomy {
+    --e: 0;
+    height: 260svh;
+    margin-top: 4rem;
+  }
+
+  .pin {
+    position: sticky;
+    top: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: center;
+    gap: 2rem;
+    height: 100svh;
+  }
+
+  .explain {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .explain h2 {
+    font-size: clamp(2rem, 4.5vw, 3.4rem);
+  }
+
+  .explain ol {
+    display: grid;
+    gap: 1.1rem;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .explain li {
+    --on: clamp(0, (var(--e) - var(--at) * 0.9) * 6, 1);
+    opacity: calc(0.25 + var(--on) * 0.75);
+    translate: calc((1 - var(--on)) * -12px) 0;
+  }
+
+  .explain b {
+    display: flex;
+    gap: 0.75rem;
+    align-items: baseline;
+    font-size: 1.05rem;
+  }
+
+  .explain b span {
+    font: 800 0.75rem / 1 var(--wide);
+    font-stretch: 125%;
+    color: var(--glow);
+  }
+
+  .explain li p {
+    margin: 0.35rem 0 0 1.85rem;
+    max-width: 26em;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--muted);
+  }
+
+  .exploded {
+    display: grid;
+    place-items: center;
+  }
+
+  .exploded :global(.pass-card) {
+    width: min(320px, 70vw);
+    margin-top: 12vh;
+  }
+
   .events {
     display: grid;
     gap: 2.5rem;
@@ -151,6 +310,24 @@ const Featured = passDesign(featured.design)
   }
 
   @media (max-width: 860px) {
+    .pin {
+      grid-template-columns: 1fr;
+      align-content: center;
+    }
+
+    .explain li p {
+      display: none;
+    }
+
+    .exploded {
+      order: -1;
+    }
+
+    .exploded :global(.pass-card) {
+      width: min(190px, 48vw);
+      margin-top: 12vh;
+    }
+
     .hero {
       grid-template-columns: 1fr;
       min-height: 0;

@@ -20,7 +20,7 @@ const status = (e: Event) =>
     const { tone, text } = status(e)
     return (
       <li class="reveal" style={`--i: ${i}`}>
-        <Design event={e} pass={null} holder="你的名字" guest size="thumb" />
+        <Design event={e} pass={null} holder="你的名字" guest size="thumb" transitionName={`pass-${e.slug}`} />
         <div class="caption">
           <span class="chip" data-tone={tone}>{text}</span>
           <a href={`/e/${e.slug}`}><h3>{e.title}</h3></a>
