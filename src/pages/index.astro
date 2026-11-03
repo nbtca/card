@@ -52,6 +52,7 @@ const layers = [
         <div class="explain">
           <p class="eyebrow">Anatomy</p>
           <h2>一张券的五层</h2>
+          <button class="button ghost explode" type="button" data-explode aria-pressed="false">拆开看看</button>
           <ol>
             {layers.map((l, i) => (
               <li style={`--at: ${(i / layers.length).toFixed(2)}`}>
@@ -96,12 +97,27 @@ const layers = [
   const pass = section?.querySelector<HTMLElement>("[data-anatomy]")
   if (section && pass) {
     let frame = 0
-    const update = () => {
-      frame = 0
+    // Clicking takes over from the scroll position until the visitor scrolls out of the section.
+    const button = section.querySelector<HTMLButtonElement>("[data-explode]")!
+    let forced: number | null = null
+    let shown = 0
+    const fromScroll = () => {
       const { top, height } = section.getBoundingClientRect()
       const progress = Math.min(1, Math.max(0, -top / (height - innerHeight)))
       const e = Math.min(1, Math.max(0, (progress - 0.12) / 0.6))
-      const eased = 1 - (1 - e) ** 3
+      return { progress, eased: 1 - (1 - e) ** 3 }
+    }
+    const update = () => {
+      frame = 0
+      const { progress, eased: scrolled } = fromScroll()
+      if (forced !== null && (progress <= 0 || progress >= 1)) forced = null
+      const target = forced ?? scrolled
+      shown = forced === null ? target : shown + (target - shown) * 0.12
+      if (Math.abs(target - shown) > 0.002) frame = requestAnimationFrame(update)
+      else shown = target
+      const eased = shown
+      button.setAttribute("aria-pressed", String(eased > 0.5))
+      button.textContent = eased > 0.5 ? "合上" : "拆开看看"
       section.style.setProperty("--e", eased.toFixed(4))
       const open = eased > 0.5
       if (open !== wasOpen) {
@@ -151,6 +167,11 @@ const layers = [
         } else if (on === 0) drawn.delete(i)
       })
     }
+    button.addEventListener("click", () => {
+      forced = shown > 0.5 ? 0 : 1
+      if (!matchMedia("(prefers-reduced-motion: no-preference)").matches) shown = forced
+      frame ||= requestAnimationFrame(update)
+    })
     addEventListener("scroll", () => (frame ||= requestAnimationFrame(update)), { passive: true })
     update()
   }
@@ -247,6 +268,10 @@ const layers = [
     gap: 1.25rem;
   }
 
+  .explode {
+    justify-self: start;
+  }
+
   .explain h2 {
     font-size: clamp(2rem, 4.5vw, 3.4rem);
   }
@@ -310,7 +335,7 @@ const layers = [
 
   .leaders path {
     fill: none;
-    stroke: #ffd84a;
+    stroke: var(--note);
     stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -333,7 +358,7 @@ const layers = [
     top: 0;
     left: 0;
     font: 600 1.4rem / 1 "Caveat", cursive;
-    color: #ffd84a;
+    color: var(--note);
     white-space: nowrap;
     opacity: var(--on);
     rotate: -3deg;

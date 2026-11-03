@@ -126,6 +126,7 @@ const events = await listEvents()
     }
     await video.play()
     start.hidden = true
+    video.parentElement!.dataset.live = ""
     const detect = await detector()
     let last = ""
     let lastAt = 0
@@ -176,7 +177,7 @@ const events = await listEvents()
     border-radius: 2rem;
     background:
       radial-gradient(closest-side, rgb(59 141 255 / 0.15), transparent),
-      rgb(255 255 255 / 0.03);
+      rgb(var(--tint) / 0.03);
     box-shadow: 0 0 0 1px var(--line) inset, 0 30px 60px -30px rgb(0 0 0 / 0.8);
   }
 
@@ -189,7 +190,7 @@ const events = await listEvents()
   }
 
   .corners {
-    --c: rgb(255 255 255 / 0.85);
+    --c: rgb(var(--fg-rgb) / 0.7);
     --l: 2.4rem;
     position: absolute;
     inset: 14%;
@@ -226,6 +227,10 @@ const events = await listEvents()
     container-type: inline-size;
   }
 
+  [data-live] .corners {
+    --c: rgb(255 255 255 / 0.85);
+  }
+
   [data-start] {
     position: relative;
   }
@@ -241,7 +246,7 @@ const events = await listEvents()
     gap: 0.25rem 1rem;
     padding: 1.25rem 1.4rem;
     border-radius: 1.5rem;
-    background: color-mix(in oklch, var(--tone) 18%, #0b0d12);
+    background: color-mix(in oklch, var(--tone) 18%, var(--bg));
     box-shadow: 0 0 0 1px color-mix(in oklch, var(--tone) 50%, transparent) inset, 0 24px 50px -20px rgb(0 0 0 / 0.9);
     animation: rise 0.45s var(--ease);
   }

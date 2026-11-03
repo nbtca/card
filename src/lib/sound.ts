@@ -113,6 +113,12 @@ export function land() {
   tone(c, 150, 95, 0.22, 0.08)
 }
 
+// The stub coming away along the perforation, then landing.
+export function tear() {
+  peel(160)
+  setTimeout(land, 420)
+}
+
 export function tap() {
   const c = wake(0.2)
   if (!c) return
