@@ -15,6 +15,8 @@ Both cards live in `src/cards/` and share `tilt.ts`, which follows the pointer o
 
 On an event's page the pass hangs from `Lanyard.astro`: a damped spring the visitor can grab and throw, drawn as an SVG strap, which sleeps once the pass comes to rest. The top-right corner of a full-size pass peels back (`peel.ts`) to show a holographic backing. Passes without their own footage play `public/footage/nbtca.mp4`, a 6-second loop rendered on a canvas and encoded with ffmpeg. Sounds are synthesised in `src/lib/sound.ts`, play only after the visitor has interacted, and can be turned off in the footer.
 
+The page around the cards follows the system light or dark setting, and the footer switches between system, light and dark. The cards keep their own colours in both. On the home page, the anatomy view opens as the visitor scrolls, or at the click of its button.
+
 ## Designing a pass
 
 Each `.astro` file in `src/cards/passes/` is a pass design, named after the file, and appears in the design menu of the event editor. A design receives `PassProps` from `src/cards/pass.ts`, and `ticket()` there gives it the dates, serial number, check-in state and QR code path, so a new design only decides how they look. Mark elements with `data-bind` to have the editor update them live. Events whose design file is missing fall back to `default`.
