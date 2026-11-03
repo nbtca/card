@@ -49,7 +49,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
           <p class="sub">{[section, role].filter(Boolean).join(" · ")}</p>
         </div>
         <div class="foil" />
-        <div class="sparkle" />
+        {full && <div class="sparkle" />}
         <div class="glare" />
       </section>
 
@@ -66,7 +66,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
           <p class="motto">{motto || "To be at the intersection of technology and liberal arts."}</p>
           <p class="org">浙大宁波理工学院计算机协会</p>
           <div class="foil" />
-        <div class="sparkle" />
+        {full && <div class="sparkle" />}
           <div class="glare" />
         </section>
       )}
