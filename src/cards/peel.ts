@@ -1,4 +1,4 @@
-import { pat, peel as peelSound } from "../lib/sound"
+import { peel as tick } from "../lib/sound"
 
 interface Point {
   x: number
@@ -47,6 +47,7 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
   let target: Point = { x: 0, y: 0 }
   let dragging = false
   let frame = 0
+  let opened = 0
 
   const rest = (lift = 0.09) => ({ x: w * (1 - lift), y: w * lift })
 
@@ -57,6 +58,8 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
     const deg = (angle * 180) / Math.PI + 90
     flap.style.setProperty("--shade-angle", `${deg}deg`)
     flap.style.setProperty("--lift", Math.min(1, depth / w).toFixed(3))
+    tick(depth / 2 - opened)
+    opened = depth / 2
   }
 
   const step = () => {
@@ -78,6 +81,7 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
     w = card.offsetWidth
     h = card.offsetHeight
     tip = target = rest()
+    opened = Math.hypot(w - tip.x, tip.y) / 2
     render()
   }
   measure()
@@ -98,7 +102,6 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
     handle.setPointerCapture(e.pointerId)
     dragging = true
     root.dataset.peeling = ""
-    peelSound()
     go(local(e))
   })
   handle.addEventListener("pointermove", (e) => dragging && go(local(e)))
@@ -106,7 +109,6 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
     if (!dragging) return
     dragging = false
     delete root.dataset.peeling
-    pat()
     go(rest())
   }
   handle.addEventListener("pointerup", release)
@@ -116,6 +118,5 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
     e.preventDefault()
     const open = target.x < w * 0.5
     go(open ? rest() : { x: w * 0.2, y: h * 0.45 })
-    if (!open) peelSound()
   })
 }

@@ -2,13 +2,15 @@
 interface Props {
   // Where the lanyard slot sits, as a fraction of the card's height from its top edge.
   attach?: number
+  // Drops the card in from above, for the moment a pass has just been issued.
+  drop?: boolean
 }
 
-const { attach = 0.051 } = Astro.props
+const { attach = 0.051, drop = false } = Astro.props
 const id = `strap-${Math.random().toString(36).slice(2, 8)}`
 ---
 
-<div class="lanyard" data-lanyard style={`--attach: ${attach}`}>
+<div class="lanyard" data-lanyard data-drop={drop ? "" : undefined} style={`--attach: ${attach}`}>
   <svg class="strap" aria-hidden="true">
     <defs>
       <linearGradient id={`${id}-band`} x1="0" x2="1">
@@ -25,7 +27,7 @@ const id = `strap-${Math.random().toString(36).slice(2, 8)}`
 </div>
 
 <script>
-  import { pat } from "../lib/sound"
+  import { land, tap } from "../lib/sound"
 
   const motion = matchMedia("(prefers-reduced-motion: no-preference)")
   const G = 2600
@@ -47,6 +49,7 @@ const id = `strap-${Math.random().toString(36).slice(2, 8)}`
     let grab: { dx: number; dy: number; t: number; x: number; y: number } | null = null
     let frame = 0
     let last = 0
+    let falling = false
 
     const measure = () => {
       const box = root.getBoundingClientRect()
@@ -81,6 +84,10 @@ const id = `strap-${Math.random().toString(36).slice(2, 8)}`
           pos.x += vel.x * h
           pos.y += vel.y * h
           dt -= h
+          if (falling && pos.y >= rest.y) {
+            falling = false
+            land()
+          }
         }
       }
       draw()
@@ -103,9 +110,10 @@ const id = `strap-${Math.random().toString(36).slice(2, 8)}`
 
     measure()
     pos = { ...rest }
-    if (motion.matches) {
+    if (motion.matches && root.hasAttribute("data-drop")) {
       pos.y -= 260
       pos.x += 40
+      falling = true
       wake()
     } else {
       draw()
@@ -135,7 +143,7 @@ const id = `strap-${Math.random().toString(36).slice(2, 8)}`
       Object.assign(grab, { t: now, x: px, y: py })
     })
     const release = () => {
-      if (grab) pat()
+      if (grab) tap()
       grab = null
       delete root.dataset.grabbed
       wake()

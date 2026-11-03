@@ -12,7 +12,6 @@ const events = await upcomingEvents(6)
 const count = me ? await countMembers() : null
 const featured = events[0] ?? showcaseEvent()
 const Featured = passDesign(featured.design)
-const words = [...new Set([...events.map((e) => e.word), "NBTCA", "fix", "CA101", "hack"])].slice(0, 6)
 const layers = [
   { name: "视频层", text: "最底下是一段循环视频，没有视频时是一团流动的渐变。", note: "the footage", plane: ".footage" },
   { name: "白色底板", text: "整张铺满的白纸，和下面一层用 screen 模式混合，白色依旧是白色。", note: "white sheet · screen", plane: ".sheet" },
@@ -47,12 +46,6 @@ const layers = [
         <div class="floor" />
       </div>
     </section>
-
-    <div class="marquee" aria-hidden="true">
-      <div class="track">
-        {[0, 1].map(() => words.map((w, i) => <span class:list={{ outline: i % 2 === 1 }}>{w}</span>))}
-      </div>
-    </div>
 
     <section class="anatomy" data-anatomy-scroll>
       <div class="pin">
@@ -209,42 +202,6 @@ const layers = [
   @keyframes float {
     50% {
       translate: 0 -14px;
-    }
-  }
-
-  .marquee {
-    margin-inline: calc(50% - 50vw);
-    padding-block: 2rem;
-    overflow: hidden;
-    rotate: -3deg;
-    mask: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-  }
-
-  .track {
-    display: flex;
-    gap: 0.35em;
-    width: max-content;
-    font: 900 clamp(4rem, 13vw, 12rem) / 0.9 var(--wide);
-    font-stretch: 125%;
-    letter-spacing: -0.03em;
-    text-transform: uppercase;
-    animation: marquee 28s linear infinite;
-  }
-
-  .track span {
-    background: linear-gradient(100deg, #fff, var(--glow) 60%, var(--pink));
-    background-clip: text;
-    color: transparent;
-  }
-
-  .track .outline {
-    background: none;
-    -webkit-text-stroke: 2px rgb(255 255 255 / 0.35);
-  }
-
-  @keyframes marquee {
-    to {
-      translate: -50% 0;
     }
   }
 
