@@ -2,7 +2,7 @@
 import Lanyard from "../../../cards/Lanyard.astro"
 import { passDesign } from "../../../cards/pass"
 import Base from "../../../layouts/Base.astro"
-import { checkInPhase, claimPhase, db, formatClock, formatRange, formatShort, formatTime, getEvent, memberByEmail, randomId, sameDay, ZONE, type Pass } from "../../../lib/db"
+import { checkInOpensAt, checkInPhase, claimPhase, db, formatClock, formatRange, formatShort, formatTime, getEvent, memberByEmail, randomId, sameDay, ZONE, type Pass } from "../../../lib/db"
 import { canEdit } from "../../../lib/events"
 
 const event = await getEvent(Astro.params.slug!)
@@ -39,7 +39,9 @@ const passNotice = pass?.redeemed_at
   ? `你已经在 ${formatTime(new Date(pass.redeemed_at).toISOString())} 入场。`
   : checkInPhase(event) === "ended"
     ? "活动已经结束了。"
-    : "这是你的活动券。入场时把底部的二维码给工作人员扫一下就好，活动开始前一小时起可以核销。"
+    : checkInPhase(event) === "open"
+      ? "到场后把票根上的贴纸撕开，露出入场码给工作人员扫。扫过之后票根会被撕下，就算入场了。"
+      : `入场码藏在票根的贴纸下面，${formatTime(checkInOpensAt(event))} 起才能撕开。`
 const Design = passDesign(event.design)
 const host = event.created_by ? await memberByEmail(event.created_by) : null
 const editable = canEdit(event, user)
@@ -113,7 +115,7 @@ const chip = {
 
       <div class="act reveal" style="--i: 6">
         {pass
-          ? <p class="notice">{passNotice}</p>
+          ? <p class="notice" data-pass-notice>{passNotice}</p>
           : phase === "upcoming"
             ? <p class="notice">{formatTime(event.claim_from)} 开放领取，到时再来吧。</p>
             : phase === "closed"
@@ -155,6 +157,18 @@ const chip = {
     setInterval(tick, 1000)
   }
   if (location.search === "?issued") history.replaceState(null, "", location.pathname)
+
+  const notice = document.querySelector<HTMLElement>("[data-pass-notice]")
+  const say = (text: string) => {
+    if (!notice) return
+    notice.textContent = text
+    notice.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 300 })
+  }
+  addEventListener("pass:locked", () => notice?.animate([{ scale: 1 }, { scale: 1.03 }, { scale: 1 }], { duration: 300 }))
+  addEventListener("pass:redeemed", (e) => {
+    const at = new Date((e as CustomEvent<{ at: number }>).detail.at)
+    say(`已核销，${at.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} 入场。玩得开心！`)
+  })
 </script>
 
 <style>

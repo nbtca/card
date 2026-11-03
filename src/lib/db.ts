@@ -74,6 +74,8 @@ const CHECK_IN_LEAD = 60 * 60 * 1000
 export const claimPhase = (e: Event, now = Date.now()) =>
   now < Date.parse(e.claim_from) ? "upcoming" : now > Date.parse(e.claim_until) ? "closed" : "open"
 
+export const checkInOpensAt = (e: Pick<Event, "starts_at">) => new Date(Date.parse(e.starts_at) - CHECK_IN_LEAD).toISOString()
+
 export const checkInPhase = (e: Pick<Event, "starts_at" | "ends_at">, now = Date.now()) =>
   now < Date.parse(e.starts_at) - CHECK_IN_LEAD ? "early" : now > Date.parse(e.ends_at) ? "ended" : "open"
 
