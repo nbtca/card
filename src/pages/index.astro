@@ -64,7 +64,12 @@ const layers = [
         <div class="exploded" data-notes={JSON.stringify(layers.map((l) => l.plane))}>
           <Featured event={featured} pass={null} holder={user?.name ?? "你的名字"} guest={!me} anatomy />
           <svg class="leaders" aria-hidden="true">
-            {layers.map(() => <path pathLength="1" />)}
+            {layers.map(() => (
+              <g>
+                <path class="shaft" pathLength="1" />
+                <path class="head" pathLength="1" />
+              </g>
+            ))}
           </svg>
           <ul class="notes" aria-hidden="true">
             {layers.map((l, i) => <li style={`--at: ${(i / layers.length).toFixed(2)}`}>{l.note}</li>)}
@@ -85,7 +90,7 @@ const layers = [
 </Base>
 
 <script>
-  import { whoosh } from "../lib/sound"
+  import { scribble, whoosh } from "../lib/sound"
 
   const section = document.querySelector<HTMLElement>("[data-anatomy-scroll]")
   const pass = section?.querySelector<HTMLElement>("[data-anatomy]")
@@ -110,7 +115,11 @@ const layers = [
     // Leader lines point at where each layer ends up after the 3D transform, so they are measured each frame.
     const box = section.querySelector<HTMLElement>("[data-notes]")!
     const planes = (JSON.parse(box.dataset.notes!) as string[]).map((s) => pass.querySelector<HTMLElement>(s)!)
-    const paths = [...box.querySelectorAll<SVGPathElement>(".leaders path")]
+    const shafts = [...box.querySelectorAll<SVGPathElement>(".leaders .shaft")]
+    const heads = [...box.querySelectorAll<SVGPathElement>(".leaders .head")]
+    const drawn = new Set<number>()
+    // A slight wobble from the note's index keeps each stroke looking hand-drawn but stable between frames.
+    const wobble = (i: number, k: number) => Math.sin(i * 12.9898 + k * 78.233) * 6
     const notes = matchMedia("(min-width: 1100px)").matches ? [...box.querySelectorAll<HTMLElement>(".notes li")] : []
     let wasOpen: boolean | null = null
     const place = () => {
@@ -126,8 +135,20 @@ const layers = [
         const ly = Math.min(ay, floor - 34)
         floor = ly
         notes[i]!.style.translate = `${edge}px ${ly - 12}px`
-        paths[i]!.setAttribute("d", `M${edge + 8} ${ly} C${edge + 40} ${ly} ${ax - 30} ${ay} ${ax} ${ay}`)
-        paths[i]!.style.strokeDashoffset = String(1 - Math.min(1, Math.max(0, (e - (i / planes.length) * 0.9) * 6)))
+        const sx = edge + 8
+        const c1 = `${sx + 34 + wobble(i, 1)} ${ly - 14 + wobble(i, 2)}`
+        const c2 = `${ax - 40 + wobble(i, 3)} ${ay + 18 + wobble(i, 4)}`
+        shafts[i]!.setAttribute("d", `M${sx} ${ly} C${c1} ${c2} ${ax - 4} ${ay}`)
+        const angle = Math.atan2(ay - (ay + 18 + wobble(i, 4)), ax - 4 - (ax - 40 + wobble(i, 3)))
+        const wing = (d: number) => `${ax - 4 - 11 * Math.cos(angle + d)} ${ay - 11 * Math.sin(angle + d)}`
+        heads[i]!.setAttribute("d", `M${wing(0.5)} L${ax - 4} ${ay} L${wing(-0.5)}`)
+        const on = Math.min(1, Math.max(0, (e - (i / planes.length) * 0.9) * 6))
+        shafts[i]!.style.strokeDashoffset = String(1 - Math.min(1, on * 1.25))
+        heads[i]!.style.strokeDashoffset = String(1 - Math.max(0, on * 5 - 4))
+        if (on > 0.3 && !drawn.has(i)) {
+          drawn.add(i)
+          scribble(0, 0.35)
+        } else if (on === 0) drawn.delete(i)
       })
     }
     addEventListener("scroll", () => (frame ||= requestAnimationFrame(update)), { passive: true })
@@ -289,10 +310,12 @@ const layers = [
 
   .leaders path {
     fill: none;
-    stroke: rgb(255 255 255 / 0.7);
-    stroke-width: 1.5;
+    stroke: #ffd84a;
+    stroke-width: 1.8;
     stroke-linecap: round;
+    stroke-linejoin: round;
     stroke-dasharray: 1 1;
+    opacity: 0.85;
   }
 
   .notes {

@@ -29,7 +29,15 @@ function fold(w: number, h: number, tip: Point) {
     const d = side(p)
     return { x: p.x - 2 * d * n.x, y: p.y - 2 * d * n.y }
   }
-  return { remain: clip((s) => s <= 0), flap: clip((s) => s > 0).map(mirror), angle: Math.atan2(n.y, n.x), depth: len }
+  return {
+    remain: clip((s) => s <= 0),
+    exposed: clip((s) => s > 0),
+    flap: clip((s) => s > 0).map(mirror),
+    angle: Math.atan2(n.y, n.x),
+    depth: len,
+    n,
+    mid,
+  }
 }
 
 const polygon = (points: Point[], dx = 0, dy = 0) =>
@@ -40,6 +48,7 @@ const motion = matchMedia("(prefers-reduced-motion: no-preference)")
 for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
   const card = root.querySelector<HTMLElement>("[data-peel-card]")!
   const flap = root.querySelector<HTMLElement>("[data-peel-flap]")!
+  const shade = root.querySelector<HTMLElement>("[data-peel-shade]")
   const handle = root.querySelector<HTMLElement>("[data-peel-handle]")!
   let w = 0
   let h = 0
@@ -52,12 +61,22 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
   const rest = (lift = 0.09) => ({ x: w * (1 - lift), y: w * lift })
 
   const render = () => {
-    const { remain, flap: shape, angle, depth } = fold(w, h, tip)
+    const { remain, exposed, flap: shape, angle, depth, n, mid } = fold(w, h, tip)
     card.style.clipPath = polygon(remain)
     flap.style.clipPath = polygon(shape, w / 2, h / 2)
-    const deg = (angle * 180) / Math.PI + 90
-    flap.style.setProperty("--shade-angle", `${deg}deg`)
-    flap.style.setProperty("--lift", Math.min(1, depth / w).toFixed(3))
+    const deg = `${(angle * 180) / Math.PI + 90}deg`
+    // A linear gradient spans |W sin| + |H cos| through the box centre; this finds a point's offset along it.
+    const at = (p: Point, bw: number, bh: number, cx: number, cy: number) =>
+      `${(50 + (((p.x - cx) * n.x + (p.y - cy) * n.y) / (Math.abs(bw * n.x) + Math.abs(bh * n.y))) * 100).toFixed(2)}%`
+    flap.style.setProperty("--shade-angle", deg)
+    flap.style.setProperty("--fold", at(mid, 2 * w, 2 * h, w / 2, h / 2))
+    flap.style.setProperty("--tip", at(tip, 2 * w, 2 * h, w / 2, h / 2))
+    flap.parentElement!.style.setProperty("--lift", Math.min(1, depth / w).toFixed(3))
+    if (shade) {
+      shade.style.clipPath = polygon(exposed)
+      shade.style.setProperty("--shade-angle", deg)
+      shade.style.setProperty("--fold", at(mid, w, h, w / 2, h / 2))
+    }
     tick(depth / 2 - opened)
     opened = depth / 2
   }

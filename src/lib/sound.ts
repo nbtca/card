@@ -120,6 +120,26 @@ export function tap() {
   burst(c, { type: "bandpass", freq: 1600, q: 0.8, gain: 0.12, decay: 0.03 })
 }
 
+// A pencil stroke: band-passed noise in short, uneven scratches.
+export function scribble(delay: number, length: number) {
+  const c = wake(delay + length)
+  if (!c) return
+  const t = c.currentTime + delay
+  const source = new AudioBufferSourceNode(c, { buffer: noise })
+  const filter = new BiquadFilterNode(c, { type: "bandpass", frequency: 3600, Q: 2.4 })
+  const env = new GainNode(c, { gain: 0 })
+  let at = t
+  while (at < t + length) {
+    env.gain.linearRampToValueAtTime(0.05 + Math.random() * 0.09, at + 0.012)
+    at += 0.025 + Math.random() * 0.03
+    env.gain.linearRampToValueAtTime(0.01, at)
+  }
+  env.gain.linearRampToValueAtTime(0, at + 0.02)
+  source.connect(filter).connect(env).connect(master!)
+  source.start(t, Math.random() * 1.5)
+  source.stop(at + 0.05)
+}
+
 export function whoosh(open: boolean) {
   const c = wake(0.6)
   if (!c) return

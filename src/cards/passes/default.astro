@@ -21,6 +21,10 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
   data-peel={peelable ? "" : undefined}
   style={`--fit: min(34cqi, ${(84 / Math.max(units, 1)).toFixed(2)}cqi)${transitionName ? `; view-transition-name: ${transitionName}` : ""}`}
 >
+  <div class="shadows" aria-hidden="true">
+    <span class="ambient"><i /></span>
+    <span class="contact"><i /></span>
+  </div>
   <div class="tilt">
     {peelable && (
       <div class="backing" aria-hidden="true">
@@ -29,6 +33,7 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
         <small>Thanks for being here · {serial}</small>
       </div>
     )}
+    {peelable && <div class="fold-shade" data-peel-shade aria-hidden="true" />}
     <article class="card" aria-label={`${event.title} 通行证`} data-peel-card>
       <div class="plane footage" data-bind="footage">
         {footage
@@ -71,6 +76,9 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
         </div>
       </div>
       <div class="glare" />
+      <svg class="edge" viewBox="0 0 500 800" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M24 0H476A24 24 0 0 1 500 24V590A18 18 0 0 0 500 626V776A24 24 0 0 1 476 800H24A24 24 0 0 1 0 776V626A18 18 0 0 0 0 590V24A24 24 0 0 1 24 0ZM212 30H288A11 11 0 0 1 288 52H212A11 11 0 0 1 212 30Z" />
+      </svg>
     </article>
     {peelable && (
       <>
@@ -112,7 +120,44 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     position: absolute;
     inset: 0;
     transform: rotateX(calc(var(--y, 0) * -9deg)) rotateY(calc(var(--x, 0) * 12deg));
-    filter: drop-shadow(0 1.5cqi 2cqi rgb(0 0 0 / 0.25)) drop-shadow(0 8cqi 10cqi rgb(0 0 0 / 0.35));
+  }
+
+  /* Blurred once and only moved as the card tilts, which a drop-shadow filter on the tilting card cannot do.
+     The blur sits on the outer span because a mask on the same element would clip it. */
+  .shadows {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .shadows > span {
+    position: absolute;
+    inset: 0;
+    will-change: translate;
+  }
+
+  .shadows i {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 0.55);
+    mask: var(--die) 0 0 / 100% 100% no-repeat;
+  }
+
+  .ambient {
+    filter: blur(5cqi);
+    scale: 0.94;
+    translate: calc(var(--x, 0) * -5cqi) calc(8cqi + var(--y, 0) * -4cqi);
+    opacity: 0.8;
+  }
+
+  .contact {
+    filter: blur(1.4cqi);
+    translate: calc(var(--x, 0) * -1.2cqi) calc(1.4cqi + var(--y, 0) * -1cqi);
+    opacity: 0.6;
+  }
+
+  [data-anatomy] .shadows {
+    opacity: calc(1 - var(--e) * 4);
   }
 
   .card {
@@ -361,6 +406,21 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     opacity: 0.85;
   }
 
+  .edge {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .edge path {
+    fill: none;
+    stroke: rgb(0 0 0 / 0.16);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+
   .glare {
     position: absolute;
     inset: 0;
@@ -408,17 +468,38 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     text-transform: uppercase;
   }
 
+  /* The flap's shadow deepens as it lifts; the gradient stops are placed on the crease and the tip by peel.ts. */
   .flap {
+    --lift: 0;
     position: absolute;
     inset: -50%;
     pointer-events: none;
-    filter: drop-shadow(-0.6cqi 1.4cqi 1.6cqi rgb(0 0 0 / 0.28));
+    filter: drop-shadow(calc(var(--lift) * -2cqi) calc(0.8cqi + var(--lift) * 4cqi) calc(1cqi + var(--lift) * 5cqi) rgb(0 0 0 / calc(0.2 + var(--lift) * 0.2)));
   }
 
   .flap-back {
     position: absolute;
     inset: 0;
-    background: linear-gradient(var(--shade-angle, 225deg), #fff, #f1ede5 55%, #c9c2b6);
+    background: linear-gradient(
+      var(--shade-angle, 225deg),
+      #fffdf8 var(--tip, 0%),
+      #eee9df calc(var(--tip, 0%) + (var(--fold, 100%) - var(--tip, 0%)) * 0.6),
+      #c7bfb2 calc(var(--fold, 100%) - 1.2%),
+      #fffefa var(--fold, 100%)
+    );
+    clip-path: polygon(0 0);
+  }
+
+  .fold-shade {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      var(--shade-angle, 225deg),
+      rgb(0 0 0 / 0.45) var(--fold, 0%),
+      transparent calc(var(--fold, 0%) + 14%)
+    );
     clip-path: polygon(0 0);
   }
 
@@ -455,7 +536,6 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
   /* Masks and blend modes flatten 3D, so the exploded view moves the die cut onto each plane. */
   [data-anatomy] .tilt {
     transform-style: preserve-3d;
-    filter: none;
     transform: rotateX(calc(var(--e) * 56deg + var(--y, 0) * -6deg)) rotateZ(calc(var(--e) * -34deg))
       rotateY(calc(var(--x, 0) * 8deg)) scale(calc(1 - var(--e) * 0.18));
   }
