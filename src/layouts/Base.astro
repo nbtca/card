@@ -32,6 +32,16 @@ const links = [
       if ((n.hardwareConcurrency || 8) <= 4 || (n.deviceMemory || 8) <= 4 || n.connection?.saveData) document.documentElement.dataset.lite = ""
     </script>
     <link rel="preload" href="/fonts/archivo-latin-wdth.woff2" as="font" type="font/woff2" crossorigin />
+    <script type="speculationrules" is:inline>
+      {
+        "prerender": [
+          {
+            "where": { "or": [{ "href_matches": "/" }, { "href_matches": "/e/*" }, { "href_matches": "/members/*" }, { "href_matches": "/e" }, { "href_matches": "/members" }] },
+            "eagerness": "moderate"
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div class="light" aria-hidden="true" />

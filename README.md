@@ -13,6 +13,8 @@ Both cards live in `src/cards/` and share `tilt.ts`, which follows the pointer o
 - **Member card** (`MemberCard.astro`): a background, a large word, and a transparent portrait stack so the word sits behind the person and the layers drift apart as the card tilts. Five `backdrop-filter` layers blur the bottom edge under the name. Clicking the full-size card flips it to the back.
 - **Event pass** (`passes/default.astro`): the template every event uses unless it has its own design. Video plays at the bottom. Above it, a white sheet and a black word blend with `mix-blend-mode: screen`, so the footage shows only through the letters. The holder, details and QR code print on top. An SVG mask cuts the lanyard slot and stub notches.
 
+On an event's page the pass hangs from `Lanyard.astro`: a damped spring the visitor can grab and throw, drawn as an SVG strap, which sleeps once the pass comes to rest.
+
 ## Designing a pass
 
 Each `.astro` file in `src/cards/passes/` is a pass design, named after the file, and appears in the design menu of the event editor. A design receives `PassProps` from `src/cards/pass.ts`, and `ticket()` there gives it the dates, serial number, check-in state and QR code path, so a new design only decides how they look. Mark elements with `data-bind` to have the editor update them live. Events whose design file is missing fall back to `default`.

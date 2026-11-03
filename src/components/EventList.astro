@@ -15,11 +15,11 @@ const status = (e: Event) =>
 ---
 
 <ul>
-  {Astro.props.events.map((e, i) => {
+  {Astro.props.events.map((e) => {
     const Design = passDesign(e.design)
     const { tone, text } = status(e)
     return (
-      <li class="reveal" style={`--i: ${i}`}>
+      <li class="rise">
         <Design event={e} pass={null} holder="你的名字" guest size="thumb" transitionName={`pass-${e.slug}`} />
         <div class="caption">
           <span class="chip" data-tone={tone}>{text}</span>

@@ -21,7 +21,7 @@ const sections = new Set(members.map((m) => m.section).filter(Boolean)).size
     </header>
     <ul>
       {members.map((member, i) => (
-        <li class="reveal" style={`--i: ${Math.min(i, 12)}; --r: ${((i * 7) % 5) - 2}deg`}>
+        <li class="rise" style={`--r: ${((i * 7) % 5) - 2}deg`}>
           <MemberCard member={member} size="thumb" />
         </li>
       ))}

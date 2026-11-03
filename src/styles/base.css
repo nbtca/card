@@ -403,6 +403,22 @@ tr[aria-current] td {
   color: var(--fg);
 }
 
+/* Scroll-linked entry runs on the compositor where supported; elsewhere items simply appear. */
+@supports (animation-timeline: view()) {
+  .rise {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 90%;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(80px) rotate(-4deg) scale(0.9);
+  }
+}
+
 .reveal {
   animation: reveal 0.9s var(--ease) both;
   animation-delay: calc(var(--i, 0) * 70ms);
@@ -416,6 +432,10 @@ tr[aria-current] td {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+
   ::view-transition-group(*),
   ::view-transition-old(*),
   ::view-transition-new(*) {
