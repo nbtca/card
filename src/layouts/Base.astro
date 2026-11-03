@@ -72,9 +72,24 @@ const links = [
     <footer class="wrap">
       <span class="ring" />
       <p>浙大宁波理工学院计算机协会</p>
+      <button class="sound" type="button" data-sound aria-pressed="true">音效开</button>
       {user && <a href="/logout">退出登录</a>}
     </footer>
     <script src="../cards/tilt.ts"></script>
+    <script>
+      import { setSound, soundOn } from "../lib/sound"
+
+      const button = document.querySelector<HTMLButtonElement>("[data-sound]")!
+      const show = () => {
+        button.setAttribute("aria-pressed", String(soundOn()))
+        button.textContent = soundOn() ? "音效开" : "音效关"
+      }
+      button.addEventListener("click", () => {
+        setSound(!soundOn())
+        show()
+      })
+      show()
+    </script>
   </body>
 </html>
 
@@ -194,6 +209,19 @@ const links = [
 
   footer p {
     margin: 0 auto 0 0;
+  }
+
+  .sound {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .sound:hover {
+    color: var(--fg);
   }
 
   footer .ring {

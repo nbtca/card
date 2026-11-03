@@ -25,6 +25,8 @@ const id = `strap-${Math.random().toString(36).slice(2, 8)}`
 </div>
 
 <script>
+  import { pat } from "../lib/sound"
+
   const motion = matchMedia("(prefers-reduced-motion: no-preference)")
   const G = 2600
   const K = 70
@@ -133,6 +135,7 @@ const id = `strap-${Math.random().toString(36).slice(2, 8)}`
       Object.assign(grab, { t: now, x: px, y: py })
     })
     const release = () => {
+      if (grab) pat()
       grab = null
       delete root.dataset.grabbed
       wake()

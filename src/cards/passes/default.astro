@@ -6,6 +6,9 @@ type Props = PassProps
 const { event, pass, holder, guest, size = "full", transitionName, anatomy } = Astro.props
 const Tag = size === "thumb" ? "a" : "div"
 const { state, date, day, time, serial, redeemedAt: redeemed, video, qr } = ticket(Astro.props, Astro.url.origin)
+const peelable = size === "full" && !anatomy
+// Full-size passes without their own footage play the shared default clip; thumbnails keep the cheap gradient.
+const footage = video ?? (size === "full" ? "/footage/nbtca.mp4" : null)
 const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.05 : 0.78), 0)
 ---
 
@@ -15,13 +18,21 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
   data-card={size === "thumb" ? "thumb" : "stage"}
   data-state={state}
   data-anatomy={anatomy ? "" : undefined}
+  data-peel={peelable ? "" : undefined}
   style={`--fit: min(34cqi, ${(84 / Math.max(units, 1)).toFixed(2)}cqi)${transitionName ? `; view-transition-name: ${transitionName}` : ""}`}
 >
   <div class="tilt">
-    <article class="card" aria-label={`${event.title} 通行证`}>
+    {peelable && (
+      <div class="backing" aria-hidden="true">
+        <span class="seal" />
+        <b>{event.word}</b>
+        <small>Thanks for being here · {serial}</small>
+      </div>
+    )}
+    <article class="card" aria-label={`${event.title} 通行证`} data-peel-card>
       <div class="plane footage" data-bind="footage">
-        {video
-          ? <video src={video} muted loop playsinline preload={size === "thumb" ? "metadata" : "auto"} aria-hidden="true" />
+        {footage
+          ? <video src={footage} muted loop playsinline preload={size === "thumb" ? "metadata" : "auto"} aria-hidden="true" />
           : <div class="aurora" />}
       </div>
       <div class="knockout" aria-hidden="true">
@@ -61,8 +72,18 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
       </div>
       <div class="glare" />
     </article>
+    {peelable && (
+      <>
+        <div class="flap" aria-hidden="true"><div class="flap-back" data-peel-flap /></div>
+        <button class="peel-handle" type="button" data-peel-handle aria-label="撕开贴纸，看看下面" />
+      </>
+    )}
   </div>
 </Tag>
+
+<script>
+  import "../peel"
+</script>
 
 <style>
   .pass-card {
@@ -350,6 +371,79 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     );
     mix-blend-mode: overlay;
     pointer-events: none;
+  }
+
+  .backing {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    align-content: start;
+    justify-items: end;
+    gap: 2cqi;
+    padding: 9cqi 8cqi;
+    text-align: right;
+    color: rgb(255 255 255 / 0.95);
+    background:
+      radial-gradient(circle at calc(50% + var(--x, 0) * 40%) calc(30% + var(--y, 0) * 30%), rgb(255 255 255 / 0.5), transparent 45%),
+      linear-gradient(125deg, #f877b8, #64def7, #fbef6a, #bd84f5, #55f1d7, #f877b8) calc(50% + var(--x, 0) * 50%) 50% / 300% 300%;
+    mask: var(--die) 0 0 / 100% 100% no-repeat;
+  }
+
+  .backing .seal {
+    width: 18cqi;
+    aspect-ratio: 1;
+    background: rgb(255 255 255 / 0.85);
+    mask: url("/logo.svg") center / contain no-repeat;
+  }
+
+  .backing b {
+    font: 900 12cqi / 1 var(--wide);
+    font-stretch: 125%;
+    text-transform: uppercase;
+  }
+
+  .backing small {
+    font: 600 2.6cqi / 1 var(--wide);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .flap {
+    position: absolute;
+    inset: -50%;
+    pointer-events: none;
+    filter: drop-shadow(-0.6cqi 1.4cqi 1.6cqi rgb(0 0 0 / 0.28));
+  }
+
+  .flap-back {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(var(--shade-angle, 225deg), #fff, #f1ede5 55%, #c9c2b6);
+    clip-path: polygon(0 0);
+  }
+
+  .peel-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 3;
+    width: 24cqi;
+    aspect-ratio: 1;
+    padding: 0;
+    border: 0;
+    border-radius: 0 6cqi 0 50%;
+    background: none;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  [data-peeling] .peel-handle {
+    cursor: grabbing;
+  }
+
+  .peel-handle:focus-visible {
+    outline: 2px solid var(--glow, #3b8dff);
+    outline-offset: 2px;
   }
 
   @property --e {

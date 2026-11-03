@@ -14,11 +14,11 @@ const featured = events[0] ?? showcaseEvent()
 const Featured = passDesign(featured.design)
 const words = [...new Set([...events.map((e) => e.word), "NBTCA", "fix", "CA101", "hack"])].slice(0, 6)
 const layers = [
-  { name: "视频层", text: "最底下是一段循环视频，没有视频时是一团流动的渐变。" },
-  { name: "白色底板", text: "整张铺满的白纸，和下面一层用 screen 模式混合，白色依旧是白色。" },
-  { name: "镂空大字", text: "黑色的字在 screen 混合下变成透明，视频就从字形里透出来。" },
-  { name: "印刷层", text: "名字、全息印章、时间地点和二维码，正常印在最上面。" },
-  { name: "光泽", text: "跟着指针移动的一层高光，让卡面看起来是一张真的卡。" },
+  { name: "视频层", text: "最底下是一段循环视频，没有视频时是一团流动的渐变。", note: "the footage", plane: ".footage" },
+  { name: "白色底板", text: "整张铺满的白纸，和下面一层用 screen 模式混合，白色依旧是白色。", note: "white sheet · screen", plane: ".sheet" },
+  { name: "镂空大字", text: "黑色的字在 screen 混合下变成透明，视频就从字形里透出来。", note: "type punches through", plane: ".word" },
+  { name: "印刷层", text: "名字、全息印章、时间地点和二维码，正常印在最上面。", note: "the print", plane: ".print" },
+  { name: "光泽", text: "跟着指针移动的一层高光，让卡面看起来是一张真的卡。", note: "the glare", plane: ".glare" },
 ]
 ---
 
@@ -68,8 +68,14 @@ const layers = [
             ))}
           </ol>
         </div>
-        <div class="exploded">
+        <div class="exploded" data-notes={JSON.stringify(layers.map((l) => l.plane))}>
           <Featured event={featured} pass={null} holder={user?.name ?? "你的名字"} guest={!me} anatomy />
+          <svg class="leaders" aria-hidden="true">
+            {layers.map(() => <path pathLength="1" />)}
+          </svg>
+          <ul class="notes" aria-hidden="true">
+            {layers.map((l, i) => <li style={`--at: ${(i / layers.length).toFixed(2)}`}>{l.note}</li>)}
+          </ul>
         </div>
       </div>
     </section>
@@ -86,6 +92,8 @@ const layers = [
 </Base>
 
 <script>
+  import { whoosh } from "../lib/sound"
+
   const section = document.querySelector<HTMLElement>("[data-anatomy-scroll]")
   const pass = section?.querySelector<HTMLElement>("[data-anatomy]")
   if (section && pass) {
@@ -97,7 +105,37 @@ const layers = [
       const e = Math.min(1, Math.max(0, (progress - 0.12) / 0.6))
       const eased = 1 - (1 - e) ** 3
       section.style.setProperty("--e", eased.toFixed(4))
+      const open = eased > 0.5
+      if (open !== wasOpen) {
+        if (wasOpen !== null) whoosh(open)
+        wasOpen = open
+      }
       pass.toggleAttribute("data-exploded", eased > 0.04)
+      if (eased > 0.04 && notes.length) place()
+    }
+
+    // Leader lines point at where each layer ends up after the 3D transform, so they are measured each frame.
+    const box = section.querySelector<HTMLElement>("[data-notes]")!
+    const planes = (JSON.parse(box.dataset.notes!) as string[]).map((s) => pass.querySelector<HTMLElement>(s)!)
+    const paths = [...box.querySelectorAll<SVGPathElement>(".leaders path")]
+    const notes = matchMedia("(min-width: 1100px)").matches ? [...box.querySelectorAll<HTMLElement>(".notes li")] : []
+    let wasOpen: boolean | null = null
+    const place = () => {
+      const origin = box.getBoundingClientRect()
+      const rects = planes.map((p) => p.getBoundingClientRect())
+      const edge = Math.min(...rects.map((r) => r.left)) - origin.left - 50
+      const e = Number(section.style.getPropertyValue("--e"))
+      // Bottom layer first, each label at least 34px above the one before so they never stack up.
+      let floor = Infinity
+      rects.forEach((r, i) => {
+        const ax = r.left - origin.left + r.width * 0.1
+        const ay = r.top - origin.top + r.height * 0.55
+        const ly = Math.min(ay, floor - 34)
+        floor = ly
+        notes[i]!.style.translate = `${edge}px ${ly - 12}px`
+        paths[i]!.setAttribute("d", `M${edge + 8} ${ly} C${edge + 40} ${ly} ${ax - 30} ${ay} ${ax} ${ay}`)
+        paths[i]!.style.strokeDashoffset = String(1 - Math.min(1, Math.max(0, (e - (i / planes.length) * 0.9) * 6)))
+      })
     }
     addEventListener("scroll", () => (frame ||= requestAnimationFrame(update)), { passive: true })
     update()
@@ -264,15 +302,69 @@ const layers = [
 
   .explain li p {
     margin: 0.35rem 0 0 1.85rem;
-    max-width: 26em;
+    max-width: 22em;
     font-size: 0.9rem;
     line-height: 1.7;
     color: var(--muted);
   }
 
+  @font-face {
+    font-family: "Caveat";
+    src: url("/fonts/caveat-latin-600.woff2") format("woff2");
+    font-weight: 600;
+    font-display: swap;
+  }
+
   .exploded {
+    position: relative;
     display: grid;
     place-items: center;
+  }
+
+  .leaders {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .leaders path {
+    fill: none;
+    stroke: rgb(255 255 255 / 0.7);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-dasharray: 1 1;
+  }
+
+  .notes {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    pointer-events: none;
+  }
+
+  .notes li {
+    --on: clamp(0, (var(--e) - var(--at) * 0.9) * 6, 1);
+    position: absolute;
+    top: 0;
+    left: 0;
+    font: 600 1.4rem / 1 "Caveat", cursive;
+    color: #ffd84a;
+    white-space: nowrap;
+    opacity: var(--on);
+    rotate: -3deg;
+    transform: translateX(-100%);
+  }
+
+  @media (max-width: 1099px) {
+    .leaders,
+    .notes {
+      display: none;
+    }
   }
 
   .exploded :global(.pass-card) {

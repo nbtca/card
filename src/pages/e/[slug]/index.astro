@@ -143,6 +143,8 @@ const chip = {
 </Base>
 
 <script>
+  import { chime } from "../../../lib/sound"
+
   const el = document.querySelector<HTMLElement>("[data-target]")
   if (el) {
     const left = el.querySelector("[data-left]")!
@@ -157,6 +159,15 @@ const chip = {
     tick()
     setInterval(tick, 1000)
   }
+  document.querySelector<HTMLFormElement>("form.claim")?.addEventListener("submit", (e) => {
+    const form = e.target as HTMLFormElement
+    if (form.dataset.sent) return
+    e.preventDefault()
+    form.dataset.sent = "1"
+    setTimeout(() => form.requestSubmit(), 320)
+    chime()
+  })
+
   if (location.search === "?issued") {
     history.replaceState(null, "", location.pathname)
     if (matchMedia("(prefers-reduced-motion: no-preference)").matches) {
