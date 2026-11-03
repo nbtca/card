@@ -8,10 +8,12 @@ interface Props {
 
 const { member, size } = Astro.props
 const { name, alias, section, role, joined, github, motto, hue, word } = member
-const portrait = mediaUrl(member.portrait)
-const background = mediaUrl(member.background)
+const portrait = mediaUrl(member.portrait, size)
+const background = mediaUrl(member.background, size)
 const full = size === "full"
 const Tag = full ? "div" : "a"
+// Each backdrop-filter layer is a full blur pass; a wall of thumbnails gets by with two.
+const layers = full ? 5 : 2
 const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.test(c) ? 1 : 0.42), 0)
 ---
 
@@ -36,7 +38,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
             : <span class="ring" />}
         </div>
         <div class="blurs" aria-hidden="true">
-          {[1, 2, 3, 4, 5].map((index) => <div style={`--index: ${index}`} />)}
+          {Array.from({ length: layers }, (_, i) => <div style={`--index: ${i + 1}; --layers: ${layers}`} />)}
         </div>
         <header class="topline">
           <span>NBTCA</span>
@@ -218,7 +220,6 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
 }
 
 .blurs > div {
-  --layers: 5;
   --blur: calc(sin((var(--layers) - var(--index)) / var(--layers) * 45deg) * 12cqi);
   --stop: calc(sin(var(--index) / var(--layers) * 45deg) * 35);
   position: absolute;

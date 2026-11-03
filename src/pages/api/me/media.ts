@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro"
 import { env } from "cloudflare:workers"
-import { db, getMember, randomId } from "../../../lib/db"
+import { db, getMember, randomId, thumbKey } from "../../../lib/db"
 
 const KINDS = ["portrait", "background"] as const
 const MAX_BYTES = 4 * 1024 * 1024
@@ -18,18 +18,24 @@ async function target(url: URL, locals: App.Locals) {
   return { kind, member, old: member[kind] }
 }
 
+const drop = (key: string | null) => (key ? env.MEDIA.delete([key, thumbKey(key)]) : undefined)
+
 export const PUT: APIRoute = async ({ request, url, locals }) => {
   const t = await target(url, locals)
   if (!t) return new Response("unknown kind", { status: 400 })
-  const bytes = new Uint8Array(await request.arrayBuffer())
-  if (bytes.byteLength > MAX_BYTES) return new Response("图片太大", { status: 413 })
-  const type = imageType(bytes)
-  if (!type) return new Response("只支持 WebP 或 PNG", { status: 415 })
+  const form = await request.formData().catch(() => null)
+  const files = [form?.get("full"), form?.get("thumb")]
+  if (!files.every((f) => f instanceof File)) return new Response("缺少图片", { status: 400 })
+  const [full, thumb] = await Promise.all((files as File[]).map(async (f) => new Uint8Array(await f.arrayBuffer())))
+  if (full!.byteLength + thumb!.byteLength > MAX_BYTES) return new Response("图片太大", { status: 413 })
+  const type = imageType(full!)
+  if (!type || imageType(thumb!) !== type) return new Response("只支持 WebP 或 PNG", { status: 415 })
 
   const key = `members/${t.member.id}/${t.kind}-${randomId(8)}.${type.split("/")[1]}`
-  await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: type } })
+  const httpMetadata = { contentType: type }
+  await Promise.all([env.MEDIA.put(key, full!, { httpMetadata }), env.MEDIA.put(thumbKey(key), thumb!, { httpMetadata })])
   await db().prepare(`UPDATE members SET ${t.kind} = ? WHERE id = ?`).bind(key, t.member.id).run()
-  if (t.old) await env.MEDIA.delete(t.old)
+  await drop(t.old)
   return Response.json({ key })
 }
 
@@ -37,6 +43,6 @@ export const DELETE: APIRoute = async ({ url, locals }) => {
   const t = await target(url, locals)
   if (!t) return new Response("unknown kind", { status: 400 })
   await db().prepare(`UPDATE members SET ${t.kind} = NULL WHERE id = ?`).bind(t.member.id).run()
-  if (t.old) await env.MEDIA.delete(t.old)
+  await drop(t.old)
   return new Response(null, { status: 204 })
 }

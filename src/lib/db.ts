@@ -94,7 +94,10 @@ export const sameDay = (a: string, b: string) =>
 export const formatRange = (from: string, until: string) =>
   sameDay(from, until) ? `${formatTime(from)}–${formatClock(until)}` : `${formatTime(from)} 至 ${formatTime(until)}`
 
-export const mediaUrl = (key: string | null) => (key ? `/media/${key}` : null)
+export const thumbKey = (key: string) => key.replace(/(\.\w+)$/, ".thumb$1")
+
+export const mediaUrl = (key: string | null, size: "full" | "thumb" = "full") =>
+  key ? `/media/${size === "thumb" ? thumbKey(key) : key}` : null
 
 export const randomId = (bytes = 16) =>
   crypto.getRandomValues(new Uint8Array(bytes)).toBase64({ alphabet: "base64url", omitPadding: true })

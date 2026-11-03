@@ -82,7 +82,7 @@ const uploads = [
       <section class="panel uploads reveal" style="--i: 2">
         {uploads.map(({ kind, label, hint, key }) => (
           <div class="upload">
-            <div class="thumb" style={key ? `background-image: url(${mediaUrl(key)})` : undefined} data-kind={kind} />
+            <div class="thumb" style={key ? `background-image: url(${mediaUrl(key, "thumb")})` : undefined} data-kind={kind} />
             <div class="text">
               <strong>{label}</strong>
               <span>{hint}</span>
@@ -103,8 +103,6 @@ const uploads = [
 </Base>
 
 <script>
-  const MAX_W = 1000
-  const MAX_H = 1400
   const card = document.querySelector<HTMLElement>("[data-card]")!
   const main = document.querySelector<HTMLElement>("main")!
   const status = document.querySelector<HTMLElement>("[data-status]")!
@@ -142,9 +140,8 @@ const uploads = [
   role.addEventListener("input", updateSub)
 
   // Safari cannot encode WebP and returns PNG, so the server accepts both.
-  async function encode(file: File) {
-    const bitmap = await createImageBitmap(file)
-    const scale = Math.min(1, MAX_W / bitmap.width, MAX_H / bitmap.height)
+  async function encode(bitmap: ImageBitmap, maxWidth: number) {
+    const scale = Math.min(1, maxWidth / bitmap.width, (maxWidth * 1.4) / bitmap.height)
     const canvas = new OffscreenCanvas(Math.round(bitmap.width * scale), Math.round(bitmap.height * scale))
     canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
     return canvas.convertToBlob({ type: "image/webp", quality: 0.86 })
@@ -156,7 +153,10 @@ const uploads = [
       if (!file) return
       show("正在处理图片…")
       try {
-        const body = await encode(file)
+        const bitmap = await createImageBitmap(file)
+        const body = new FormData()
+        body.set("full", await encode(bitmap, 1000))
+        body.set("thumb", await encode(bitmap, 400))
         const response = await fetch(`/api/me/media?kind=${input.dataset.upload}`, { method: "PUT", body })
         if (!response.ok) throw new Error(await response.text())
         location.reload()

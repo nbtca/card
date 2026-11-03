@@ -121,24 +121,38 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     translate: calc(var(--x, 0) * -4cqi) calc(var(--y, 0) * -4cqi);
   }
 
-  @property --spin {
-    syntax: "<angle>";
-    inherits: false;
-    initial-value: 0deg;
+  .aurora {
+    overflow: hidden;
+    background: #004b86;
   }
 
-  .aurora {
+  .aurora::after {
+    content: "";
+    position: absolute;
+    inset: 0;
     background:
-      radial-gradient(40% 30% at 30% 30%, #2f8cff, transparent 70%),
-      radial-gradient(35% 30% at 70% 40%, #ff4fa3, transparent 70%),
-      conic-gradient(from var(--spin) at 50% 35%, #004b86, #00c2ff, #7b5cff, #ff6b4a, #ffd84a, #004b86);
+      radial-gradient(40% 30% at 30% 30%, rgb(47 140 255 / 0.85), transparent 70%),
+      radial-gradient(35% 30% at 70% 40%, rgb(255 79 163 / 0.8), transparent 70%);
+  }
+
+  /* Spinning a pre-drawn layer is composited; animating the gradient angle repaints every frame. */
+  .aurora::before {
+    content: "";
+    position: absolute;
+    inset: -40%;
+    background: conic-gradient(from 0deg at 50% 45%, #004b86, #00c2ff, #7b5cff, #ff6b4a, #ffd84a, #004b86);
     animation: spin 9s linear infinite;
+    will-change: rotate;
   }
 
   @keyframes spin {
     to {
-      --spin: 360deg;
+      rotate: 1turn;
     }
+  }
+
+  :global([data-lite]) .aurora::before {
+    animation: none;
   }
 
   /* White over footage stays white under screen; the black word lets it through. */
@@ -413,7 +427,7 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .aurora {
+    .aurora::before {
       animation: none;
     }
   }

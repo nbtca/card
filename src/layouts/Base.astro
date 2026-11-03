@@ -27,9 +27,14 @@ const links = [
     <meta property="og:description" content={description} />
     <meta name="theme-color" content="#05060a" />
     <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <script is:inline>
+      const n = navigator
+      if ((n.hardwareConcurrency || 8) <= 4 || (n.deviceMemory || 8) <= 4 || n.connection?.saveData) document.documentElement.dataset.lite = ""
+    </script>
     <link rel="preload" href="/fonts/archivo-latin-wdth.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
+    <div class="light" aria-hidden="true" />
     <header>
       <nav class="wrap">
         <a class="brand" href="/" aria-label="首页">

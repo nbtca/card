@@ -2,7 +2,13 @@ const motion = matchMedia("(prefers-reduced-motion: no-preference)")
 const clamp = (v: number) => Math.min(1, Math.max(-1, v))
 const toUnit = (v: number, from: number, to: number) => clamp(((v - from) / (to - from)) * 2 - 1)
 
+const visible = new WeakSet<Element>()
+const onScreen = new IntersectionObserver((entries) => {
+  for (const { target, isIntersecting } of entries) isIntersecting ? visible.add(target) : visible.delete(target)
+})
+
 function follow(card: HTMLElement) {
+  onScreen.observe(card)
   let x = 0, y = 0, tx = 0, ty = 0, frame = 0
   const step = () => {
     x += (tx - x) * 0.14
@@ -12,6 +18,7 @@ function follow(card: HTMLElement) {
     frame = Math.abs(tx - x) + Math.abs(ty - y) > 0.002 ? requestAnimationFrame(step) : 0
   }
   return (nx: number, ny: number) => {
+    if (!visible.has(card)) return
     ;[tx, ty] = motion.matches ? [nx, ny] : [0, 0]
     frame ||= requestAnimationFrame(step)
   }
@@ -50,13 +57,14 @@ const videos = new IntersectionObserver((entries) => {
 })
 document.querySelectorAll("[data-card] video").forEach((v) => videos.observe(v))
 
-let light = 0
+// Moving a dedicated layer keeps the light on the compositor; a root custom property would restyle the whole page.
+const light = document.querySelector<HTMLElement>(".light")
+let lightFrame = 0
 addEventListener("pointermove", (e) => {
-  if (light || e.pointerType !== "mouse") return
-  light = requestAnimationFrame(() => {
-    light = 0
-    document.documentElement.style.setProperty("--mx", `${e.clientX}px`)
-    document.documentElement.style.setProperty("--my", `${e.clientY}px`)
+  if (!light || lightFrame || e.pointerType !== "mouse") return
+  lightFrame = requestAnimationFrame(() => {
+    lightFrame = 0
+    light.style.translate = `${e.clientX}px ${e.clientY}px`
   })
 })
 
