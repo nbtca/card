@@ -25,10 +25,15 @@ const links = [
     <meta name="description" content={description} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta name="theme-color" content="#05060a" />
+    <meta name="theme-color" content="#05060a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ecebe6" media="(prefers-color-scheme: light)" />
     <link rel="icon" href="/logo.svg" type="image/svg+xml" />
     <script is:inline>
       const n = navigator
+      try {
+        const theme = localStorage.getItem("card:theme")
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme
+      } catch {}
       if ((n.hardwareConcurrency || 8) <= 4 || (n.deviceMemory || 8) <= 4 || n.connection?.saveData) document.documentElement.dataset.lite = ""
     </script>
     <link rel="preload" href="/fonts/archivo-latin-wdth.woff2" as="font" type="font/woff2" crossorigin />
@@ -72,7 +77,8 @@ const links = [
     <footer class="wrap">
       <span class="ring" />
       <p>浙大宁波理工学院计算机协会</p>
-      <button class="sound" type="button" data-sound aria-pressed="true">音效开</button>
+      <button class="toggle" type="button" data-theme-toggle>跟随系统</button>
+      <button class="toggle" type="button" data-sound aria-pressed="true">音效开</button>
       {user && <a href="/logout">退出登录</a>}
     </footer>
     <script src="../cards/tilt.ts"></script>
@@ -89,6 +95,23 @@ const links = [
         show()
       })
       show()
+
+      const THEMES = ["system", "light", "dark"] as const
+      const LABELS = { system: "跟随系统", light: "浅色", dark: "深色" }
+      const root = document.documentElement
+      const themeButton = document.querySelector<HTMLButtonElement>("[data-theme-toggle]")!
+      const current = () => (root.dataset.theme as (typeof THEMES)[number] | undefined) ?? "system"
+      const label = () => (themeButton.textContent = LABELS[current()])
+      themeButton.addEventListener("click", () => {
+        const next = THEMES[(THEMES.indexOf(current()) + 1) % THEMES.length]!
+        if (next === "system") delete root.dataset.theme
+        else root.dataset.theme = next
+        try {
+          localStorage.setItem("card:theme", next)
+        } catch {}
+        label()
+      })
+      label()
     </script>
   </body>
 </html>
@@ -109,7 +132,7 @@ const links = [
     padding: 0.4rem;
     border: 1px solid var(--line);
     border-radius: 99px;
-    background: rgb(10 12 18 / 0.6);
+    background: var(--nav);
     backdrop-filter: blur(18px) saturate(1.4);
     box-shadow: 0 20px 40px -24px rgb(0 0 0 / 0.8);
   }
@@ -161,7 +184,7 @@ const links = [
   .links a:hover,
   .links a[aria-current] {
     color: var(--fg);
-    background: rgb(255 255 255 / 0.08);
+    background: rgb(var(--tint) / 0.08);
   }
 
   .me {
@@ -173,7 +196,7 @@ const links = [
   }
 
   .me:hover {
-    background: rgb(255 255 255 / 0.08);
+    background: rgb(var(--tint) / 0.08);
   }
 
   .me.signin {
@@ -211,7 +234,7 @@ const links = [
     margin: 0 auto 0 0;
   }
 
-  .sound {
+  .toggle {
     padding: 0;
     border: 0;
     background: none;
@@ -220,7 +243,7 @@ const links = [
     cursor: pointer;
   }
 
-  .sound:hover {
+  .toggle:hover {
     color: var(--fg);
   }
 

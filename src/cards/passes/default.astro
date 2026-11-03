@@ -578,18 +578,18 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
   }
 
   [data-anatomy][data-exploded] {
-    --ink: rgb(255 255 255 / 0.92);
-    --muted: rgb(255 255 255 / 0.6);
-    --line: rgb(255 255 255 / 0.3);
+    --ink: rgb(var(--fg-rgb) / 0.92);
+    --muted: rgb(var(--fg-rgb) / 0.6);
+    --line: rgb(var(--fg-rgb) / 0.3);
   }
 
   [data-anatomy][data-exploded] .word {
-    color: #fff;
+    color: rgb(var(--fg-rgb));
     text-shadow: 0 0 4cqi rgb(59 141 255 / 0.9);
   }
 
   [data-anatomy][data-exploded] .tag {
-    color: #05060a;
+    color: var(--bg);
   }
 
   [data-anatomy] :is(.word, .print) {

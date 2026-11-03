@@ -263,7 +263,7 @@ const uploads = [
 
   .swatch[aria-pressed="true"] {
     border-color: var(--fg);
-    box-shadow: 0 0 0 3px rgb(255 255 255 / 0.15);
+    box-shadow: 0 0 0 3px rgb(var(--tint) / 0.15);
   }
 
   input[type="range"] {
@@ -300,7 +300,7 @@ const uploads = [
     aspect-ratio: 5 / 7;
     border: 1px dashed var(--line);
     border-radius: 0.8rem;
-    background: rgb(255 255 255 / 0.03) center / cover no-repeat;
+    background: rgb(var(--tint) / 0.03) center / cover no-repeat;
   }
 
   .thumb[data-kind="portrait"] {
