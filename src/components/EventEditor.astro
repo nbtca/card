@@ -68,6 +68,11 @@ const times = [
       <h2><span>03</span>地点与名额</h2>
       <label>地点<input name="venue" required maxlength="40" value={event.venue} data-live="venue" placeholder="图书馆一楼大厅" /></label>
       <label>名额<input name="capacity" type="number" min="1" value={event.capacity ?? ""} placeholder="不限" /><small>留空表示不限名额。</small></label>
+      <label class="check">
+        <input name="needs_info" type="checkbox" checked={event.needs_info === 1} />
+        领券时登记学号、姓名、班级和手机号
+      </label>
+      <small class="note">用于讲座等校内活动的学分申报。登记的信息只有你和管理员能看到，可以在编辑页导出成表格。</small>
       <label>简介<textarea name="summary" rows="3" maxlength="200" placeholder="一两句话介绍这场活动">{event.summary}</textarea></label>
     </section>
 
@@ -249,6 +254,12 @@ const times = [
     background: none;
     box-shadow: none;
     padding-left: 0.1rem;
+  }
+
+  .note {
+    margin-top: -0.75rem;
+    font-size: 0.8rem;
+    color: var(--faint);
   }
 
   .drop {

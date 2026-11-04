@@ -3,6 +3,7 @@ import Lanyard from "../../../cards/Lanyard.astro"
 import { passDesign } from "../../../cards/pass"
 import Base from "../../../layouts/Base.astro"
 import { checkInOpensAt, checkInPhase, claimPhase, db, formatClock, formatRange, formatShort, formatTime, getEvent, memberByEmail, randomId, sameDay, ZONE, type Pass } from "../../../lib/db"
+import { parseAttendee } from "../../../lib/attendee"
 import { canEdit } from "../../../lib/events"
 
 const event = await getEvent(Astro.params.slug!)
@@ -14,21 +15,48 @@ const findPass = () =>
     ? db().prepare("SELECT * FROM passes WHERE event = ? AND email = ?").bind(event.slug, user.email).first<Pass>()
     : null
 
+// Prefilled from the visitor's last registration so returning students do not type it all again.
+const previous = user && event.needs_info
+  ? await db()
+      .prepare("SELECT name, student_id, class_name, phone FROM passes WHERE email = ? AND student_id IS NOT NULL ORDER BY created_at DESC LIMIT 1")
+      .bind(user.email)
+      .first<{ name: string; student_id: string; class_name: string; phone: string }>()
+  : null
+let form = { name: previous?.name ?? user?.name ?? "", studentId: previous?.student_id ?? "", className: previous?.class_name ?? "", phone: previous?.phone ?? "" }
+let claimError = ""
+
 if (Astro.request.method === "POST") {
   if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`)
-  const name = user.member?.name ?? (String((await Astro.request.formData()).get("name") ?? "").trim().slice(0, 20) || user.name)
-  await db()
-    .prepare(
-      `INSERT INTO passes (id, event, email, name, serial, created_at)
-       SELECT ?1, slug, ?3, ?4, COALESCE((SELECT MAX(serial) FROM passes WHERE event = ?2), 0) + 1, ?5
-       FROM events
-       WHERE slug = ?2 AND claim_from <= ?6 AND claim_until >= ?6
-         AND (capacity IS NULL OR (SELECT COUNT(*) FROM passes WHERE event = ?2) < capacity)
-       ON CONFLICT (event, email) DO NOTHING`,
-    )
-    .bind(randomId(), event.slug, user.email, name, Date.now(), new Date().toISOString())
-    .run()
-  if (await findPass()) return Astro.redirect(`${Astro.url.pathname}?issued`, 303)
+  const data = await Astro.request.formData()
+  const attendee = event.needs_info ? parseAttendee(data) : null
+  if (typeof attendee === "string") {
+    claimError = attendee
+    form = {
+      name: String(data.get("name") ?? ""),
+      studentId: String(data.get("student_id") ?? ""),
+      className: String(data.get("class_name") ?? ""),
+      phone: String(data.get("phone") ?? ""),
+    }
+  } else {
+    const name = attendee?.name ?? user.member?.name ?? (String(data.get("name") ?? "").trim().slice(0, 20) || user.name)
+    try {
+      await db()
+        .prepare(
+          `INSERT INTO passes (id, event, email, name, serial, created_at, student_id, class_name, phone)
+           SELECT ?1, slug, ?3, ?4, COALESCE((SELECT MAX(serial) FROM passes WHERE event = ?2), 0) + 1, ?5, ?7, ?8, ?9
+           FROM events
+           WHERE slug = ?2 AND claim_from <= ?6 AND claim_until >= ?6
+             AND (capacity IS NULL OR (SELECT COUNT(*) FROM passes WHERE event = ?2) < capacity)
+           ON CONFLICT (event, email) DO NOTHING`,
+        )
+        .bind(randomId(), event.slug, user.email, name, Date.now(), new Date().toISOString(), attendee?.studentId ?? null, attendee?.className ?? null, attendee?.phone ?? null)
+        .run()
+    } catch (e) {
+      if (!String(e).includes("UNIQUE")) throw e
+      claimError = "这个学号已经领过这场活动的券了。如果不是你本人领的，请联系活动发起人。"
+    }
+    if (await findPass()) return Astro.redirect(`${Astro.url.pathname}?issued`, 303)
+  }
 }
 
 const pass = await findPass()
@@ -125,7 +153,19 @@ const chip = {
                 : user
                   ? (
                       <form class="form claim" method="post">
-                        {!user.member && <label>印在券上的名字<input name="name" maxlength="20" required value={user.name} /></label>}
+                        {claimError && <p class="notice error">{claimError}</p>}
+                        {event.needs_info
+                          ? (
+                              <fieldset class="info">
+                                <legend>学分登记</legend>
+                                <p>这场活动可以申报学分，请如实填写。信息只给活动发起人用于申报。</p>
+                                <label>姓名<input name="name" required maxlength="20" autocomplete="name" value={form.name} /></label>
+                                <label>学号<input name="student_id" required inputmode="numeric" pattern="[23][0-9]{9}" maxlength="10" value={form.studentId} data-student-id /><small data-student-hint /></label>
+                                <label>班级<input name="class_name" required minlength="2" maxlength="20" placeholder="计算机 2101" value={form.className} /></label>
+                                <label>手机号<input name="phone" required type="tel" inputmode="numeric" pattern="1[3-9][0-9]{9}" maxlength="11" autocomplete="tel" value={form.phone} /></label>
+                              </fieldset>
+                            )
+                          : !user.member && <label>印在券上的名字<input name="name" maxlength="20" required value={user.name} /></label>}
                         <button class="button">领取活动券</button>
                       </form>
                     )
@@ -142,6 +182,22 @@ const chip = {
 </Base>
 
 <script>
+  import { checkStudentId, describeStudentId } from "../../../lib/attendee"
+
+  const idInput = document.querySelector<HTMLInputElement>("[data-student-id]")
+  const idHint = document.querySelector<HTMLElement>("[data-student-hint]")
+  if (idInput && idHint) {
+    const check = () => {
+      const id = idInput.value.replace(/\s/g, "")
+      const error = id.length === 10 ? checkStudentId(id) : null
+      idInput.setCustomValidity(error ?? "")
+      idHint.textContent = error ?? (id.length === 10 ? describeStudentId(id) : "")
+      if (error) idHint.dataset.bad = ""
+      else delete idHint.dataset.bad
+    }
+    idInput.addEventListener("input", check)
+    check()
+  }
   const el = document.querySelector<HTMLElement>("[data-target]")
   if (el) {
     const left = el.querySelector("[data-left]")!
@@ -359,6 +415,20 @@ const chip = {
     gap: 1rem;
     width: 100%;
     max-width: 26rem;
+  }
+
+  .info {
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+
+  .info small:empty {
+    display: none;
+  }
+
+  .info small[data-bad] {
+    color: #ffb4a3;
   }
 
   .claim {

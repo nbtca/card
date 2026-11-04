@@ -2,6 +2,7 @@
 import EventEditor from "../../../components/EventEditor.astro"
 import Base from "../../../layouts/Base.astro"
 import { db, formatShort, getEvent, type Pass } from "../../../lib/db"
+import { maskPhone } from "../../../lib/attendee"
 import { canEdit, saveEvent } from "../../../lib/events"
 
 const event = await getEvent(Astro.params.slug!)
@@ -38,16 +39,36 @@ const stamp = (ms: number) => formatShort(new Date(ms).toISOString())
           <div><dt>已领取</dt><dd>{passes.length}{event.capacity !== null && <small> / {event.capacity}</small>}</dd></div>
           <div><dt>已入场</dt><dd>{entered}</dd></div>
         </dl>
+        {passes.length > 0 && (
+          <div class="exports">
+            <a class="button" href={`/e/${event.slug}/attendees.csv?only=entered`} download>导出已入场名单</a>
+            <a class="button ghost" href={`/e/${event.slug}/attendees.csv`} download>导出全部领取名单</a>
+          </div>
+        )}
       </div>
+      {event.needs_info === 1 && <p class="muted privacy">名单里有学号和手机号，只用于学分申报，请不要转发到群聊或公开渠道。</p>}
       {passes.length
         ? (
             <table>
-              <thead><tr><th>编号</th><th>姓名</th><th>领取时间</th><th>入场时间</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>编号</th><th>姓名</th>
+                  {event.needs_info === 1 && <><th>学号</th><th>班级</th><th>手机号</th></>}
+                  <th>领取时间</th><th>入场时间</th>
+                </tr>
+              </thead>
               <tbody>
                 {passes.map((p) => (
                   <tr>
                     <td>{String(p.serial).padStart(4, "0")}</td>
                     <td>{p.name}</td>
+                    {event.needs_info === 1 && (
+                      <>
+                        <td>{p.student_id ?? "—"}</td>
+                        <td>{p.class_name ?? "—"}</td>
+                        <td>{p.phone ? maskPhone(p.phone) : "—"}</td>
+                      </>
+                    )}
                     <td>{stamp(p.created_at)}</td>
                     <td>{p.redeemed_at ? stamp(p.redeemed_at) : <span class="muted">未入场</span>}</td>
                   </tr>
@@ -100,6 +121,17 @@ const stamp = (ms: number) => formatShort(new Date(ms).toISOString())
     margin: 0.3rem 0 0;
     font: 800 2rem / 1 var(--wide);
     font-stretch: 125%;
+  }
+
+  .exports {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .privacy {
+    margin: 0;
+    font-size: 0.85rem;
   }
 
   dd small {

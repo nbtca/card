@@ -26,6 +26,7 @@ export interface Event {
   summary: string
   video: string | null
   capacity: number | null
+  needs_info: number
   claim_from: string
   claim_until: string
   starts_at: string
@@ -41,6 +42,9 @@ export interface Pass {
   created_at: number
   redeemed_at: number | null
   redeemed_by: string | null
+  student_id: string | null
+  class_name: string | null
+  phone: string | null
 }
 
 export const db = () => env.DB
