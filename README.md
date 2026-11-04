@@ -34,7 +34,7 @@ Access guards only the paths that need a signed-in visitor. Event pages stay pub
 | Logto roles in `MEMBER_ROLES` | See every member card, customise their own, start events and edit them, check in passes at `/scan` |
 | Logto roles in `ADMIN_ROLES` | Everything members can do, and edit any event |
 
-A member's card appears after their first visit. Its name and alias follow their Logto account; the rest is theirs to set at `/me`. Members frame an uploaded portrait or background in a 5:7 window by dragging and zooming, and the card previews the result before saving. Portraits and backgrounds are cropped and re-encoded in the browser to WebP (PNG on Safari, which cannot encode WebP) and served only to members. Event videos are public.
+A member's card appears after their first visit. Its name and alias follow their Logto account; the rest is theirs to set at `/me`. Members frame an uploaded portrait or background in a 5:7 window by dragging and zooming, and the card previews the result before saving. Portraits and backgrounds are cropped and re-encoded in the browser to WebP (PNG on Safari, which cannot encode WebP) and served only to members. Event videos are public. They are limited to 15 seconds and 10 MB, checked in the browser, which also saves a still that list thumbnails show instead of the video; a pass's video loads only when it starts playing.
 
 ## Check-in
 
@@ -49,7 +49,7 @@ Each pass carries a QR code for `https://card.nbtca.space/scan#<pass id>`. Staff
 
    ```sh
    wrangler d1 create card
-   wrangler r2 bucket create card
+   wrangler r2 bucket create card-media --location apac
    ```
 
 3. `pnpm run deploy` builds, applies D1 migrations and deploys. Plain `pnpm deploy` is a different, built-in pnpm command.

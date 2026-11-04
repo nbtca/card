@@ -5,15 +5,17 @@ type Props = PassProps
 
 const { event, pass, holder, guest, size = "full", transitionName, anatomy } = Astro.props
 const Tag = size === "thumb" ? "a" : "div"
-const { state, date, day, time, serial, redeemedAt: redeemed, video, qr, checkIn, opensAt, showCode } = ticket(Astro.props, Astro.url.origin)
+const { state, date, day, time, serial, redeemedAt: redeemed, video, poster, qr, checkIn, opensAt, showCode } = ticket(Astro.props, Astro.url.origin)
 // A valid pass on its own page carries the stub as a separate, peelable and tearable piece.
 const live = size === "full" && !anatomy && state === "valid"
 const torn = state === "redeemed" && !anatomy
 // Teeth along the perforation, where the stub was torn away.
 const teeth = Array.from({ length: 25 }, (_, i) => `${100 - i * (100 / 24)}% ${i % 2 ? 76.9 : 75.6}%`)
 const tear = `polygon(0 0, 100% 0, ${teeth.join(", ")})`
-// Full-size passes without their own footage play the shared default clip; thumbnails keep the cheap gradient.
-const footage = video ?? (size === "full" ? "/footage/nbtca.mp4" : null)
+// Full-size passes play footage, falling back to the shared clip. Thumbnails show a still or the gradient,
+// so a list of passes downloads no video at all.
+const footage = size === "full" ? (video ?? "/footage/nbtca.mp4") : null
+const still = size === "thumb" ? poster : null
 const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.05 : 0.78), 0)
 ---
 
@@ -34,8 +36,13 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     <article class="card" aria-label={`${event.title} 通行证`}>
       <div class="plane footage" data-bind="footage">
         {footage
-          ? <video src={footage} muted loop playsinline preload={size === "thumb" ? "metadata" : "auto"} aria-hidden="true" />
-          : <div class="aurora" />}
+          ? <video src={footage} poster={poster ?? undefined} muted loop playsinline preload="none" aria-hidden="true" />
+          : (
+              <>
+                <div class="aurora" />
+                {still && <img class="still" src={still} alt="" loading="lazy" decoding="async" onerror="this.remove()" />}
+              </>
+            )}
       </div>
       <div class="knockout" aria-hidden="true">
         <div class="plane sheet" />
@@ -205,6 +212,7 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
   }
 
   .footage video,
+  .footage .still,
   .aurora {
     position: absolute;
     inset: -6%;

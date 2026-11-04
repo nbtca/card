@@ -1,8 +1,11 @@
 import { env } from "cloudflare:workers"
 import { passDesigns } from "../cards/pass"
-import { db, getEvent, randomId, type Event } from "./db"
+import { db, getEvent, posterKey, randomId, type Event } from "./db"
 
-const MAX_VIDEO = 50 * 1024 * 1024
+export const MAX_VIDEO_MB = 10
+export const MAX_VIDEO_SECONDS = 15
+const MAX_VIDEO = MAX_VIDEO_MB * 1024 * 1024
+const MAX_POSTER = 300 * 1024
 const SHANGHAI = 8 * 3600e3
 const TIMES = ["claim_from", "claim_until", "starts_at", "ends_at"] as const
 
@@ -28,13 +31,17 @@ export async function saveEvent(form: FormData, editing: Event | null, createdBy
   if (startsAt >= endsAt) return { error: "活动结束时间要晚于开始时间。" }
   if (claimUntil > endsAt) return { error: "领券要在活动结束前截止。" }
   if (capacity !== null && !(Number.isInteger(capacity) && capacity > 0)) return { error: "名额要是正整数，不限名额就留空。" }
-  if (video instanceof File && video.size > MAX_VIDEO) return { error: "视频不能超过 50MB。" }
+  if (video instanceof File && video.size > MAX_VIDEO) return { error: `视频不能超过 ${MAX_VIDEO_MB}MB，剪一段 ${MAX_VIDEO_SECONDS} 秒以内的片段吧。` }
+  const poster = form.get("poster")
 
   let key = editing?.video ?? null
   if (video instanceof File && video.size > 0) {
     key = `events/${slug}/${randomId(8)}.${video.type === "video/webm" ? "webm" : "mp4"}`
     await env.MEDIA.put(key, video.stream(), { httpMetadata: { contentType: video.type || "video/mp4" } })
-    if (editing?.video) await env.MEDIA.delete(editing.video)
+    if (poster instanceof File && poster.size > 0 && poster.size < MAX_POSTER && poster.type === "image/webp") {
+      await env.MEDIA.put(posterKey(key), poster.stream(), { httpMetadata: { contentType: "image/webp" } })
+    }
+    if (editing?.video) await env.MEDIA.delete([editing.video, posterKey(editing.video)])
   }
 
   await db()

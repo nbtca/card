@@ -98,6 +98,9 @@ export const formatRange = (from: string, until: string) =>
 
 export const thumbKey = (key: string) => key.replace(/(\.\w+)$/, ".thumb$1")
 
+// The still shown on list thumbnails, so a page of passes never downloads their videos.
+export const posterKey = (key: string) => key.replace(/\.\w+$/, ".poster.webp")
+
 export const mediaUrl = (key: string | null, size: "full" | "thumb" = "full") =>
   key ? `/media/${size === "thumb" ? thumbKey(key) : key}` : null
 
