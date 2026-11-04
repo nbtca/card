@@ -49,7 +49,7 @@ Each pass carries a QR code for `https://card.nbtca.space/scan#<pass id>`. Staff
 
    ```sh
    wrangler d1 create card
-   wrangler r2 bucket create card
+   wrangler r2 bucket create card-media --location apac
    ```
 
 3. `pnpm run deploy` builds, applies D1 migrations and deploys. Plain `pnpm deploy` is a different, built-in pnpm command.

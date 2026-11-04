@@ -14,5 +14,5 @@
     "ADMIN_ROLES": "Repair Admin,Admin"
   },
   "d1_databases": [{ "binding": "DB", "database_name": "card", "database_id": "643f54b7-6b92-43b6-95d4-18e2a7fc5a3e", "migrations_dir": "migrations" }],
-  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "card" }]
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "card-media" }]
 }
