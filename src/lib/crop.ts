@@ -13,6 +13,7 @@ export class Cropper {
   private max = 1
   private pointers = new Map<number, { x: number; y: number }>()
   private pinch = 0
+  private listeners = new AbortController()
 
   constructor(
     private frame: HTMLElement,
@@ -22,13 +23,21 @@ export class Cropper {
     private cover: boolean,
     private onChange: (settled: boolean) => void,
   ) {
-    frame.addEventListener("pointerdown", this.down)
-    frame.addEventListener("pointermove", this.move)
-    frame.addEventListener("pointerup", this.up)
-    frame.addEventListener("pointercancel", this.up)
-    frame.addEventListener("wheel", this.wheel, { passive: false })
-    frame.addEventListener("keydown", this.key)
+    const { signal } = this.listeners
+    frame.addEventListener("pointerdown", this.down, { signal })
+    frame.addEventListener("pointermove", this.move, { signal })
+    frame.addEventListener("pointerup", this.up, { signal })
+    frame.addEventListener("pointercancel", this.up, { signal })
+    frame.addEventListener("wheel", this.wheel, { passive: false, signal })
+    frame.addEventListener("keydown", this.key, { signal })
     this.reset()
+  }
+
+  // The frame element is reused for the next image, so its listeners must go with this cropper.
+  destroy() {
+    this.listeners.abort()
+    clearTimeout(this.settle)
+    this.bitmap.close()
   }
 
   // Remembered so render() still works after the dialog holding the frame has closed and measures 0.

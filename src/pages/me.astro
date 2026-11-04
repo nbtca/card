@@ -180,21 +180,33 @@ const uploads = [
     originals.clear()
   }
 
+  // One render at a time; a change that lands mid-render queues one more so the card ends on the latest framing.
   let rendering = false
+  let again = false
   const preview = async () => {
-    if (!cropper || rendering) return
+    if (!cropper) return
+    if (rendering) return void (again = true)
     rendering = true
     const blob = await cropper.render(400)
     rendering = false
     URL.revokeObjectURL(previewUrl)
     previewUrl = URL.createObjectURL(blob)
     showOnCard(previewUrl)
+    if (again) {
+      again = false
+      preview()
+    }
+  }
+
+  const discard = () => {
+    cropper?.destroy()
+    cropper = null
+    URL.revokeObjectURL(cropImg.src)
   }
 
   const close = () => {
     dialog.close()
-    cropper?.bitmap.close()
-    cropper = null
+    discard()
   }
 
   for (const input of document.querySelectorAll<HTMLInputElement>("[data-upload]")) {
@@ -207,6 +219,7 @@ const uploads = [
         kind = input.dataset.upload!
         dialog.dataset.kind = kind
         dialog.querySelector("[data-crop-title]")!.textContent = kind === "portrait" ? "调整人像" : "调整背景"
+        discard()
         cropImg.src = URL.createObjectURL(file)
         dialog.showModal()
         cropper = new Cropper(frame, cropImg, bitmap, kind === "background", (settled) => {
@@ -229,20 +242,20 @@ const uploads = [
   })
   dialog.addEventListener("cancel", () => {
     restoreCard()
-    cropper?.bitmap.close()
-    cropper = null
+    discard()
   })
   dialog.querySelector("[data-crop-save]")!.addEventListener("click", async () => {
     if (!cropper) return
     const saving = cropper
     cropper = null
     dialog.close()
+    URL.revokeObjectURL(cropImg.src)
     show("正在上传…")
     try {
       const body = new FormData()
       body.set("full", await saving.render(1000))
       body.set("thumb", await saving.render(400))
-      saving.bitmap.close()
+      saving.destroy()
       const response = await fetch(`/api/me/media?kind=${kind}`, { method: "PUT", body })
       if (!response.ok) throw new Error(await response.text())
       location.reload()
