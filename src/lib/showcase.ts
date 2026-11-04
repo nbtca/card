@@ -29,6 +29,7 @@ export const showcaseEvent = (): Event => {
     summary: "",
     video: null,
     capacity: null,
+    needs_info: 0,
     claim_from: now,
     claim_until: now,
     starts_at: now,
