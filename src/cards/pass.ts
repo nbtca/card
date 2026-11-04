@@ -1,5 +1,5 @@
 import { encode } from "uqr"
-import { checkInOpensAt, checkInPhase, mediaUrl, ZONE, type Event, type Pass } from "../lib/db"
+import { checkInOpensAt, checkInPhase, mediaUrl, posterKey, ZONE, type Event, type Pass } from "../lib/db"
 
 // Elements marked data-bind="word|title|venue|date|day|time|footage" update live in the event editor.
 export interface PassProps {
@@ -32,6 +32,7 @@ export function ticket({ event, pass }: PassProps, origin: string) {
       ? new Date(pass.redeemed_at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: ZONE })
       : null,
     video: mediaUrl(event.video),
+    poster: event.video ? mediaUrl(posterKey(event.video)) : null,
     qr: {
       size: qr.size,
       path: qr.data.flatMap((row, y) => row.flatMap((on, x) => (on ? [`M${x} ${y}h1v1h-1z`] : []))).join(""),

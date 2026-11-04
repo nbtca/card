@@ -1,7 +1,7 @@
 ---
 import { passDesign, passDesigns } from "../cards/pass"
 import type { Event } from "../lib/db"
-import { toLocal } from "../lib/events"
+import { MAX_VIDEO_MB, MAX_VIDEO_SECONDS, toLocal } from "../lib/events"
 
 interface Props {
   event: Event
@@ -74,9 +74,10 @@ const times = [
     <section class="panel">
       <h2><span>04</span>卡面视频</h2>
       <label class="drop">
-        <input name="video" type="file" accept="video/mp4,video/webm" data-live="video" />
+        <input name="video" type="file" accept="video/mp4,video/webm" data-live="video" data-max-mb={MAX_VIDEO_MB} data-max-seconds={MAX_VIDEO_SECONDS} />
+        <input name="poster" type="file" hidden data-poster />
         <strong data-file>{event.video ? "已上传视频，选择新文件可替换" : "选择一段视频"}</strong>
-        <small>50MB 以内的 MP4 或 WebM，几秒钟的循环画面最好。不上传就用默认的渐变动画。</small>
+        <small>{MAX_VIDEO_SECONDS} 秒以内、{MAX_VIDEO_MB}MB 以内的 MP4 或 WebM，循环画面最好。不上传就用默认的动画。</small>
       </label>
     </section>
 
@@ -108,11 +109,21 @@ const times = [
     bind("day", `${m}月${d}日`)
     bind("time", time)
   })
-  input("video").addEventListener("change", (e) => {
-    const file = (e.target as HTMLInputElement).files?.[0]
-    document.querySelector("[data-file]")!.textContent = file ? file.name : "选择一段视频"
-    const footage = document.querySelector<HTMLElement>(".preview [data-bind=footage]")
-    if (!file || !footage) return
+  const picker = input("video")
+  const label = document.querySelector<HTMLElement>("[data-file]")!
+  const posterInput = document.querySelector<HTMLInputElement>("[data-poster]")!
+  const reject = (text: string) => {
+    picker.value = ""
+    posterInput.value = ""
+    label.textContent = text
+  }
+
+  // Checked here because the server can only see the size; the still is grabbed for list thumbnails.
+  picker.addEventListener("change", async () => {
+    const file = picker.files?.[0]
+    posterInput.value = ""
+    if (!file) return (label.textContent = "选择一段视频")
+    if (file.size > Number(picker.dataset.maxMb) * 1024 * 1024) return reject(`这段视频超过 ${picker.dataset.maxMb}MB 了，剪短一点再试。`)
     const video = Object.assign(document.createElement("video"), {
       src: URL.createObjectURL(file),
       muted: true,
@@ -120,7 +131,28 @@ const times = [
       autoplay: true,
       playsInline: true,
     })
-    footage.replaceChildren(video)
+    try {
+      await new Promise((ok, fail) => {
+        video.onloadeddata = ok
+        video.onerror = fail
+      })
+    } catch {
+      return reject("这段视频浏览器打不开，换成 MP4 再试。")
+    }
+    if (video.duration > Number(picker.dataset.maxSeconds)) return reject(`这段视频有 ${Math.round(video.duration)} 秒，剪到 ${picker.dataset.maxSeconds} 秒以内再试。`)
+    label.textContent = file.name
+
+    const scale = Math.min(1, 360 / video.videoWidth)
+    const canvas = new OffscreenCanvas(Math.round(video.videoWidth * scale), Math.round(video.videoHeight * scale))
+    canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const still = await canvas.convertToBlob({ type: "image/webp", quality: 0.8 })
+    if (still.type === "image/webp") {
+      const files = new DataTransfer()
+      files.items.add(new File([still], "poster.webp", { type: "image/webp" }))
+      posterInput.files = files.files
+    }
+
+    document.querySelector<HTMLElement>(".preview [data-bind=footage]")?.replaceChildren(video)
   })
 </script>
 
