@@ -1,0 +1,70 @@
+---
+import Base from "../layouts/Base.astro"
+import { isD1Outage, resetsAt } from "../lib/outage"
+
+interface Props {
+  error: unknown
+}
+
+const outage = isD1Outage(Astro.props.error)
+Astro.response.status = 503
+Astro.response.headers.set("Retry-After", "3600")
+---
+
+<Base title="暂时无法访问 · NBTCA">
+  <main class="wrap">
+    <section class="panel">
+      <span class="ring" aria-hidden="true" />
+      <p class="eyebrow">{outage ? "Daily limit reached" : "Something went wrong"}</p>
+      <h1>{outage ? "今天的数据库额度用完了" : "页面暂时出了点问题"}</h1>
+      <p class="muted">
+        {outage
+          ? `协会的服务共用一份免费数据库额度，今天已经用完。你的社员卡、活动券和登记信息都还在，${resetsAt()} 会自动恢复。`
+          : "数据库暂时没有响应。你的数据不会丢失，过几分钟再刷新试试。"}
+      </p>
+      <div class="row">
+        <button class="button" type="button" onclick="location.reload()">刷新试试</button>
+        <a class="button ghost" href="https://nbtca.space">去协会主页</a>
+      </div>
+    </section>
+  </main>
+</Base>
+
+<style>
+  main {
+    display: grid;
+    place-items: center;
+    min-height: 70svh;
+  }
+
+  section {
+    display: grid;
+    justify-items: start;
+    gap: 1rem;
+    max-width: 32rem;
+    line-height: 1.7;
+  }
+
+  .ring {
+    width: 48px;
+    aspect-ratio: 1;
+    background: currentColor;
+    mask: url("/logo.svg") center / contain no-repeat;
+    opacity: 0.8;
+  }
+
+  h1 {
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+</style>
