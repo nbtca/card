@@ -31,8 +31,8 @@ if (Astro.request.method === "POST") {
 const member = (await getMember(id))!
 const swatches = [212, 248, 280, 320, 350, 18, 42, 140, 172, 196]
 const uploads = [
-  { kind: "portrait", label: "人像", hint: "去掉背景的透明 PNG 或 WebP，人物站在画面底部。", key: member.portrait },
-  { kind: "background", label: "背景", hint: "竖版照片效果最好，比例大约 5:7。", key: member.background },
+  { kind: "portrait", label: "人像", hint: "去掉背景的透明 PNG 效果最好，上传后可以拖动、缩放来摆位置。", key: member.portrait },
+  { kind: "background", label: "背景", hint: "任意照片都行，上传后选择要显示的部分。", key: member.background },
 ]
 ---
 
@@ -99,10 +99,30 @@ const uploads = [
         <p class="notice" data-status hidden />
       </section>
     </div>
+
+    <dialog class="cropper panel" data-cropper aria-labelledby="crop-title">
+      <h2 id="crop-title" data-crop-title>调整画面</h2>
+      <p class="muted">拖动照片选择要显示的部分，滚轮或双指可以缩放。框里的画面就是卡片上会显示的样子。</p>
+      <div class="frame" data-frame tabindex="0" aria-label="拖动调整画面，方向键移动，加减号缩放">
+        <img alt="" draggable="false" data-crop-img />
+        <span class="guides" aria-hidden="true" />
+      </div>
+      <label class="zoom">
+        缩放
+        <input type="range" min="0" max="1" step="0.001" value="0" data-zoom />
+      </label>
+      <div class="actions">
+        <button class="button" type="button" data-crop-save>使用这张</button>
+        <button class="button ghost" type="button" data-crop-reset>重新居中</button>
+        <button class="button ghost" type="button" data-crop-cancel>取消</button>
+      </div>
+    </dialog>
   </main>
 </Base>
 
 <script>
+  import { Cropper } from "../lib/crop"
+
   const card = document.querySelector<HTMLElement>("[data-card]")!
   const main = document.querySelector<HTMLElement>("main")!
   const status = document.querySelector<HTMLElement>("[data-status]")!
@@ -139,32 +159,98 @@ const uploads = [
   section.addEventListener("input", updateSub)
   role.addEventListener("input", updateSub)
 
-  // Safari cannot encode WebP and returns PNG, so the server accepts both.
-  async function encode(bitmap: ImageBitmap, maxWidth: number) {
-    const scale = Math.min(1, maxWidth / bitmap.width, (maxWidth * 1.4) / bitmap.height)
-    const canvas = new OffscreenCanvas(Math.round(bitmap.width * scale), Math.round(bitmap.height * scale))
-    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-    return canvas.convertToBlob({ type: "image/webp", quality: 0.86 })
+  const dialog = document.querySelector<HTMLDialogElement>("[data-cropper]")!
+  const frame = dialog.querySelector<HTMLElement>("[data-frame]")!
+  const cropImg = dialog.querySelector<HTMLImageElement>("[data-crop-img]")!
+  const zoom = dialog.querySelector<HTMLInputElement>("[data-zoom]")!
+  let cropper: Cropper | null = null
+  let kind = ""
+  let previewUrl = ""
+  // The card's own layers are swapped for the cropped result so the preview is exactly what will be saved.
+  const originals = new Map<Element, string>()
+
+  const layer = (name: string) => card.querySelector<HTMLElement>(`.front > .layer.${name === "portrait" ? "subject" : "sky"}`)!
+  const showOnCard = (url: string) => {
+    const target = layer(kind)
+    if (!originals.has(target)) originals.set(target, target.innerHTML)
+    target.innerHTML = `<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover${kind === "portrait" ? ";scale:1.08;object-position:50% 100%" : ""}">`
+  }
+  const restoreCard = () => {
+    originals.forEach((html, el) => (el.innerHTML = html))
+    originals.clear()
+  }
+
+  let rendering = false
+  const preview = async () => {
+    if (!cropper || rendering) return
+    rendering = true
+    const blob = await cropper.render(400)
+    rendering = false
+    URL.revokeObjectURL(previewUrl)
+    previewUrl = URL.createObjectURL(blob)
+    showOnCard(previewUrl)
+  }
+
+  const close = () => {
+    dialog.close()
+    cropper?.bitmap.close()
+    cropper = null
   }
 
   for (const input of document.querySelectorAll<HTMLInputElement>("[data-upload]")) {
     input.addEventListener("change", async () => {
       const file = input.files?.[0]
+      input.value = ""
       if (!file) return
-      show("正在处理图片…")
       try {
         const bitmap = await createImageBitmap(file)
-        const body = new FormData()
-        body.set("full", await encode(bitmap, 1000))
-        body.set("thumb", await encode(bitmap, 400))
-        const response = await fetch(`/api/me/media?kind=${input.dataset.upload}`, { method: "PUT", body })
-        if (!response.ok) throw new Error(await response.text())
-        location.reload()
-      } catch (error) {
-        show(`上传失败，${error instanceof Error ? error.message : error}`)
+        kind = input.dataset.upload!
+        dialog.dataset.kind = kind
+        dialog.querySelector("[data-crop-title]")!.textContent = kind === "portrait" ? "调整人像" : "调整背景"
+        cropImg.src = URL.createObjectURL(file)
+        dialog.showModal()
+        cropper = new Cropper(frame, cropImg, bitmap, kind === "background", (settled) => {
+          zoom.value = String(cropper?.zoom ?? 0)
+          if (settled) preview()
+        })
+        frame.focus()
+      } catch {
+        show("这张图片打不开，换一张试试。")
       }
     })
   }
+
+  zoom.addEventListener("input", () => cropper?.setZoom(Number(zoom.value), false))
+  zoom.addEventListener("change", () => preview())
+  dialog.querySelector("[data-crop-reset]")!.addEventListener("click", () => cropper?.reset())
+  dialog.querySelector("[data-crop-cancel]")!.addEventListener("click", () => {
+    restoreCard()
+    close()
+  })
+  dialog.addEventListener("cancel", () => {
+    restoreCard()
+    cropper?.bitmap.close()
+    cropper = null
+  })
+  dialog.querySelector("[data-crop-save]")!.addEventListener("click", async () => {
+    if (!cropper) return
+    const saving = cropper
+    cropper = null
+    dialog.close()
+    show("正在上传…")
+    try {
+      const body = new FormData()
+      body.set("full", await saving.render(1000))
+      body.set("thumb", await saving.render(400))
+      saving.bitmap.close()
+      const response = await fetch(`/api/me/media?kind=${kind}`, { method: "PUT", body })
+      if (!response.ok) throw new Error(await response.text())
+      location.reload()
+    } catch (error) {
+      restoreCard()
+      show(`上传失败，${error instanceof Error ? error.message : error}`)
+    }
+  })
 
   for (const button of document.querySelectorAll<HTMLButtonElement>("[data-remove]")) {
     button.addEventListener("click", async () => {
@@ -176,6 +262,121 @@ const uploads = [
 </script>
 
 <style>
+  .cropper {
+    width: min(26rem, calc(100vw - 32px));
+    max-height: calc(100svh - 32px);
+    margin: auto;
+    padding: 1.5rem;
+    color: var(--fg);
+    background: var(--bg);
+    overflow: auto;
+  }
+
+  /* No blur: the card on the left is the live preview and must stay visible. */
+  .cropper::backdrop {
+    background: linear-gradient(90deg, transparent 45%, rgb(0 0 0 / 0.45));
+  }
+
+  @media (min-width: 900px) {
+    .cropper {
+      margin-right: max(16px, (100vw - 1160px) / 2);
+    }
+  }
+
+  @media (max-width: 899px) {
+    .cropper::backdrop {
+      background: rgb(0 0 0 / 0.5);
+    }
+  }
+
+  .cropper[open] {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .cropper h2 {
+    font-size: 1.3rem;
+  }
+
+  .cropper p {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+
+  .frame {
+    position: relative;
+    width: min(100%, (100svh - 22rem) * 5 / 7);
+    justify-self: center;
+    aspect-ratio: 5 / 7;
+    overflow: hidden;
+    border-radius: 1rem;
+    background: rgb(var(--tint) / 0.06);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .frame:active {
+    cursor: grabbing;
+  }
+
+  .frame:focus-visible {
+    outline: 2px solid var(--glow);
+    outline-offset: 3px;
+  }
+
+  /* A cut-out portrait shows its transparency on a checkerboard. */
+  [data-kind="portrait"] .frame {
+    background: repeating-conic-gradient(rgb(var(--tint) / 0.08) 0 25%, transparent 0 50%) 0 0 / 18px 18px;
+  }
+
+  .frame img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    max-width: none;
+    transform-origin: 0 0;
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  .guides {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, transparent calc(33.33% - 0.5px), rgb(255 255 255 / 0.35) 0 calc(33.33% + 0.5px), transparent 0 calc(66.66% - 0.5px), rgb(255 255 255 / 0.35) 0 calc(66.66% + 0.5px), transparent 0),
+      linear-gradient(transparent calc(33.33% - 0.5px), rgb(255 255 255 / 0.35) 0 calc(33.33% + 0.5px), transparent 0 calc(66.66% - 0.5px), rgb(255 255 255 / 0.35) 0 calc(66.66% + 0.5px), transparent 0);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.25) inset;
+  }
+
+  .zoom input {
+    width: 100%;
+    accent-color: var(--glow);
+    background: none;
+    appearance: auto;
+    height: auto;
+  }
+
+  .zoom {
+    display: grid;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    justify-content: start;
+    gap: 0.6rem;
+  }
+
+  .actions .button {
+    padding-inline: 1.1rem;
+  }
+
   main {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -266,7 +467,7 @@ const uploads = [
     box-shadow: 0 0 0 3px rgb(var(--tint) / 0.15);
   }
 
-  input[type="range"] {
+  input[type="range"][data-live] {
     width: 100%;
     height: 0.6rem;
     border-radius: 99px;
@@ -274,7 +475,7 @@ const uploads = [
     background: linear-gradient(90deg in oklch longer hue, oklch(0.7 0.15 0), oklch(0.7 0.15 360));
   }
 
-  input[type="range"]::-webkit-slider-thumb {
+  input[type="range"][data-live]::-webkit-slider-thumb {
     width: 1.3rem;
     aspect-ratio: 1;
     border: 3px solid #fff;
