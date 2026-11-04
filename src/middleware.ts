@@ -27,16 +27,21 @@ async function memberCard(visitor: Visitor) {
 export const onRequest = defineMiddleware(async ({ request, url, locals, redirect }, next) => {
   const visitor = await accessVisitor(request)
   const isMember = visitor ? hasRole(visitor, env.MEMBER_ROLES) : false
+  // A failing database must not stop public pages and the outage page from rendering.
+  let failure: unknown = null
+  const member = isMember ? await memberCard(visitor!).catch((e) => ((failure = e), null)) : null
   locals.user = visitor && {
     email: visitor.email,
     name: visitor.name,
     picture: visitor.picture,
-    member: isMember ? await memberCard(visitor) : null,
+    member,
     admin: isMember && hasRole(visitor, env.ADMIN_ROLES),
   }
 
   const path = url.pathname
   if (!under(path, MEMBERS_ONLY)) return next()
+  // Without the card the visitor would wrongly be told they are not a member.
+  if (failure) throw failure
   const api = path.startsWith("/api/") || path.startsWith("/media/")
   if (!locals.user) {
     return api ? new Response(null, { status: 401 }) : redirect(`/login?next=${encodeURIComponent(path + url.search)}`)
