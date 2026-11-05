@@ -1,0 +1,435 @@
+---
+import SharePoster from "../components/SharePoster.astro"
+import Base from "../layouts/Base.astro"
+import { db, formatShort, ZONE, type Event } from "../lib/db"
+
+const { user } = Astro.locals
+if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`)
+
+const thisYear = Number(new Date().toLocaleString("en-US", { year: "numeric", timeZone: ZONE }))
+const asked = Number(Astro.url.searchParams.get("y"))
+const year = Number.isInteger(asked) && asked >= 2026 && asked <= thisYear ? asked : thisYear
+const from = new Date(`${year}-01-01T00:00:00+08:00`).toISOString()
+const until = new Date(`${year + 1}-01-01T00:00:00+08:00`).toISOString()
+
+interface Kept extends Event {
+  serial: number
+  redeemed_at: number | null
+}
+
+// Both read the visitor's passes through the holder index; companions are limited to members, who already see each other.
+const [{ results: passes }, { results: companions }] = await Promise.all([
+  db()
+    .prepare(
+      `SELECT e.*, p.serial, p.redeemed_at FROM passes p JOIN events e ON e.slug = p.event
+       WHERE p.email = ? AND e.starts_at >= ? AND e.starts_at < ? ORDER BY e.starts_at`,
+    )
+    .bind(user.email, from, until)
+    .all<Kept>(),
+  db()
+    .prepare(
+      `SELECT m.id, m.name, m.hue, COUNT(*) AS n FROM passes mine
+       JOIN events e ON e.slug = mine.event
+       JOIN passes other ON other.event = mine.event AND other.email != mine.email AND other.redeemed_at IS NOT NULL
+       JOIN members m ON m.email = other.email
+       WHERE mine.email = ? AND mine.redeemed_at IS NOT NULL AND e.starts_at >= ? AND e.starts_at < ?
+       GROUP BY m.id ORDER BY n DESC, m.name LIMIT 3`,
+    )
+    .bind(user.email, from, until)
+    .all<{ id: string; name: string; hue: number; n: number }>(),
+])
+
+const kept = passes.filter((p) => p.redeemed_at)
+const missed = passes.filter((p) => !p.redeemed_at && Date.parse(p.ends_at) < Date.now()).length
+const first = kept[0]
+const early = kept
+  .map((p) => ({ p, minutes: Math.round((Date.parse(p.starts_at) - p.redeemed_at!) / 60000) }))
+  .sort((a, b) => b.minutes - a.minutes)[0]
+const venues = Object.entries(Object.groupBy(kept, (p) => p.venue)).sort((a, b) => b[1]!.length - a[1]!.length)
+const [venue, atVenue] = venues[0] ?? []
+const firsts = kept.filter((p) => p.serial === 1).length
+const total = user.member?.kept ?? kept.length
+const tier = total >= 10 ? "镭射箔" : total >= 5 ? "金箔" : null
+const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: ZONE })
+---
+
+<Base title={`${year} 年度回顾 · NBTCA`} bare>
+  <main class="recap" data-recap>
+    {kept.length === 0
+      ? (
+          <section class="slide plain" data-slide>
+            <p class="eyebrow">{year} · Your year</p>
+            <h1>{year} 年还没有入场过的活动</h1>
+            <p class="muted">{passes.length ? `你领过 ${passes.length} 张券，下次记得到场撕开贴纸。` : "去活动页领一张券，来现场看看吧。"}</p>
+            <a class="button" href="/e">看看最近的活动</a>
+          </section>
+        )
+      : (
+          <>
+            <ol class="progress" aria-hidden="true" data-progress />
+            <section class="slide intro" data-slide>
+              <div class="knockout" aria-hidden="true">
+                <video src="/footage/nbtca.mp4" muted loop playsinline autoplay />
+                <span>{year}</span>
+              </div>
+              <p class="eyebrow">NBTCA · Your year</p>
+              <h1>{user.name} 的 {year}</h1>
+              <p class="muted">轻点屏幕继续</p>
+            </section>
+
+            <section class="slide" data-slide>
+              <p class="eyebrow">Stubs kept</p>
+              <p class="big">{kept.length}</p>
+              <h2>今年你走进了 {kept.length} 场活动</h2>
+              <p class="muted">一共领了 {passes.length} 张券{missed > 0 && `，有 ${missed} 场没能赶上`}。</p>
+            </section>
+
+            <section class="slide" data-slide>
+              <p class="eyebrow">The first stub</p>
+              <h2>第一张票根来自<br /><em>{first!.title}</em></h2>
+              <p class="muted">{formatShort(first!.starts_at)} · {first!.venue} · № {String(first!.serial).padStart(4, "0")}</p>
+            </section>
+
+            {early && early.minutes > 0 && (
+              <section class="slide" data-slide>
+                <p class="eyebrow">Early bird</p>
+                <p class="big">{early.minutes}<small>分钟</small></p>
+                <h2>最早的一次，你提前 {early.minutes} 分钟就到了</h2>
+                <p class="muted">{early.p.title}，{clock(early.p.redeemed_at!)} 入场。{firsts > 0 && `你还拿到过 ${firsts} 次 № 0001。`}</p>
+              </section>
+            )}
+
+            {venue && atVenue!.length > 1 && (
+              <section class="slide" data-slide>
+                <p class="eyebrow">Usual spot</p>
+                <h2>你最常出现在<br /><em>{venue}</em></h2>
+                <p class="muted">在这里去过 {atVenue!.length} 场活动。</p>
+              </section>
+            )}
+
+            {companions.length > 0 && (
+              <section class="slide" data-slide>
+                <p class="eyebrow">Side by side</p>
+                <h2>和你同场最多的人</h2>
+                <ol class="people">
+                  {companions.map((c) => (
+                    <li>
+                      <a href={`/members/${c.id}`}><span class="avatar" style={`--hue: ${c.hue}`}>{[...c.name][0]}</span>{c.name}</a>
+                      <span class="muted">{c.n} 场</span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+
+            <section class="slide summary" data-slide>
+              <p class="eyebrow">{year} · Wrapped</p>
+              <h2>{kept.length} 场活动，{kept.length} 张票根</h2>
+              <ul class="stubs">
+                {kept.map((p) => <li style={`--r: ${((p.serial * 37) % 7) - 3}deg`}><b>{p.word}</b><span>{formatShort(p.starts_at).split(" ")[0]}</span></li>)}
+              </ul>
+              {tier && <p class="tier">累计入场 {total} 场，你的社员卡已经换上了{tier}。</p>}
+              <div class="row">
+                <SharePoster
+                  footage=".intro video"
+                  label="保存年度分享图"
+                  spec={{
+                    word: String(year),
+                    eyebrow: ["NBTCA Year in Stubs", String(year)],
+                    holder: user.name,
+                    tag: tier ?? (user.member ? "Member" : "Guest"),
+                    title: `${kept.length} 场活动的 ${year}`,
+                    facts: [
+                      ["Events", `${kept.length} 场`],
+                      ["First", first!.title],
+                      ["Spot", venue ?? first!.venue],
+                    ],
+                    link: `${Astro.url.origin}/e`,
+                    linkLabel: "扫码看看活动",
+                  }}
+                />
+                <a class="button ghost small" href={user.member ? "/me" : "/e"}>回到票夹</a>
+              </div>
+            </section>
+          </>
+        )}
+  </main>
+</Base>
+
+<script>
+  import { dissolveMask } from "../lib/dissolve"
+  import { tap } from "../lib/sound"
+
+  const root = document.querySelector<HTMLElement>("[data-recap]")!
+  const slides = [...root.querySelectorAll<HTMLElement>("[data-slide]")]
+  const progress = root.querySelector<HTMLOListElement>("[data-progress]")
+  const STAY = 6000
+  let index = 0
+  let timer = 0
+
+  if (progress) {
+    progress.append(...slides.map(() => Object.assign(document.createElement("li"), { innerHTML: "<i></i>" })))
+    root.style.setProperty("--sprite", dissolveMask({ cols: 9, rows: 16, seed: 7 }))
+    root.style.setProperty("--stay", `${STAY}ms`)
+  }
+
+  // Each slide develops cell by cell and the bar above it fills while it stays; the last one stays put.
+  function show(next: number, sound = true) {
+    index = Math.max(0, Math.min(slides.length - 1, next))
+    slides.forEach((slide, i) => slide.toggleAttribute("data-current", i === index))
+    progress?.querySelectorAll("li").forEach((bar, i) => {
+      bar.toggleAttribute("data-done", i < index)
+      bar.toggleAttribute("data-current", i === index)
+    })
+    if (sound) tap()
+    clearTimeout(timer)
+    if (index < slides.length - 1) timer = window.setTimeout(() => show(index + 1, false), STAY)
+  }
+
+  if (progress) {
+    root.addEventListener("click", (e) => {
+      if ((e.target as Element).closest("a, button, dialog")) return
+      show(index + (e.clientX < innerWidth / 3 ? -1 : 1))
+    })
+    addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === " ") show(index + 1)
+      if (e.key === "ArrowLeft") show(index - 1)
+    })
+    // Holding a finger down pauses, the way stories do.
+    root.addEventListener("pointerdown", () => {
+      clearTimeout(timer)
+      root.dataset.held = ""
+    })
+    root.addEventListener("pointerup", () => {
+      delete root.dataset.held
+      if (index < slides.length - 1) timer = window.setTimeout(() => show(index + 1, false), STAY)
+    })
+    show(0, false)
+  } else {
+    slides[0]!.toggleAttribute("data-current", true)
+  }
+</script>
+
+<style is:global>
+  .recap {
+    position: relative;
+    min-height: 100svh;
+    display: grid;
+    max-width: 34rem;
+    margin-inline: auto;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .recap .progress {
+    position: absolute;
+    inset: calc(env(safe-area-inset-top, 0px) + 0.9rem) 0 auto;
+    z-index: 2;
+    display: flex;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .recap .progress li {
+    flex: 1;
+    height: 3px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: rgb(var(--tint) / 0.18);
+  }
+
+  .recap .progress i {
+    display: block;
+    height: 100%;
+    background: var(--fg);
+    transform-origin: left;
+    scale: 0 1;
+  }
+
+  .recap .progress [data-done] i {
+    scale: 1 1;
+  }
+
+  .recap .progress [data-current] i {
+    animation: recap-fill var(--stay) linear forwards;
+  }
+
+  .recap[data-held] .progress [data-current] i {
+    animation-play-state: paused;
+  }
+
+  .recap .progress li:last-child[data-current] i {
+    animation: none;
+    scale: 1 1;
+  }
+
+  @keyframes recap-fill {
+    to {
+      scale: 1 1;
+    }
+  }
+
+  .recap .slide {
+    grid-area: 1 / 1;
+    display: none;
+    align-content: center;
+    gap: 1.2rem;
+    padding-block: 4rem;
+  }
+
+  .recap .slide[data-current] {
+    display: grid;
+    mask: var(--sprite) 0 0 / 1500% 100% no-repeat;
+    animation: recap-develop 0.7s steps(15, jump-none) both;
+  }
+
+  .recap .plain[data-current] {
+    mask: none;
+    animation: none;
+  }
+
+  @keyframes recap-develop {
+    from {
+      mask-position: 0% 0;
+    }
+    to {
+      mask-position: 100% 0;
+    }
+  }
+
+  .recap h1,
+  .recap h2 {
+    font: 800 clamp(1.8rem, 7vw, 2.6rem) / 1.2 var(--wide);
+    font-stretch: 108%;
+  }
+
+  .recap h2 em {
+    font-style: normal;
+    color: var(--glow);
+  }
+
+  .recap .muted {
+    margin: 0;
+    line-height: 1.7;
+  }
+
+  .recap .big {
+    margin: 0;
+    font: 400 clamp(8rem, 40vw, 13rem) / 0.8 var(--display);
+  }
+
+  .recap .big small {
+    margin-left: 0.4rem;
+    font: 700 1.2rem / 1 var(--sans);
+    color: var(--muted);
+  }
+
+  /* The year cut out of a black sheet over the footage, like the word on a pass. */
+  .recap .knockout {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: 1.5rem;
+    isolation: isolate;
+    container-type: inline-size;
+  }
+
+  .recap .knockout video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .recap .knockout span {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: #000;
+    color: #fff;
+    font: 400 52cqi / 1 var(--display);
+    mix-blend-mode: multiply;
+  }
+
+  .recap .people {
+    display: grid;
+    gap: 0.9rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .recap .people li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: var(--panel);
+  }
+
+  .recap .people a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .recap .avatar {
+    display: grid;
+    place-items: center;
+    width: 2.2rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: oklch(0.6 0.16 var(--hue));
+    color: #fff;
+    font-size: 0.95rem;
+  }
+
+  .recap .stubs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .recap .stubs li {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.55rem 0.8rem 0.5rem;
+    border-radius: 0.3rem 0.3rem 0.5rem 0.5rem;
+    background: #f6f5f1;
+    color: #0b0d12;
+    rotate: var(--r);
+    clip-path: polygon(0 10%, 10% 0, 20% 10%, 30% 0, 40% 10%, 50% 0, 60% 10%, 70% 0, 80% 10%, 90% 0, 100% 10%, 100% 100%, 0 100%);
+  }
+
+  .recap .stubs b {
+    font: 900 1.1rem / 1 var(--wide);
+    font-stretch: 120%;
+  }
+
+  .recap .stubs span {
+    font: 600 0.65rem / 1 var(--wide);
+    color: rgb(11 13 18 / 0.55);
+  }
+
+  .recap .tier {
+    margin: 0;
+    color: var(--note);
+  }
+
+  .recap .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+</style>

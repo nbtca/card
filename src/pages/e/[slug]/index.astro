@@ -1,6 +1,7 @@
 ---
 import Lanyard from "../../../cards/Lanyard.astro"
 import { passDesign } from "../../../cards/pass"
+import SharePoster from "../../../components/SharePoster.astro"
 import Base from "../../../layouts/Base.astro"
 import { checkInOpensAt, checkInPhase, claimPhase, db, formatClock, formatRange, formatShort, formatTime, getEvent, randomId, sameDay, ZONE, type Member, type Pass } from "../../../lib/db"
 import { parseAttendee } from "../../../lib/attendee"
@@ -189,6 +190,23 @@ const chip = {
                       </form>
                     )
                   : <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>登录后领取活动券</a>}
+        <SharePoster
+          footage=".stage video"
+          spec={{
+            word: event.word,
+            eyebrow: ["NBTCA Event Pass", local({ day: "numeric", month: "short", year: "numeric" })],
+            holder: pass?.name ?? "一起来吧",
+            tag: pass ? (user?.member ? "Member" : "Guest") : "Invite",
+            title: event.title,
+            facts: [
+              ["Venue", event.venue],
+              ["Date", start.toLocaleDateString("zh-CN", { month: "long", day: "numeric", timeZone: ZONE })],
+              ["Time", formatClock(event.starts_at)],
+            ],
+            link: `${Astro.url.origin}/e/${event.slug}`,
+            linkLabel: phase === "open" && !full ? "扫码领券" : "扫码看活动",
+          }}
+        />
         {event.capacity !== null && (
           <div class="meter" style={`--fill: ${Math.min(1, claimed / event.capacity)}`}>
             <span />

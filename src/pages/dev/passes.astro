@@ -1,0 +1,110 @@
+---
+import { passDesigns } from "../../cards/pass"
+import Base from "../../layouts/Base.astro"
+import type { Event } from "../../lib/db"
+import { showcaseEvent } from "../../lib/showcase"
+
+const hour = 36e5
+const at = (offset: number) => new Date(Date.now() + offset).toISOString()
+const event = (startsIn: number): Event => ({
+  ...showcaseEvent(),
+  slug: "preview",
+  claim_from: at(startsIn - 72 * hour),
+  claim_until: at(startsIn),
+  starts_at: at(startsIn),
+  ends_at: at(startsIn + 2 * hour),
+})
+const pass = (redeemed = false) => ({ id: "preview", serial: 42, redeemed_at: redeemed ? Date.now() - 600e3 : null })
+const states = [
+  { label: "预览", note: "活动页上还没领券时", event: event(72 * hour), pass: null },
+  { label: "待入场", note: "贴纸只能掀起一角", event: event(72 * hour), pass: pass() },
+  { label: "可以入场", note: "撕开贴纸露出入场码", event: event(-0.2 * hour), pass: pass() },
+  { label: "已入场", note: "票根撕下，盖上入场章", event: event(-0.5 * hour), pass: pass(true) },
+  { label: "已结束", note: "没有到场的券", event: event(-5 * hour), pass: pass() },
+]
+---
+
+<Base title="卡面工作台 · NBTCA">
+  <main class="wrap">
+    <header>
+      <p class="eyebrow">Pass designs</p>
+      <h1 class="title">卡面工作台</h1>
+      <p class="lede">
+        <code>src/cards/passes/</code> 里的每个设计在一张券会经历的五种状态下并排摆在这里。新写一个设计，先在这里看它每一步是否都成立。
+      </p>
+    </header>
+    {Object.entries(passDesigns).map(([name, Design]) => (
+      <section>
+        <h2>{name}</h2>
+        <ol>
+          {states.map((s) => (
+            <li>
+              <Design event={s.event} pass={s.pass} holder="你的名字" guest={false} />
+              <p><b>{s.label}</b><span>{s.note}</span></p>
+            </li>
+          ))}
+        </ol>
+      </section>
+    ))}
+  </main>
+</Base>
+
+<style>
+  main {
+    display: grid;
+    gap: 4rem;
+    padding-block: 3rem 5rem;
+  }
+
+  header {
+    display: grid;
+    gap: 1.1rem;
+  }
+
+  code {
+    font-size: 0.9em;
+    color: var(--fg);
+  }
+
+  section {
+    display: grid;
+    gap: 1.75rem;
+  }
+
+  h2 {
+    font: 800 1.4rem / 1 var(--wide);
+    font-stretch: 112%;
+  }
+
+  ol {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: min(300px, 78vw);
+    gap: 2.5rem;
+    margin: 0 -16px;
+    padding: 1rem 16px 2rem;
+    list-style: none;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+
+  li {
+    display: grid;
+    gap: 1.25rem;
+    align-content: start;
+    scroll-snap-align: start;
+  }
+
+  p {
+    display: grid;
+    gap: 0.3rem;
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  b {
+    font-size: 1rem;
+    color: var(--fg);
+  }
+</style>
