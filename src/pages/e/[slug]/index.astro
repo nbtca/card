@@ -199,7 +199,7 @@ const chip = {
                   : <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>登录后领取活动券</a>}
         <div class="extras">
           {pass && !pass.redeemed_at && checkInPhase(event) !== "ended" && (
-            <a class="action" href={`/e/${event.slug}/calendar.ics`} title="开场前半小时提醒">
+            <a class="action" href={`/e/${event.slug}/calendar.ics`} title="开场前半小时提醒" data-calendar>
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
               加入日历
             </a>
@@ -277,6 +277,8 @@ const chip = {
   addEventListener("pass:redeemed", (e) => {
     const at = new Date((e as CustomEvent<{ at: number }>).detail.at)
     say(`已核销，${at.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} 入场。玩得开心！`)
+    // A reminder to arrive means nothing once the holder is in.
+    document.querySelector("[data-calendar]")?.remove()
   })
 </script>
 
