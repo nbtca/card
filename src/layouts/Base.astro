@@ -112,11 +112,40 @@ const links = [
         label()
       })
       label()
+
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js")
+      const mark = () => root.toggleAttribute("data-offline", !navigator.onLine)
+      addEventListener("online", mark)
+      addEventListener("offline", mark)
+      mark()
     </script>
+    <p class="offline" role="status">没有网络，显示的是上次打开时的内容</p>
   </body>
 </html>
 
 <style>
+  .offline {
+    position: fixed;
+    left: 50%;
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    z-index: 50;
+    display: none;
+    margin: 0;
+    padding: 0.55rem 1rem;
+    border: 1px solid rgb(245 184 61 / 0.4);
+    border-radius: 99px;
+    background: var(--nav);
+    backdrop-filter: blur(14px);
+    color: var(--warn);
+    font-size: 0.82rem;
+    white-space: nowrap;
+    translate: -50% 0;
+  }
+
+  :global([data-offline]) .offline {
+    display: block;
+  }
+
   header {
     view-transition-name: nav;
     position: sticky;

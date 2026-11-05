@@ -73,8 +73,14 @@ export const countMembers = async () =>
 
 export const getEvent = (slug: string) => db().prepare("SELECT * FROM events WHERE slug = ?").bind(slug).first<Event>()
 
-export const listEvents = async () =>
-  (await db().prepare("SELECT * FROM events ORDER BY starts_at DESC").all<Event>()).results
+// Events whose door may still be open, for checking in by serial.
+export const recentEvents = async () =>
+  (
+    await db()
+      .prepare("SELECT * FROM events WHERE ends_at >= ? ORDER BY starts_at")
+      .bind(new Date(Date.now() - 864e5).toISOString())
+      .all<Event>()
+  ).results
 
 export const upcomingEvents = async (limit = 50) =>
   (

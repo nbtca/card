@@ -154,7 +154,14 @@ const chip = {
 
       <div class="act reveal" style="--i: 6">
         {pass
-          ? <p class="notice" data-pass-notice>{passNotice}</p>
+          ? (
+              <>
+                <p class="notice" data-pass-notice>{passNotice}</p>
+                {!pass.redeemed_at && checkInPhase(event) !== "ended" && (
+                  <a class="button ghost small" href={`/e/${event.slug}/calendar.ics`}>加入日历，开场前半小时提醒我</a>
+                )}
+              </>
+            )
           : phase === "upcoming"
             ? <p class="notice">{formatTime(event.claim_from)} 开放领取，到时再来吧。</p>
             : phase === "closed"
