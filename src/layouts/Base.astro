@@ -4,9 +4,11 @@ import "../styles/base.css"
 interface Props {
   title: string
   description?: string
+  // Full-screen pages such as the entry wall leave out the navigation and footer.
+  bare?: boolean
 }
 
-const { title, description = "浙大宁波理工学院计算机协会的社员卡与活动券。" } = Astro.props
+const { title, description = "浙大宁波理工学院计算机协会的社员卡与活动券。", bare = false } = Astro.props
 const { user } = Astro.locals
 const path = Astro.url.pathname
 const links = [
@@ -41,7 +43,7 @@ const links = [
       {
         "prerender": [
           {
-            "where": { "or": [{ "href_matches": "/" }, { "href_matches": "/e/*" }, { "href_matches": "/members/*" }, { "href_matches": "/e" }, { "href_matches": "/members" }] },
+            "where": { "and": [{ "or": [{ "href_matches": "/" }, { "href_matches": "/e/*" }, { "href_matches": "/members/*" }, { "href_matches": "/e" }, { "href_matches": "/members" }] }, { "not": { "href_matches": "/e/*/*" } }] },
             "eagerness": "moderate"
           }
         ]
@@ -50,7 +52,7 @@ const links = [
   </head>
   <body>
     <div class="light" aria-hidden="true" />
-    <header>
+    <header hidden={bare}>
       <nav class="wrap">
         <a class="brand" href="/" aria-label="首页">
           <span class="ring" />
@@ -74,7 +76,7 @@ const links = [
       </nav>
     </header>
     <slot />
-    <footer class="wrap">
+    <footer class="wrap" hidden={bare}>
       <span class="ring" />
       <p>浙大宁波理工学院计算机协会</p>
       <button class="toggle" type="button" data-theme-toggle>跟随系统</button>

@@ -39,6 +39,7 @@ const note = (s: Stub) =>
             <b>{s.title}</b>
             <span>{note(s)}</span>
             <small>№ {String(s.serial).padStart(4, "0")}</small>
+            {s.album && <a href={s.album}>看相册</a>}
           </p>
         </li>
       )
@@ -110,6 +111,14 @@ const note = (s: Stub) =>
   b {
     font-size: 1rem;
     color: var(--fg);
+  }
+
+  p a {
+    justify-self: start;
+    margin-top: 0.2rem;
+    color: var(--glow);
+    font-size: 0.82rem;
+    text-decoration: none;
   }
 
   small {

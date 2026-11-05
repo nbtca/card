@@ -129,6 +129,7 @@ const chip = {
       </div>
 
       {event.summary && <p class="summary reveal" style="--i: 3">{event.summary}</p>}
+      {event.album && <a class="button ghost small album reveal" style="--i: 3" href={event.album}>看活动相册</a>}
       {(host || editable) && (
         <div class="host reveal" style="--i: 3">
           {host && <a href={`/members/${host.id}`} class="by"><span class="avatar" style={`--hue: ${host.hue}`}>{[...host.name][0]}</span>由 {host.name} 发起</a>}
@@ -311,6 +312,10 @@ const chip = {
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--fg);
+  }
+
+  .album {
+    justify-self: start;
   }
 
   .summary {

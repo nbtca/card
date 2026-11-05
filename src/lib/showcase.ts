@@ -15,6 +15,7 @@ export const showcaseMember = (): Member => ({
   hue: 212,
   portrait: null,
   background: null,
+  kept: 0,
 })
 
 export const showcaseEvent = (): Event => {
@@ -34,5 +35,6 @@ export const showcaseEvent = (): Event => {
     claim_until: now,
     starts_at: now,
     ends_at: now,
+    album: null,
   }
 }
