@@ -125,6 +125,7 @@ const uploads = [
 
   </main>
   <section class="wrap passes">
+    {kept.length > 0 && <a class="button ghost recap-link" href="/recap">看我的年度回顾</a>}
     {upcoming.length > 0 && <PassShelf stubs={upcoming} guest={false} eyebrow="Upcoming" title="待入场" lede="到场后打开券，撕开贴纸给工作人员扫码。" />}
     <PassShelf
       stubs={kept}
@@ -413,6 +414,10 @@ const uploads = [
     align-items: start;
     gap: 3rem 4rem;
     padding-block: 3rem;
+  }
+
+  .recap-link {
+    justify-self: start;
   }
 
   .passes {

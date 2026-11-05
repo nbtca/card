@@ -1,0 +1,106 @@
+---
+import type { PosterSpec } from "../lib/poster"
+
+interface Props {
+  spec: Omit<PosterSpec, "footage">
+  // The video or image on the page whose current frame becomes the footage.
+  footage?: string
+  label?: string
+}
+
+const { spec, footage, label = "生成分享图" } = Astro.props
+---
+
+<button class="button ghost small" type="button" data-poster={JSON.stringify(spec)} data-footage={footage}>{label}</button>
+<dialog class="poster-dialog panel" data-poster-dialog aria-label="分享图">
+  <img alt="分享图" data-poster-image />
+  <p class="muted">长按图片保存，或直接发给朋友。</p>
+  <div class="row">
+    <button class="button" type="button" data-poster-share hidden>分享</button>
+    <button class="button ghost" type="button" data-poster-close>关闭</button>
+  </div>
+</dialog>
+
+<script>
+  import { dissolveMask } from "../lib/dissolve"
+  import { drawPoster, type PosterSpec } from "../lib/poster"
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-poster]")) {
+    const dialog = button.nextElementSibling as HTMLDialogElement
+    const image = dialog.querySelector<HTMLImageElement>("[data-poster-image]")!
+    const share = dialog.querySelector<HTMLButtonElement>("[data-poster-share]")!
+    let file: File | null = null
+
+    button.addEventListener("click", async () => {
+      const label = button.textContent
+      button.disabled = true
+      button.textContent = "正在生成…"
+      const source = button.dataset.footage ? document.querySelector<HTMLVideoElement | HTMLImageElement>(button.dataset.footage) : null
+      const ready = source instanceof HTMLVideoElement ? source.readyState >= 2 : !!source?.complete
+      const blob = await drawPoster({ ...(JSON.parse(button.dataset.poster!) as Omit<PosterSpec, "footage">), footage: ready ? source : null })
+      file = new File([blob], `nbtca.${blob.type.split("/")[1]}`, { type: blob.type })
+      URL.revokeObjectURL(image.src)
+      image.src = URL.createObjectURL(blob)
+      image.style.setProperty("--sprite", dissolveMask({ cols: 8, rows: 12, seed: Date.now() % 97 }))
+      share.hidden = !navigator.canShare?.({ files: [file] })
+      button.disabled = false
+      button.textContent = label
+      dialog.showModal()
+    })
+    share.addEventListener("click", () => file && navigator.share({ files: [file] }).catch(() => {}))
+    dialog.querySelector("[data-poster-close]")!.addEventListener("click", () => dialog.close())
+    dialog.addEventListener("click", (e) => e.target === dialog && dialog.close())
+  }
+</script>
+
+<style>
+  .poster-dialog {
+    width: min(26rem, calc(100vw - 32px));
+    max-height: calc(100svh - 32px);
+    margin: auto;
+    padding: 1.25rem;
+    overflow: auto;
+    color: var(--fg);
+    background: var(--bg);
+  }
+
+  .poster-dialog::backdrop {
+    background: rgb(0 0 0 / 0.6);
+    backdrop-filter: blur(6px);
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    border-radius: 1rem;
+    -webkit-touch-callout: default;
+  }
+
+  /* The picture develops cell by cell, the same way stubs arrive on the entry wall. */
+  .poster-dialog[open] img {
+    mask: var(--sprite) 0 0 / 1500% 100% no-repeat;
+    animation: develop 0.8s steps(15, jump-none) both;
+  }
+
+  @keyframes develop {
+    from {
+      mask-position: 0% 0;
+    }
+    to {
+      mask-position: 100% 0;
+    }
+  }
+
+  p {
+    margin: 1rem 0;
+    font-size: 0.88rem;
+    text-align: center;
+  }
+
+  .row {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+</style>

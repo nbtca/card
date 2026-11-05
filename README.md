@@ -61,7 +61,7 @@ Student IDs must match `[23]` + entry year + 4-digit major + 3-digit number, and
 
 ## Designing a pass
 
-Each `.astro` file in `src/cards/passes/` is a design, named after the file and listed in the event editor. It receives `PassProps` from `src/cards/pass.ts`, whose `ticket()` supplies the dates, serial, check-in state and QR path. Mark elements with `data-bind` for live preview in the editor. Events whose design file is missing fall back to `default`.
+Each `.astro` file in `src/cards/passes/` is a design, named after the file and listed in the event editor. It receives `PassProps` from `src/cards/pass.ts`, whose `ticket()` supplies the dates, serial, check-in state and QR path. Mark elements with `data-bind` for live preview in the editor. Events whose design file is missing fall back to `default`. `/dev/passes` shows every design in each state a pass goes through, from preview to torn.
 
 ## Project structure
 
