@@ -535,6 +535,18 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06) inset;
   }
 
+  /* Diffraction lines like a security sticker: their angle turns with the tilt, so they flicker as it moves. */
+  .sticker::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: repeating-linear-gradient(calc(70deg + var(--x, 0) * 40deg + var(--y, 0) * 20deg), rgb(255 255 255 / 0.32) 0 0.25cqi, transparent 0.25cqi 0.9cqi);
+    mix-blend-mode: overlay;
+    mask: radial-gradient(circle at calc(50% + var(--x, 0) * 60%) calc(50% + var(--y, 0) * 60%), #000, transparent 70%);
+    pointer-events: none;
+  }
+
   .sticker .seal {
     grid-row: span 2;
     width: 16cqi;

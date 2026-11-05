@@ -35,7 +35,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
         <div class="layer subject">
           {portrait
             ? <img src={portrait} alt={name} decoding="async" loading={full ? "eager" : "lazy"} />
-            : <span class="ring" />}
+            : <span class="ring"><i class="band" /></span>}
         </div>
         <div class="blurs" aria-hidden="true">
           {Array.from({ length: layers }, (_, i) => <div style={`--index: ${i + 1}; --layers: ${layers}`} />)}
@@ -48,14 +48,14 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
           <p class="name">{name}</p>
           <p class="sub">{[section, role].filter(Boolean).join(" · ")}</p>
         </div>
-        <div class="foil" />
         {full && <div class="sparkle" />}
+        <div class="frame" aria-hidden="true"><i class="band" /></div>
         <div class="glare" />
       </section>
 
       {full && (
         <section class="face back">
-          <span class="ring" />
+          <span class="ring"><i class="band" /></span>
           <dl>
             <div><dt>代号</dt><dd>{alias}</dd></div>
             <div><dt>入会</dt><dd>{joined}</dd></div>
@@ -65,8 +65,8 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
           </dl>
           <p class="motto">{motto || "To be at the intersection of technology and liberal arts."}</p>
           <p class="org">浙大宁波理工学院计算机协会</p>
-          <div class="foil" />
         {full && <div class="sparkle" />}
+        <div class="frame" aria-hidden="true"><i class="band" /></div>
           <div class="glare" />
         </section>
       )}
@@ -78,6 +78,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
 .card {
   --px: calc(50% + var(--x, 0) * 50%);
   --py: calc(50% + var(--y, 0) * 50%);
+
   --tint: oklch(0.62 0.16 var(--hue));
   display: block;
   position: relative;
@@ -200,8 +201,11 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   font-synthesis: none;
   text-transform: uppercase;
   white-space: nowrap;
-  color: rgb(255 255 255 / 0.92);
   translate: calc(-50% + var(--x, 0) * -3cqi) calc(var(--y, 0) * -2.5cqi);
+}
+
+.word {
+  color: rgb(255 255 255 / 0.92);
 }
 
 .subject {
@@ -218,7 +222,8 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   position: absolute;
   display: block;
   aspect-ratio: 1;
-  background: currentColor;
+  overflow: hidden;
+  background: #fff;
   mask: url("/logo.svg") center / contain no-repeat;
 }
 
@@ -226,7 +231,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   width: 92cqi;
   left: 4cqi;
   top: 38%;
-  color: rgb(255 255 255 / 0.9);
+  opacity: 0.9;
   animation: spin 80s linear infinite;
 }
 
@@ -281,7 +286,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   bottom: calc(100% + 3cqi);
   width: 10cqi;
   height: 1px;
-  background: currentColor;
+  background: #fff;
   translate: -50% 0;
 }
 
@@ -291,29 +296,32 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   opacity: 0.8;
 }
 
-.foil,
 .glare {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-.foil {
-  background:
-    repeating-linear-gradient(
-      115deg,
-      #ff7773 0%,
-      #ffed5f 7%,
-      #a8ff5f 14%,
-      #83fff7 21%,
-      #7894ff 28%,
-      #d875ff 35%,
-      #ff7773 42%
-    )
-    var(--px) var(--py) / 300% 300%;
-  mix-blend-mode: color-dodge;
-  opacity: calc(0.05 + (abs(var(--x, 0)) + abs(var(--y, 0))) * 0.1);
-  mask: linear-gradient(-45deg, transparent 20%, #fff 50%, transparent 80%) var(--px) var(--py) / 250% 250%;
+/* Foil sits only where a real card has it, the logo and the edge. The masks never change; a rainbow band
+   slides underneath with translate, so tilting moves a composited layer and repaints nothing. */
+.band {
+  position: absolute;
+  inset: -100%;
+  background: linear-gradient(115deg, transparent 40%, #ff9b96 44%, #ffef8a 47%, #b9ff8a 50%, #9ffff8 53%, #9cb0ff 56%, #e3a3ff 59%, transparent 63%);
+  translate: calc(var(--x, 0) * -32%) calc(var(--y, 0) * -24%);
+  will-change: translate;
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  padding: 1cqi;
+  border-radius: inherit;
+  background: rgb(255 255 255 / 0.35);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 .sparkle {
