@@ -1,73 +1,113 @@
-# NBTCA Cards
+<div align="center">
 
-Member ID cards and event passes for the Computer Association of NingboTech University, served from `card.nbtca.space`.
+<h1>NBTCA Cards</h1>
 
-The card effects build on ideas from Jhey Tompkins: the layered parallax and progressive blur of [osaka-card](https://github.com/jh3y/osaka-card), and the video-through-type of the [knockout video card](https://www.jhey.dev/prototypes/2026/knockout-video-card/). The holographic foil follows [pokemon-cards-css](https://github.com/simeydotme/pokemon-cards-css).
+<p>Member ID cards and event passes for the Computer Association of NingboTech University.</p>
 
-The bundled fonts, [Bebas Neue](https://github.com/dharmatype/Bebas-Neue) and [Archivo](https://github.com/Omnibus-Type/Archivo), are licensed under the [SIL Open Font License 1.1](https://openfontlicense.org).
+<p>
+  <a href="https://card.nbtca.space"><img alt="card.nbtca.space" src="https://img.shields.io/badge/live-card.nbtca.space-004b86"></a>
+  <a href="https://github.com/nbtca/card/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/nbtca/card/actions/workflows/ci.yml/badge.svg"></a>
+</p>
 
-## Cards
+<img alt="A member card and an event pass with footage showing through the word fix" src="docs/hero.webp" width="820">
 
-Both cards live in `src/cards/` and share `tilt.ts`, which follows the pointer on desktop and device orientation on phones. iOS asks for orientation access on the first tap.
+</div>
 
-- **Member card** (`MemberCard.astro`): a background, a large word, and a transparent portrait stack so the word sits behind the person and the layers drift apart as the card tilts. Five `backdrop-filter` layers blur the bottom edge under the name. Clicking the full-size card flips it to the back. Foil is stamped only on the logo and the edge, like a printed card, and shows only when the card tilts, brighter the further it leans. The masks stay fixed and a rainbow band slides and fades beneath them, so tilting repaints nothing.
-- **Event pass** (`passes/default.astro`): the template every event uses unless it has its own design. Video plays at the bottom. Above it, a white sheet and a black word blend with `mix-blend-mode: screen`, so the footage shows only through the letters. The holder, details and QR code print on top. An SVG mask cuts the lanyard slot and stub notches.
+## Highlights
 
-On an event's page the pass hangs from `Lanyard.astro`: a damped spring the visitor can grab and throw, drawn as an SVG strap, which sleeps once the pass comes to rest. On a valid pass the stub is covered by a sticker. From an hour before the event it peels off (`peel.ts`) to show the entry code; earlier it lifts a little and stops, and the page does not contain the code at all, so a screenshot taken in advance carries nothing. Once staff scan the code, the pass page notices within a few seconds (`ticket.ts` polls `/api/pass`) and tears the stub off along the perforation, leaving a torn edge and an entry stamp. Passes without their own footage play `public/footage/nbtca.mp4`, a 6-second loop rendered on a canvas and encoded with ffmpeg. Sounds are synthesised in `src/lib/sound.ts`, play only after the visitor has interacted, and can be turned off in the footer.
+- **Cards that feel like objects.** They tilt with the pointer or the phone, drift apart in layers, and catch foil only when they lean.
+- **Footage through type.** An event pass plays its video through the letters of one large word.
+- **Check-in at the door.** Peel the sticker to reveal the QR code; when staff scan it, the stub tears off.
+- **Course credit.** An event can collect validated student details and export them as CSV.
+- **Light on devices and on D1.** Effects animate only `translate` and `opacity`, and pages read a handful of indexed rows.
 
-The page around the cards follows the system light or dark setting, and the footer switches between system, light and dark. The cards keep their own colours in both. On the home page, the anatomy view opens as the visitor scrolls, or at the click of its button.
+## How a pass is built
 
-## Course credit
+<img alt="The five layers of a pass pulled apart, with handwritten labels" src="docs/anatomy.webp" width="820">
 
-An event can ask everyone claiming a pass for their name, student ID, class and phone number, so attendance can be reported for course credit. Student IDs are checked against the NingboTech format: 3 for undergraduates or 2 for graduates, the entry year, a four-digit major and a three-digit number. That rules out typos and invented numbers but cannot prove an ID is the claimant's own, and one student ID can hold only one pass per event. The creator and admins see the details on the edit page with phone numbers masked, and export everyone or only those who checked in as a CSV that opens in Excel with the digits intact.
+A pass stacks footage, a white sheet, a black word, the print and a glare. The sheet and the word blend with `mix-blend-mode: screen`, so white stays white and black turns clear, and the footage shows only through the letters.
 
-On the member wall a card can be pulled off and held: it follows the pointer, leans with how fast it moves, and springs back into its slot when let go (`pluck.ts`). A plain click still opens it.
+| Effect | How |
+| --- | --- |
+| Tilt and parallax | `tilt.ts` writes `--x` and `--y` from pointer or device orientation; layers translate by different amounts |
+| Foil | A rainbow band slides under a fixed mask, so tilting repaints nothing |
+| Lanyard | A damped spring drawn as an SVG strap, which sleeps once the pass rests |
+| Peel and tear | `peel.ts` folds the sticker along the pointer; `ticket.ts` tears the stub after a scan |
+| Member wall | `pluck.ts` lets a card be pulled out, thrown and sprung back into its slot |
+| Sound | Synthesised with Web Audio in `sound.ts`, only after the visitor interacts |
+
+## Who can do what
+
+| Who | Can |
+| --- | --- |
+| Anyone | See events |
+| Anyone signed in | Claim one pass per event |
+| Logto roles in `MEMBER_ROLES` | See every member card, edit their own at `/me`, start and edit events, check in passes at `/scan` |
+| Logto roles in `ADMIN_ROLES` | Everything members can, and edit any event |
+
+A member's card appears after their first visit. Name and alias follow their Logto account. Portraits and backgrounds are framed in a 5:7 window, re-encoded in the browser to WebP, and served only to members.
+
+## Event lifecycle
+
+1. A member creates an event with a claim window, start and end time, venue, capacity and an optional loop of up to 15 seconds and 10 MB.
+2. Visitors claim a pass inside the window. If the event asks for course credit, they also give their name, student ID, class and phone.
+3. From an hour before the start, the sticker peels to show the code. Before that the page does not contain the code, so a screenshot carries nothing.
+4. Staff scan `https://card.nbtca.space/scan#<pass id>` at `/scan` or with the phone's camera. A pass checks in once.
+5. The pass page notices within a few seconds and tears the stub off along the perforation.
+6. The creator exports everyone, or only those who checked in, as a CSV that keeps leading digits in Excel.
+
+Student IDs must match `[23]` + entry year + 4-digit major + 3-digit number, and one ID holds one pass per event. This rules out typos and invented numbers, not borrowed IDs.
 
 ## Designing a pass
 
-Each `.astro` file in `src/cards/passes/` is a pass design, named after the file, and appears in the design menu of the event editor. A design receives `PassProps` from `src/cards/pass.ts`, and `ticket()` there gives it the dates, serial number, check-in state and QR code path, so a new design only decides how they look. Mark elements with `data-bind` to have the editor update them live. Events whose design file is missing fall back to `default`.
+Each `.astro` file in `src/cards/passes/` is a design, named after the file and listed in the event editor. It receives `PassProps` from `src/cards/pass.ts`, whose `ticket()` supplies the dates, serial, check-in state and QR path. Mark elements with `data-bind` for live preview in the editor. Events whose design file is missing fall back to `default`.
 
-## Access
+## Project structure
 
-[Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/access-controls/) signs people in through Logto, the same identity provider `photo.nbtca.space` uses. The Worker verifies the Access token, then reads the visitor's Logto name, username and roles from the Access identity endpoint. A request that bypasses Access carries no identity.
+```
+src/
+  cards/       MemberCard, passes/, Lanyard, and the tilt, peel, ticket and pluck scripts
+  components/  event editor and list
+  lib/         Access verification, D1 queries, validation, cropping, sound
+  pages/       routes, including api/ and media/
+  middleware.ts
+migrations/    D1 schema, applied in order on deploy
+public/        fonts and the default footage
+```
 
-Access guards only the paths that need a signed-in visitor. Event pages stay public, and the Worker reads the same `CF_Authorization` cookie there to show a signed-in visitor their pass.
+## Deploy
 
-| Who | Can do |
-| --- | --- |
-| Anyone | See events |
-| Anyone who signs in | Claim one pass per event |
-| Logto roles in `MEMBER_ROLES` | See every member card, customise their own, start events and edit them, check in passes at `/scan` |
-| Logto roles in `ADMIN_ROLES` | Everything members can do, and edit any event |
+Requires a Cloudflare account with Workers, D1, R2 and Zero Trust.
 
-A member's card appears after their first visit. Its name and alias follow their Logto account; the rest is theirs to set at `/me`. Members frame an uploaded portrait or background in a 5:7 window by dragging and zooming, and the card previews the result before saving. Portraits and backgrounds are cropped and re-encoded in the browser to WebP (PNG on Safari, which cannot encode WebP) and served only to members. Event videos are public. They are limited to 15 seconds and 10 MB, checked in the browser, which also saves a still that list thumbnails show instead of the video; a pass's video loads only when it starts playing.
-
-## Check-in
-
-Whoever starts an event gives it a claim window and a start and end time, and sees who claimed and entered on its edit page. Passes can be claimed only inside the window, and checked in from an hour before the event starts until it ends. A scan outside those hours says so and leaves the pass unused.
-
-Each pass carries a QR code for `https://card.nbtca.space/scan#<pass id>`. Staff can scan it on `/scan`, which uses `BarcodeDetector` where available and jsQR elsewhere, or with their phone's camera app, which opens the same page and checks the pass in. A pass checks in once; scanning it again shows when it was used. Passes can also be checked in by event and number.
-
-## Setup
-
-1. In Zero Trust, add a self-hosted application with Logto as the only identity provider and instant authentication on. The reusable policy `Anyone signed in with Logto` admits everyone who signs in with it. Give it these paths on `card.nbtca.space`: `/login`, `/members`, `/me`, `/scan`, `/api` and `/media/members`. The Logto identity provider in Zero Trust must pass the `roles`, `name`, `username` and `picture` OIDC claims; Access hands the Worker only the claims listed there. Put its Application Audience (AUD) tag in `ACCESS_AUD` in `wrangler.jsonc`. Until it is set, nobody can sign in.
-2. Create the database and bucket, and copy the D1 ID into `wrangler.jsonc`:
+1. In Zero Trust, add a self-hosted application on `card.nbtca.space` for the paths `/login`, `/members`, `/me`, `/scan`, `/api` and `/media/members`, with Logto as the only identity provider and instant authentication on. Pass the `roles`, `name`, `username` and `picture` OIDC claims. Put the Application Audience tag in `ACCESS_AUD` in `wrangler.jsonc`.
+2. Create the storage and copy the D1 ID into `wrangler.jsonc`:
 
    ```sh
    wrangler d1 create card
    wrangler r2 bucket create card-media --location apac
    ```
 
-3. `pnpm run deploy` builds, applies D1 migrations and deploys. Plain `pnpm deploy` is a different, built-in pnpm command.
+3. Run `pnpm run deploy`, which builds, applies migrations and deploys. Plain `pnpm deploy` is a different pnpm command.
 
-Every push to `main` runs type checks and a build in GitHub Actions, then deploys. Pull requests run the checks only. The `production` environment needs a `CLOUDFLARE_API_TOKEN` secret with Workers Scripts Edit, D1 Edit and Workers R2 Storage Edit on the account, and Workers Routes Edit on the `nbtca.space` zone. Migrations run before the new code, so write each one to work with the previous release too.
+Event pages stay public; the Worker reads the same `CF_Authorization` cookie there to show a signed-in visitor their pass.
+
+CI checks every pull request and deploys every push to `main`. The `production` environment needs a `CLOUDFLARE_API_TOKEN` with Workers Scripts, D1 and Workers R2 Storage edit rights on the account, and Workers Routes edit on the `nbtca.space` zone. Migrations run before the new code, so each must work with the previous release.
+
+> [!IMPORTANT]
+> The account shares the [D1 free tier](https://developers.cloudflare.com/d1/platform/limits/) of 5 million rows read per day with other NBTCA services. Keep queries indexed. When the limit is hit, pages show an outage notice until 00:00 UTC.
 
 ## Development
 
 ```sh
 pnpm install
-pnpm preview      # production build on local workerd with local D1 and R2
+pnpm preview     # production build on local workerd with local D1 and R2
 pnpm typecheck
 ```
 
-Access does not run locally. To test signed-in pages, serve a JWKS from a local issuer, start `wrangler dev` with `--var ACCESS_TEAM_DOMAIN:<issuer> --var ACCESS_AUD:<aud>`, and send RS256 tokens it signed in the `CF_Authorization` cookie.
+Access does not run locally. To test signed-in pages, serve a JWKS from a local issuer, start `wrangler dev --var ACCESS_TEAM_DOMAIN:<issuer> --var ACCESS_AUD:<aud>`, and send RS256 tokens it signed in the `CF_Authorization` cookie.
+
+## Credits
+
+- Layered parallax and progressive blur from [osaka-card](https://github.com/jh3y/osaka-card), and video through type from the [knockout video card](https://www.jhey.dev/prototypes/2026/knockout-video-card/), both by Jhey Tompkins.
+- Holographic foil after [pokemon-cards-css](https://github.com/simeydotme/pokemon-cards-css).
+- [Bebas Neue](https://github.com/dharmatype/Bebas-Neue), [Archivo](https://github.com/Omnibus-Type/Archivo) and [Caveat](https://github.com/googlefonts/caveat), under the [SIL Open Font License 1.1](https://openfontlicense.org).
