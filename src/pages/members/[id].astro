@@ -1,9 +1,10 @@
 ---
 import MemberCard from "../../cards/MemberCard.astro"
+import PassShelf from "../../components/PassShelf.astro"
 import Base from "../../layouts/Base.astro"
-import { getMember } from "../../lib/db"
+import { getMember, keptBy } from "../../lib/db"
 
-const member = await getMember(Astro.params.id!)
+const [member, kept] = await Promise.all([getMember(Astro.params.id!), keptBy(Astro.params.id!)])
 if (!member) return new Response(null, { status: 404 })
 const mine = member.id === Astro.locals.user?.member?.id
 ---
@@ -21,6 +22,11 @@ const mine = member.id === Astro.locals.user?.member?.id
       <p class="hint">点击卡片翻到背面</p>
       {mine && <a class="button ghost" href="/me">装扮我的卡片</a>}
     </div>
+    {kept.length > 0 && (
+      <div class="kept">
+        <PassShelf stubs={kept} guest={false} eyebrow="Ticket stubs" title={`去过的 ${kept.length} 场活动`} />
+      </div>
+    )}
   </main>
 </Base>
 
@@ -54,6 +60,11 @@ const mine = member.id === Astro.locals.user?.member?.id
     border-radius: 50%;
     background: radial-gradient(closest-side, oklch(0.6 0.16 var(--hue) / 0.5), transparent);
     filter: blur(14px);
+  }
+
+  .kept {
+    justify-self: stretch;
+    padding-top: 3rem;
   }
 
   .caption {

@@ -8,8 +8,7 @@ import { showcaseEvent, showcaseMember } from "../lib/showcase"
 
 const { user } = Astro.locals
 const me = user?.member ?? null
-const events = await upcomingEvents(6)
-const count = me ? await countMembers() : null
+const [events, count] = await Promise.all([upcomingEvents(6), me ? countMembers() : null])
 const featured = events[0] ?? showcaseEvent()
 const Featured = passDesign(featured.design)
 const layers = [

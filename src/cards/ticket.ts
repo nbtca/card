@@ -1,6 +1,8 @@
 import { tear } from "../lib/sound"
 
-const POLL = 4000
+// Staff usually scan within moments of the peel, so checks start quick and slow down while nobody scans.
+const FIRST_POLL = 2500
+const LAST_POLL = 15000
 
 for (const ticket of document.querySelectorAll<HTMLElement>("[data-ticket]")) {
   const card = ticket.closest<HTMLElement>(".pass-card")!
@@ -27,20 +29,30 @@ for (const ticket of document.querySelectorAll<HTMLElement>("[data-ticket]")) {
     }, 700)
   }
 
-  // Polls only while the page is visible; staff scanning the code is what flips it.
+  // Only a peeled sticker shows the code, so until then nobody can scan it and there is nothing to ask.
   let timer = 0
+  let polling = false
+  let wait = FIRST_POLL
   const check = async () => {
     timer = 0
-    if (document.visibilityState !== "visible") return
+    if (document.visibilityState !== "visible" || !ticket.isConnected) return
     try {
       const response = await fetch(`/api/pass?id=${encodeURIComponent(id)}`, { cache: "no-store" })
       const { redeemedAt } = (await response.json()) as { redeemedAt: number | null }
       if (redeemedAt) return torn(redeemedAt)
     } catch {}
-    timer = window.setTimeout(check, POLL)
+    if (!polling) return
+    timer = window.setTimeout(check, wait)
+    wait = Math.min(LAST_POLL, wait * 1.3)
   }
+  const start = () => {
+    polling = true
+    if (!timer) timer = window.setTimeout(check, wait)
+  }
+  // Checked once on return too: the pass may have been scanned from another device.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && !timer && ticket.isConnected) check()
   })
-  timer = window.setTimeout(check, POLL)
+  if (ticket.querySelector("[data-revealed]")) start()
+  else ticket.addEventListener("pass:revealed", start, { once: true })
 }

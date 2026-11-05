@@ -1,9 +1,11 @@
 import type { APIRoute } from "astro"
 import { env } from "cloudflare:workers"
+import { storedMedia } from "../../lib/cache"
 
 // Safari only plays video that answers byte-range requests.
-export const GET: APIRoute = async ({ params, request }) => {
-  const key = params.key!
+export const GET: APIRoute = ({ params, request }) => storedMedia(request, () => load(params.key!, request))
+
+async function load(key: string, request: Request) {
   if (!key.startsWith("members/") && !key.startsWith("events/")) return new Response(null, { status: 404 })
   const object = await env.MEDIA.get(key, { range: request.headers, onlyIf: request.headers })
   if (!object) return new Response(null, { status: 404 })

@@ -47,8 +47,12 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
   const id = root.closest<HTMLElement>("[data-ticket]")?.dataset.ticket ?? ""
   const locked = root.hasAttribute("data-locked")
 
+  const revealed = () => {
+    root.dataset.revealed = ""
+    root.dispatchEvent(new CustomEvent("pass:revealed", { bubbles: true }))
+  }
   try {
-    if (!locked && id && localStorage.getItem(storageKey(id))) root.dataset.revealed = ""
+    if (!locked && id && localStorage.getItem(storageKey(id))) revealed()
   } catch {}
 
   let w = 0
@@ -111,7 +115,7 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
   const reveal = () => {
     revealing = true
     go({ x: -w * 0.9, y: -h * 1.6 }, () => {
-      root.dataset.revealed = ""
+      revealed()
       try {
         localStorage.setItem(storageKey(id), "1")
       } catch {}

@@ -2,26 +2,36 @@
 import Lanyard from "../../../cards/Lanyard.astro"
 import { passDesign } from "../../../cards/pass"
 import Base from "../../../layouts/Base.astro"
-import { checkInOpensAt, checkInPhase, claimPhase, db, formatClock, formatRange, formatShort, formatTime, getEvent, memberByEmail, randomId, sameDay, ZONE, type Pass } from "../../../lib/db"
+import { checkInOpensAt, checkInPhase, claimPhase, db, formatClock, formatRange, formatShort, formatTime, getEvent, randomId, sameDay, ZONE, type Member, type Pass } from "../../../lib/db"
 import { parseAttendee } from "../../../lib/attendee"
+import { purgePages } from "../../../lib/cache"
 import { canEdit } from "../../../lib/events"
 
-const event = await getEvent(Astro.params.slug!)
-if (!event) return new Response(null, { status: 404 })
+const { slug } = Astro.params
 const { user } = Astro.locals
 
 const findPass = () =>
-  user
-    ? db().prepare("SELECT * FROM passes WHERE event = ? AND email = ?").bind(event.slug, user.email).first<Pass>()
-    : null
+  user ? db().prepare("SELECT * FROM passes WHERE event = ? AND email = ?").bind(slug, user.email).first<Pass>() : null
 
 // Prefilled from the visitor's last registration so returning students do not type it all again.
-const previous = user && event.needs_info
-  ? await db()
-      .prepare("SELECT name, student_id, class_name, phone FROM passes WHERE email = ? AND student_id IS NOT NULL ORDER BY created_at DESC LIMIT 1")
-      .bind(user.email)
-      .first<{ name: string; student_id: string; class_name: string; phone: string }>()
-  : null
+const findPrevious = () =>
+  user
+    ? db()
+        .prepare("SELECT name, student_id, class_name, phone FROM passes WHERE email = ? AND student_id IS NOT NULL ORDER BY created_at DESC LIMIT 1")
+        .bind(user.email)
+        .first<{ name: string; student_id: string; class_name: string; phone: string }>()
+    : null
+
+// D1 sits in one region and every query is a round trip, so the page asks everything at once.
+const [event, pass, previous, counted, host] = await Promise.all([
+  getEvent(slug!),
+  findPass(),
+  findPrevious(),
+  db().prepare("SELECT COUNT(*) AS n FROM passes WHERE event = ?").bind(slug).first<{ n: number }>(),
+  db().prepare("SELECT * FROM members WHERE email = (SELECT created_by FROM events WHERE slug = ?)").bind(slug).first<Member>(),
+])
+if (!event) return new Response(null, { status: 404 })
+
 let form = { name: previous?.name ?? user?.name ?? "", studentId: previous?.student_id ?? "", className: previous?.class_name ?? "", phone: previous?.phone ?? "" }
 let claimError = ""
 
@@ -55,12 +65,14 @@ if (Astro.request.method === "POST") {
       if (!String(e).includes("UNIQUE")) throw e
       claimError = "这个学号已经领过这场活动的券了。如果不是你本人领的，请联系活动发起人。"
     }
-    if (await findPass()) return Astro.redirect(`${Astro.url.pathname}?issued`, 303)
+    if (await findPass()) {
+      purgePages(Astro.url, [Astro.url.pathname])
+      return Astro.redirect(`${Astro.url.pathname}?issued`, 303)
+    }
   }
 }
 
-const pass = await findPass()
-const { n: claimed } = (await db().prepare("SELECT COUNT(*) AS n FROM passes WHERE event = ?").bind(event.slug).first<{ n: number }>())!
+const claimed = counted!.n
 const full = event.capacity !== null && claimed >= event.capacity
 const phase = claimPhase(event)
 const passNotice = pass?.redeemed_at
@@ -71,7 +83,6 @@ const passNotice = pass?.redeemed_at
       ? "到场后把票根上的贴纸撕开，露出入场码给工作人员扫。扫过之后票根会被撕下，就算入场了。"
       : `入场码藏在票根的贴纸下面，${formatTime(checkInOpensAt(event))} 起才能撕开。`
 const Design = passDesign(event.design)
-const host = event.created_by ? await memberByEmail(event.created_by) : null
 const editable = canEdit(event, user)
 
 const now = Date.now()
@@ -207,12 +218,13 @@ const chip = {
       const s = Math.max(0, Math.floor((target - Date.now()) / 1000))
       const d = Math.floor(s / 86400)
       left.textContent = `${d ? `${d} 天 ` : ""}${pad(Math.floor(s / 3600) % 24)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`
-      if (s === 0) location.reload()
+      // Signed-out visitors get a shared copy up to a minute old, so the refresh asks past it.
+      if (s === 0) location.replace(`${location.pathname}?fresh`)
     }
     tick()
     setInterval(tick, 1000)
   }
-  if (location.search === "?issued") history.replaceState(null, "", location.pathname)
+  if (location.search) history.replaceState(null, "", location.pathname)
 
   const notice = document.querySelector<HTMLElement>("[data-pass-notice]")
   const say = (text: string) => {

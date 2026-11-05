@@ -1,6 +1,7 @@
 ---
 import EventEditor from "../../components/EventEditor.astro"
 import Base from "../../layouts/Base.astro"
+import { purgePages } from "../../lib/cache"
 import type { Event } from "../../lib/db"
 import { saveEvent } from "../../lib/events"
 
@@ -8,7 +9,10 @@ const user = Astro.locals.user!
 let error = ""
 if (Astro.request.method === "POST") {
   const result = await saveEvent(await Astro.request.formData(), null, user.email)
-  if (result.slug) return Astro.redirect(`/e/${result.slug}`, 303)
+  if (result.slug) {
+    purgePages(Astro.url, ["/", "/e"])
+    return Astro.redirect(`/e/${result.slug}`, 303)
+  }
   error = result.error
 }
 

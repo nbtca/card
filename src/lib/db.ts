@@ -54,6 +54,17 @@ export const getMember = (id: string) => db().prepare("SELECT * FROM members WHE
 export const memberByEmail = (email: string) =>
   db().prepare("SELECT * FROM members WHERE email = ?").bind(email).first<Member>()
 
+// Every request by a member needs their card, so each isolate keeps it briefly instead of asking D1 each time.
+const CARD_TTL = 30_000
+const cards = new Map<string, { at: number; card: Member }>()
+
+export const cachedCard = (email: string) => {
+  const hit = cards.get(email)
+  return hit && Date.now() - hit.at < CARD_TTL ? hit.card : null
+}
+export const rememberCard = (card: Member) => void cards.set(card.email, { at: Date.now(), card })
+export const forgetCard = (email: string) => void cards.delete(email)
+
 export const listMembers = async () =>
   (await db().prepare("SELECT * FROM members ORDER BY joined, created_at").all<Member>()).results
 
@@ -72,6 +83,28 @@ export const upcomingEvents = async (limit = 50) =>
       .bind(new Date().toISOString(), limit)
       .all<Event>()
   ).results
+
+export interface Stub extends Event {
+  pass_id: string
+  serial: number
+  holder: string
+  redeemed_at: number | null
+}
+
+const STUBS = "SELECT e.*, p.id AS pass_id, p.serial, p.name AS holder, p.redeemed_at FROM passes p JOIN events e ON e.slug = p.event"
+
+export const passesOf = async (email: string) =>
+  (await db().prepare(`${STUBS} WHERE p.email = ? ORDER BY p.created_at DESC LIMIT 100`).bind(email).all<Stub>()).results
+
+export const keptBy = async (memberId: string) =>
+  (
+    await db()
+      .prepare(`${STUBS} WHERE p.email = (SELECT email FROM members WHERE id = ?) AND p.redeemed_at IS NOT NULL ORDER BY p.created_at DESC LIMIT 100`)
+      .bind(memberId)
+      .all<Stub>()
+  ).results
+
+export const stubPass = (s: Stub) => ({ id: s.pass_id, serial: s.serial, redeemed_at: s.redeemed_at })
 
 const CHECK_IN_LEAD = 60 * 60 * 1000
 

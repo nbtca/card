@@ -1,0 +1,12 @@
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Fonts are not hashed: give a replacement a new file name.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/footage/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=604800
+
+/logo.svg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
