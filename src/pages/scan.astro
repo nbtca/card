@@ -1,8 +1,8 @@
 ---
 import Base from "../layouts/Base.astro"
-import { listEvents } from "../lib/db"
+import { recentEvents } from "../lib/db"
 
-const events = await listEvents()
+const events = await recentEvents()
 ---
 
 <Base title="核销 · NBTCA">
@@ -17,6 +17,7 @@ const events = await listEvents()
       <span class="line" aria-hidden="true" />
       <button class="button" type="button" data-start>打开摄像头</button>
     </div>
+    <p class="queue" data-queue hidden></p>
     <output class="result" data-result hidden>
       <span class="icon" aria-hidden="true" />
       <strong data-headline></strong>
@@ -50,7 +51,7 @@ const events = await listEvents()
   const time = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
 
   interface Outcome {
-    status: "ok" | "already" | "unknown" | "early" | "ended"
+    status: "ok" | "already" | "unknown" | "early" | "ended" | "queued"
     name?: string
     serial?: number
     title?: string
@@ -58,9 +59,17 @@ const events = await listEvents()
     startsAt?: string
   }
 
-  async function redeem(body: { id: string } | { event: string; serial: number }) {
-    const response = await fetch("/api/redeem", { method: "POST", body: JSON.stringify(body) })
-    const outcome: Outcome = response.status === 404 ? { status: "unknown" } : await response.json()
+  type Scan = ({ id: string } | { event: string; serial: number }) & { at?: number }
+
+  // Throws only when the request never reached the server, which is when a scan is kept for later.
+  async function send(scan: Scan): Promise<Outcome> {
+    const response = await fetch("/api/redeem", { method: "POST", body: JSON.stringify(scan) })
+    if (response.status === 404) return { status: "unknown" }
+    if (!response.ok) throw new Error(String(response.status))
+    return response.json()
+  }
+
+  function show(outcome: Outcome) {
     result.dataset.status = outcome.status
     result.hidden = true
     void result.offsetWidth
@@ -71,6 +80,7 @@ const events = await listEvents()
       unknown: "无效的通行证",
       early: "还没到核销时间",
       ended: "活动已经结束",
+      queued: "已离线记下",
     }[outcome.status]
     const who = `${outcome.name} · ${outcome.title} · № ${String(outcome.serial).padStart(4, "0")}`
     detail.textContent = {
@@ -79,8 +89,62 @@ const events = await listEvents()
       unknown: "这张码不属于任何活动。",
       early: `${who} · 活动开始前一小时起才能核销，活动 ${new Date(outcome.startsAt!).toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short" })} 开始`,
       ended: `${who} · 这张券没有在活动期间使用`,
+      queued: "现在没有网络，无法确认这张券。联网后会按扫码的时间自动补交。",
     }[outcome.status]
-    navigator.vibrate?.(outcome.status === "ok" ? 80 : [60, 60, 60])
+    navigator.vibrate?.(outcome.status === "ok" || outcome.status === "queued" ? 80 : [60, 60, 60])
+  }
+
+  const QUEUE = "card:scan-queue"
+  const queueLine = document.querySelector<HTMLElement>("[data-queue]")!
+  const readQueue = (): Scan[] => {
+    try {
+      return JSON.parse(localStorage.getItem(QUEUE) ?? "[]")
+    } catch {
+      return []
+    }
+  }
+  const writeQueue = (scans: Scan[]) => {
+    try {
+      localStorage.setItem(QUEUE, JSON.stringify(scans))
+    } catch {}
+    queueLine.hidden = !scans.length
+    queueLine.textContent = `还有 ${scans.length} 张离线扫的券等待补交`
+  }
+  const same = (a: Scan, b: Scan) => JSON.stringify({ ...a, at: 0 }) === JSON.stringify({ ...b, at: 0 })
+
+  let flushing = false
+  async function flush() {
+    if (flushing || !navigator.onLine) return
+    flushing = true
+    const rejected: string[] = []
+    for (const scan of readQueue()) {
+      try {
+        const outcome = await send(scan)
+        if (outcome.status !== "ok" && outcome.status !== "already") rejected.push(outcome.name ?? "一张未知的码")
+        writeQueue(readQueue().filter((s) => !same(s, scan)))
+      } catch {
+        break
+      }
+    }
+    flushing = false
+    if (rejected.length) {
+      queueLine.hidden = false
+      queueLine.textContent = `补交完成，其中 ${rejected.length} 张没有通过：${rejected.join("、")}`
+    }
+  }
+  addEventListener("online", flush)
+  setInterval(flush, 15000)
+  writeQueue(readQueue())
+  flush()
+
+  async function redeem(scan: Scan) {
+    try {
+      show(await send(scan))
+    } catch {
+      const scans = readQueue()
+      if (!scans.some((s) => same(s, scan))) writeQueue([...scans, { ...scan, at: Date.now() }])
+      show({ status: "queued" })
+    }
   }
 
   const passId = (text: string) => {
@@ -166,6 +230,15 @@ const events = await listEvents()
 
   h1 {
     font-size: 2rem;
+  }
+
+  .queue {
+    margin: 0;
+    padding: 0.7rem 1rem;
+    border: 1px solid rgb(245 184 61 / 0.35);
+    border-radius: 1rem;
+    color: var(--warn);
+    font-size: 0.88rem;
   }
 
   .viewfinder {
@@ -279,7 +352,8 @@ const events = await listEvents()
   }
 
   [data-status="already"],
-  [data-status="early"] {
+  [data-status="early"],
+  [data-status="queued"] {
     --tone: var(--warn);
   }
 
