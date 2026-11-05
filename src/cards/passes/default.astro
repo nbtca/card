@@ -492,12 +492,13 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
   .ticket {
     position: absolute;
     inset: 121.6cqi 0 0;
-    mask: var(--die) 0 -121.6cqi / 100cqi 160cqi no-repeat;
   }
 
+  /* Only the paper takes the die cut: a peeled flap lifts past the stub's edge the way a real sticker does. */
   .under {
     position: absolute;
     inset: 0;
+    mask: var(--die) 0 -121.6cqi / 100cqi 160cqi no-repeat;
     display: flex;
     align-items: center;
     gap: 6cqi;
@@ -609,10 +610,11 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
   }
 
   /* The flap's shadow deepens as it lifts; the gradient stops are placed on the crease and the tip by peel.ts. */
+  /* Three times the sticker in each direction, so even a deep peel's flap is never cut off by its own box. */
   .flap {
     --lift: 0;
     position: absolute;
-    inset: -50%;
+    inset: -100%;
     pointer-events: none;
     filter: drop-shadow(calc(var(--lift) * -2cqi) calc(0.8cqi + var(--lift) * 4cqi) calc(1cqi + var(--lift) * 5cqi) rgb(0 0 0 / calc(0.2 + var(--lift) * 0.2)));
   }

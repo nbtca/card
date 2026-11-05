@@ -70,14 +70,14 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
   const render = () => {
     const { remain, exposed, flap: shape, n, mid, depth } = fold(w, h, tip)
     sticker.style.clipPath = polygon(remain)
-    flap.style.clipPath = polygon(shape, w / 2, h / 2)
+    flap.style.clipPath = polygon(shape, w, h)
     const deg = `${(Math.atan2(n.y, n.x) * 180) / Math.PI + 90}deg`
     // A linear gradient spans |W sin| + |H cos| through the box centre; this finds a point's offset along it.
     const at = (p: Point, bw: number, bh: number) =>
       `${(50 + (((p.x - w / 2) * n.x + (p.y - h / 2) * n.y) / (Math.abs(bw * n.x) + Math.abs(bh * n.y))) * 100).toFixed(2)}%`
     flap.style.setProperty("--shade-angle", deg)
-    flap.style.setProperty("--fold", at(mid, 2 * w, 2 * h))
-    flap.style.setProperty("--tip", at(tip, 2 * w, 2 * h))
+    flap.style.setProperty("--fold", at(mid, 3 * w, 3 * h))
+    flap.style.setProperty("--tip", at(tip, 3 * w, 3 * h))
     flap.parentElement!.style.setProperty("--lift", Math.min(1, depth / w).toFixed(3))
     if (shade) {
       shade.style.clipPath = polygon(exposed)
