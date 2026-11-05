@@ -11,7 +11,10 @@ interface Props {
 const { spec, footage, label = "生成分享图" } = Astro.props
 ---
 
-<button class="button ghost small" type="button" data-poster={JSON.stringify(spec)} data-footage={footage}>{label}</button>
+<button class="action" type="button" data-poster={JSON.stringify(spec)} data-footage={footage}>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14V3.5m0 0L7.5 8M12 3.5 16.5 8" /><path d="M5 12v6a2.5 2.5 0 0 0 2.5 2.5h9A2.5 2.5 0 0 0 19 18v-6" /></svg>
+  <span data-poster-label>{label}</span>
+</button>
 <dialog class="poster-dialog panel" data-poster-dialog aria-label="分享图">
   <img alt="分享图" data-poster-image />
   <p class="muted">长按图片保存，或直接发给朋友。</p>
@@ -32,9 +35,10 @@ const { spec, footage, label = "生成分享图" } = Astro.props
     let file: File | null = null
 
     button.addEventListener("click", async () => {
-      const label = button.textContent
+      const text = button.querySelector<HTMLElement>("[data-poster-label]")!
+      const label = text.textContent
       button.disabled = true
-      button.textContent = "正在生成…"
+      text.textContent = "正在生成…"
       const source = button.dataset.footage ? document.querySelector<HTMLVideoElement | HTMLImageElement>(button.dataset.footage) : null
       const ready = source instanceof HTMLVideoElement ? source.readyState >= 2 : !!source?.complete
       const blob = await drawPoster({ ...(JSON.parse(button.dataset.poster!) as Omit<PosterSpec, "footage">), footage: ready ? source : null })
@@ -44,7 +48,7 @@ const { spec, footage, label = "生成分享图" } = Astro.props
       image.style.setProperty("--sprite", dissolveMask({ cols: 8, rows: 12, seed: Date.now() % 97 }))
       share.hidden = !navigator.canShare?.({ files: [file] })
       button.disabled = false
-      button.textContent = label
+      text.textContent = label
       dialog.showModal()
     })
     share.addEventListener("click", () => file && navigator.share({ files: [file] }).catch(() => {}))
