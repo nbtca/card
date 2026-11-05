@@ -1,0 +1,324 @@
+---
+import Base from "../../../layouts/Base.astro"
+import { db, getEvent, mediaUrl, ZONE } from "../../../lib/db"
+import type { Entry } from "../../api/entries"
+
+const { user } = Astro.locals
+if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`)
+if (!user.member) return Astro.redirect("/forbidden")
+
+const SHOWN = 48
+const slug = Astro.params.slug!
+const [event, { results: entries }, counts] = await Promise.all([
+  getEvent(slug),
+  db().prepare("SELECT name, serial, redeemed_at FROM passes WHERE event = ? AND redeemed_at IS NOT NULL ORDER BY redeemed_at DESC LIMIT ?").bind(slug, SHOWN).all<Entry>(),
+  db().prepare("SELECT COUNT(*) AS claimed, COUNT(redeemed_at) AS entered FROM passes WHERE event = ?").bind(slug).first<{ claimed: number; entered: number }>(),
+])
+if (!event) return new Response(null, { status: 404 })
+
+const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: ZONE })
+const serial = (n: number) => `№ ${String(n).padStart(4, "0")}`
+const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
+---
+
+<Base title={`入场 · ${event.title}`} bare>
+  <main class="live">
+    <section class="marquee">
+      <div class="poster" aria-hidden="true">
+        <video src={mediaUrl(event.video) ?? "/footage/nbtca.mp4"} muted loop playsinline autoplay />
+        <span class="word">{event.word}</span>
+      </div>
+      <p class="eyebrow">NBTCA · Live entries</p>
+      <h1>{event.title}</h1>
+      <p class="count">
+        <b data-count>{counts!.entered}</b>
+        <span>人已入场{counts!.claimed > 0 && ` · 共 ${counts!.claimed} 张券`}</span>
+      </p>
+      <p class="welcome" data-welcome aria-live="polite"></p>
+    </section>
+
+    <ol class="wall" data-wall data-event={slug} data-after={entries[0]?.redeemed_at ?? 0} data-shown={SHOWN}>
+      {entries.map((e) => (
+        <li class="stub" style={`--r: ${tilt(e.serial)}`}>
+          <div class="paper">
+            <span class="serial">{serial(e.serial)}</span>
+            <b>{e.name}</b>
+            <time>{clock(e.redeemed_at)}</time>
+            <span class="admit">Admit one</span>
+          </div>
+        </li>
+      ))}
+    </ol>
+    {!entries.length && <p class="empty" data-empty>第一位来宾入场后，票根会出现在这里。</p>}
+  </main>
+</Base>
+
+<script>
+  import { dissolveMask } from "../../../lib/dissolve"
+  import { tear } from "../../../lib/sound"
+  import type { Entry } from "../../api/entries"
+
+  const wall = document.querySelector<HTMLOListElement>("[data-wall]")!
+  const count = document.querySelector<HTMLElement>("[data-count]")!
+  const welcome = document.querySelector<HTMLElement>("[data-welcome]")!
+  const { event } = wall.dataset
+  const shown = Number(wall.dataset.shown)
+  let after = Number(wall.dataset.after)
+  const masks = [1, 2, 3].map((seed) => dissolveMask({ seed }))
+  const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
+
+  function stub(entry: Entry) {
+    const li = document.createElement("li")
+    li.className = "stub arriving"
+    li.style.setProperty("--r", `${((entry.serial * 37) % 7) - 3}deg`)
+    li.style.setProperty("--sprite", masks[entry.serial % masks.length]!)
+    const paper = document.createElement("div")
+    paper.className = "paper"
+    const add = (tag: string, className: string, text: string) => {
+      const el = document.createElement(tag)
+      if (className) el.className = className
+      el.textContent = text
+      paper.append(el)
+    }
+    add("span", "serial", `№ ${String(entry.serial).padStart(4, "0")}`)
+    add("b", "", entry.name)
+    add("time", "", clock(entry.redeemed_at))
+    add("span", "admit", "Admit one")
+    li.append(paper)
+    paper.addEventListener("animationend", () => li.classList.remove("arriving"), { once: true })
+    return li
+  }
+
+  // Arrivals that come in together still land one at a time, the way people walk through a door.
+  let queue: Entry[] = []
+  let landing = false
+  async function land() {
+    if (landing) return
+    landing = true
+    while (queue.length) {
+      const entry = queue.shift()!
+      document.querySelector("[data-empty]")?.remove()
+      wall.prepend(stub(entry))
+      while (wall.children.length > shown) wall.lastElementChild!.remove()
+      count.textContent = String(Number(count.textContent) + 1)
+      welcome.textContent = `欢迎，${entry.name}`
+      welcome.animate([{ opacity: 0, translate: "0 0.4em" }, { opacity: 1, translate: "0 0" }], { duration: 500, easing: "ease-out" })
+      tear()
+      await new Promise((done) => setTimeout(done, 900))
+    }
+    landing = false
+  }
+
+  async function poll() {
+    if (document.visibilityState === "visible") {
+      try {
+        const entries: Entry[] = await (await fetch(`/api/entries?event=${event}&after=${after}`, { cache: "no-store" })).json()
+        if (entries.length) {
+          after = entries.at(-1)!.redeemed_at
+          queue.push(...entries)
+          land()
+        }
+      } catch {}
+    }
+    setTimeout(poll, 3000)
+  }
+  poll()
+</script>
+
+<style is:global>
+  .live {
+    display: grid;
+    grid-template-columns: minmax(18rem, 0.8fr) minmax(0, 2fr);
+    gap: clamp(1.5rem, 4vw, 4rem);
+    min-height: 100svh;
+    padding-block: clamp(1.5rem, 4vw, 3.5rem);
+  }
+
+  .live .marquee {
+    position: sticky;
+    top: clamp(1.5rem, 4vw, 3.5rem);
+    align-self: start;
+    display: grid;
+    gap: 1.1rem;
+  }
+
+  /* Black sheet, white word, multiplied over the footage: on a dark room's screen the clip lights only the letters. */
+  .live .poster {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 5 / 3;
+    overflow: hidden;
+    border-radius: 1.5rem;
+    background: #000;
+    isolation: isolate;
+    container-type: inline-size;
+  }
+
+  .live .poster video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .live .word {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: #000;
+    color: #fff;
+    font: 900 clamp(3rem, 30cqi, 12rem) / 0.9 var(--wide);
+    font-stretch: 125%;
+    letter-spacing: -0.04em;
+    mix-blend-mode: multiply;
+  }
+
+  .live h1 {
+    font: 800 clamp(1.6rem, 2.6vw, 2.6rem) / 1.15 var(--wide);
+    font-stretch: 112%;
+  }
+
+  .live .count {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .live .count b {
+    font: 400 clamp(4rem, 9vw, 8rem) / 0.85 var(--display);
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .live .welcome {
+    min-height: 1.6em;
+    margin: 0;
+    font-size: clamp(1.2rem, 2vw, 1.8rem);
+    font-weight: 700;
+    color: var(--glow);
+  }
+
+  .live .wall {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    align-content: start;
+    gap: 1.4rem 1.1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .live .stub {
+    position: relative;
+    aspect-ratio: 5 / 2.4;
+    rotate: var(--r);
+  }
+
+  .live .paper {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 1fr auto;
+    align-items: end;
+    padding: 0.8rem 0.95rem 0.7rem;
+    border-radius: 0.35rem 0.35rem 0.6rem 0.6rem;
+    background: #f6f5f1;
+    color: #0b0d12;
+    box-shadow: 0 10px 24px -14px rgb(0 0 0 / 0.8);
+    /* Torn along the perforation at the top, where it came off the pass. */
+    clip-path: polygon(0 6%, 5% 0, 10% 6%, 15% 0, 20% 6%, 25% 0, 30% 6%, 35% 0, 40% 6%, 45% 0, 50% 6%, 55% 0, 60% 6%, 65% 0, 70% 6%, 75% 0, 80% 6%, 85% 0, 90% 6%, 95% 0, 100% 6%, 100% 100%, 0 100%);
+  }
+
+  .live .serial {
+    grid-column: 1 / -1;
+    align-self: start;
+    font: 400 1.5rem / 1 var(--display);
+    letter-spacing: 0.04em;
+  }
+
+  .live .paper b {
+    font-size: 1.05rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .live .paper time {
+    font: 600 0.75rem / 1 var(--wide);
+    color: rgb(11 13 18 / 0.55);
+  }
+
+  .live .admit {
+    grid-column: 1 / -1;
+    margin-top: 0.4rem;
+    font: 600 0.55rem / 1 var(--wide);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgb(11 13 18 / 0.45);
+  }
+
+  /* Two coloured bands run ahead of the stub, each a few sprite frames apart. */
+  .live .arriving::before,
+  .live .arriving::after,
+  .live .arriving .paper {
+    mask: var(--sprite) 0 0 / 1500% 100% no-repeat;
+    animation: live-dissolve 0.75s steps(15, jump-none) both;
+  }
+
+  .live .arriving::before,
+  .live .arriving::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 0.5rem;
+  }
+
+  .live .arriving::before {
+    background: var(--glow);
+  }
+
+  .live .arriving::after {
+    background: var(--brand);
+    animation-delay: 0.1s;
+  }
+
+  .live .arriving .paper {
+    animation-delay: 0.2s;
+  }
+
+  @keyframes live-dissolve {
+    from {
+      mask-position: 0% 0;
+    }
+    to {
+      mask-position: 100% 0;
+    }
+  }
+
+  .live .empty {
+    grid-column: 2;
+    margin: 0;
+    color: var(--faint);
+  }
+
+  @media (max-width: 860px) {
+    .live {
+      grid-template-columns: 1fr;
+    }
+
+    .live .marquee {
+      position: static;
+    }
+
+    .live .empty {
+      grid-column: 1;
+    }
+  }
+</style>

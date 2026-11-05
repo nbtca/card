@@ -47,6 +47,7 @@ const stamp = (ms: number) => formatShort(new Date(ms).toISOString())
         </dl>
         {passes.length > 0 && (
           <div class="exports">
+            <a class="button ghost" href={`/e/${event.slug}/live`} target="_blank">打开入场大屏</a>
             <a class="button" href={`/e/${event.slug}/attendees.csv?only=entered`} download>导出已入场名单</a>
             <a class="button ghost" href={`/e/${event.slug}/attendees.csv`} download>导出全部领取名单</a>
           </div>

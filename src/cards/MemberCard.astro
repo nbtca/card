@@ -14,6 +14,8 @@ const full = size === "full"
 const Tag = full ? "div" : "a"
 // Each backdrop-filter layer is a full blur pass; a wall of thumbnails gets by with two.
 const layers = full ? 5 : 2
+// Members who keep turning up earn a warmer foil, like a gold card.
+const tier = member.kept >= 10 ? "aurora" : member.kept >= 5 ? "gold" : undefined
 const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.test(c) ? 1 : 0.42), 0)
 ---
 
@@ -21,6 +23,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   class:list={["card", size]}
   href={full ? undefined : `/members/${member.id}`}
   data-card={full ? "stage" : "thumb"}
+  data-tier={tier}
   style={`--hue: ${hue}; --fit: min(46cqi, ${(88 / Math.max(units, 1)).toFixed(2)}cqi)${member.id ? `; view-transition-name: member-${member.id}` : ""}`}
   aria-label={full ? "翻转社员卡" : `${name} 的社员卡`}
   {...full && { role: "button", tabindex: 0, "aria-pressed": "false" }}
@@ -61,12 +64,13 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
             <div><dt>入会</dt><dd>{joined}</dd></div>
             <div><dt>部门</dt><dd>{section || "—"}</dd></div>
             <div><dt>身份</dt><dd>{role}</dd></div>
-            {github && <div class="wide"><dt>GitHub</dt><dd>@{github}</dd></div>}
+            <div><dt>入场</dt><dd>{member.kept} 场</dd></div>
+            {github && <div><dt>GitHub</dt><dd>@{github}</dd></div>}
           </dl>
           <p class="motto">{motto || "To be at the intersection of technology and liberal arts."}</p>
           <p class="org">浙大宁波理工学院计算机协会</p>
-        {full && <div class="sparkle" />}
-        <div class="frame" aria-hidden="true"><i class="band" /></div>
+          <div class="sparkle" />
+          <div class="frame" aria-hidden="true"><i class="band" /></div>
           <div class="glare" />
         </section>
       )}
@@ -308,10 +312,20 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
 .band {
   position: absolute;
   inset: -100%;
-  background: linear-gradient(115deg, transparent 44%, #ffc4c1 47%, #fff6c2 49%, #d4ffc4 51%, #c6fffb 53%, #c9d3ff 55%, #f0cfff 57%, transparent 60%);
+  background: linear-gradient(115deg, var(--foil, transparent 44%, #ffc4c1 47%, #fff6c2 49%, #d4ffc4 51%, #c6fffb 53%, #c9d3ff 55%, #f0cfff 57%, transparent 60%));
   translate: calc(var(--x, 0) * -32%) calc(var(--y, 0) * -24%);
   opacity: min(1, calc((abs(var(--x, 0)) + abs(var(--y, 0))) * 1.4));
   will-change: translate, opacity;
+}
+
+.card[data-tier="gold"] {
+  --edge: rgb(255 216 140 / 0.3);
+  --foil: transparent 42%, #fff3cf 46%, #ffd56b 50%, #fff8e1 53%, #e8ad3d 57%, transparent 61%;
+}
+
+.card[data-tier="aurora"] {
+  --edge: rgb(170 200 255 / 0.3);
+  --foil: transparent 40%, #9ff6ff 44%, #7aa8ff 48%, #c99bff 52%, #ff9bd8 56%, #fff1a8 59%, transparent 63%;
 }
 
 .frame {
@@ -320,7 +334,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   overflow: hidden;
   padding: 0.6cqi;
   border-radius: inherit;
-  background: rgb(255 255 255 / 0.12);
+  background: var(--edge, rgb(255 255 255 / 0.12));
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
   pointer-events: none;
@@ -367,9 +381,6 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   margin: 0;
 }
 
-.back dl .wide {
-  grid-column: 1 / -1;
-}
 
 .back dt {
   font: 3.4cqi / 1 var(--display);

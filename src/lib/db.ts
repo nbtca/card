@@ -14,6 +14,7 @@ export interface Member {
   hue: number
   portrait: string | null
   background: string | null
+  kept: number
 }
 
 export interface Event {
@@ -31,6 +32,7 @@ export interface Event {
   claim_until: string
   starts_at: string
   ends_at: string
+  album: string | null
 }
 
 export interface Pass {

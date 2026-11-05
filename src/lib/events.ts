@@ -33,6 +33,8 @@ export async function saveEvent(form: FormData, editing: Event | null, createdBy
   if (capacity !== null && !(Number.isInteger(capacity) && capacity > 0)) return { error: "名额要是正整数，不限名额就留空。" }
   if (video instanceof File && video.size > MAX_VIDEO) return { error: `视频不能超过 ${MAX_VIDEO_MB}MB，剪一段 ${MAX_VIDEO_SECONDS} 秒以内的片段吧。` }
   const poster = form.get("poster")
+  const album = text("album") || null
+  if (album && !/^https:\/\/photo\.nbtca\.space\/\S*$/.test(album)) return { error: "相册链接要是 photo.nbtca.space 上的地址。" }
 
   let key = editing?.video ?? null
   if (video instanceof File && video.size > 0) {
@@ -46,16 +48,17 @@ export async function saveEvent(form: FormData, editing: Event | null, createdBy
 
   await db()
     .prepare(
-      `INSERT INTO events (slug, title, word, design, venue, summary, video, capacity, claim_from, claim_until, starts_at, ends_at, created_by, created_at, needs_info)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+      `INSERT INTO events (slug, title, word, design, venue, summary, video, capacity, claim_from, claim_until, starts_at, ends_at, created_by, created_at, needs_info, album)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)
        ON CONFLICT (slug) DO UPDATE SET
          title = ?2, word = ?3, design = ?4, venue = ?5, summary = ?6, video = ?7, capacity = ?8,
-         claim_from = ?9, claim_until = ?10, starts_at = ?11, ends_at = ?12, needs_info = ?15`,
+         claim_from = ?9, claim_until = ?10, starts_at = ?11, ends_at = ?12, needs_info = ?15, album = ?16`,
     )
     .bind(
       slug, text("title"), text("word").slice(0, 16), design, text("venue"), text("summary"), key, capacity,
       claimFrom.toISOString(), claimUntil.toISOString(), startsAt.toISOString(), endsAt.toISOString(), createdBy, Date.now(),
       form.has("needs_info") ? 1 : 0,
+      album,
     )
     .run()
   return { slug }
