@@ -34,6 +34,8 @@ const id = `strap-${Math.random().toString(36).slice(2, 8)}`
   const K = 70
   const DAMP = 4.2
   const STEP = 1 / 120
+  const STRETCH = 140
+  const THROW = 2200
 
   for (const root of document.querySelectorAll<HTMLElement>("[data-lanyard]")) {
     const hang = root.querySelector<HTMLElement>(".hang")!
@@ -131,15 +133,32 @@ const id = `strap-${Math.random().toString(36).slice(2, 8)}`
       root.dataset.grabbed = ""
       wake()
     })
+    // Pulled past its hanging length the strap stiffens like a rubber band, so the energy it stores can never
+    // fling the pass off the screen when let go.
+    const leash = (x: number, y: number) => {
+      const dx = x - pivot.x
+      const dy = y - pivot.y
+      const dist = Math.hypot(dx, dy) || 1
+      const hanging = rest.y - pivot.y
+      if (dist <= hanging) return { x, y }
+      const k = (hanging + STRETCH * (1 - Math.exp(-(dist - hanging) / STRETCH))) / dist
+      return { x: pivot.x + dx * k, y: pivot.y + dy * k }
+    }
+
     hang.addEventListener("pointermove", (e) => {
       if (!grab) return
       const box = root.getBoundingClientRect()
       const px = e.clientX - box.left
       const py = e.clientY - box.top
       const now = performance.now()
-      const dt = Math.max(1, now - grab.t) / 1000
-      vel = { x: (px - grab.x) / dt, y: (py - grab.y) / dt }
-      pos = { x: px + grab.dx, y: py + grab.dy }
+      const dt = Math.max(8, now - grab.t) / 1000
+      const next = leash(px + grab.dx, py + grab.dy)
+      // Smoothed and capped, so one jittery pointer event cannot become a throw.
+      const speed = { x: (next.x - pos.x) / dt, y: (next.y - pos.y) / dt }
+      vel = { x: vel.x * 0.5 + speed.x * 0.5, y: vel.y * 0.5 + speed.y * 0.5 }
+      const fast = Math.hypot(vel.x, vel.y)
+      if (fast > THROW) vel = { x: (vel.x * THROW) / fast, y: (vel.y * THROW) / fast }
+      pos = next
       Object.assign(grab, { t: now, x: px, y: py })
     })
     const release = () => {
