@@ -25,8 +25,7 @@ const { spec, footage, label = "生成分享图" } = Astro.props
 </dialog>
 
 <script>
-  import { dissolveMask } from "../lib/dissolve"
-  import { drawPoster, type PosterSpec } from "../lib/poster"
+  import type { PosterSpec } from "../lib/poster"
 
   for (const button of document.querySelectorAll<HTMLButtonElement>("[data-poster]")) {
     const dialog = button.nextElementSibling as HTMLDialogElement
@@ -41,6 +40,8 @@ const { spec, footage, label = "生成分享图" } = Astro.props
       text.textContent = "正在生成…"
       const source = button.dataset.footage ? document.querySelector<HTMLVideoElement | HTMLImageElement>(button.dataset.footage) : null
       const ready = source instanceof HTMLVideoElement ? source.readyState >= 2 : !!source?.complete
+      // Loaded on demand: few visitors make a poster, so the drawing code and QR encoder stay out of the page.
+      const [{ drawPoster }, { dissolveMask }] = await Promise.all([import("../lib/poster"), import("../lib/dissolve")])
       const blob = await drawPoster({ ...(JSON.parse(button.dataset.poster!) as Omit<PosterSpec, "footage">), footage: ready ? source : null })
       file = new File([blob], `nbtca.${blob.type.split("/")[1]}`, { type: blob.type })
       URL.revokeObjectURL(image.src)

@@ -11,8 +11,11 @@ const SHOWN = 48
 const slug = Astro.params.slug!
 const [event, { results: entries }, counts] = await Promise.all([
   getEvent(slug),
-  db().prepare("SELECT name, serial, redeemed_at FROM passes WHERE event = ? AND redeemed_at IS NOT NULL ORDER BY redeemed_at DESC LIMIT ?").bind(slug, SHOWN).all<Entry>(),
-  db().prepare("SELECT COUNT(*) AS claimed, COUNT(redeemed_at) AS entered FROM passes WHERE event = ?").bind(slug).first<{ claimed: number; entered: number }>(),
+  db().prepare("SELECT name, serial, redeemed_at, received_at FROM passes WHERE event = ? AND redeemed_at IS NOT NULL ORDER BY redeemed_at DESC LIMIT ?").bind(slug, SHOWN).all<Entry>(),
+  db()
+    .prepare("SELECT COUNT(*) AS claimed, COUNT(redeemed_at) AS entered, MAX(received_at) AS latest FROM passes WHERE event = ?")
+    .bind(slug)
+    .first<{ claimed: number; entered: number; latest: number | null }>(),
 ])
 if (!event) return new Response(null, { status: 404 })
 
@@ -37,7 +40,7 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
       <p class="welcome" data-welcome aria-live="polite"></p>
     </section>
 
-    <ol class="wall" data-wall data-event={slug} data-after={entries[0]?.redeemed_at ?? 0} data-shown={SHOWN}>
+    <ol class="wall" data-wall data-event={slug} data-after={counts!.latest ?? 0} data-shown={SHOWN}>
       {entries.map((e) => (
         <li class="stub" style={`--r: ${tilt(e.serial)}`}>
           <div class="paper">
@@ -114,7 +117,7 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
       try {
         const entries: Entry[] = await (await fetch(`/api/entries?event=${event}&after=${after}`, { cache: "no-store" })).json()
         if (entries.length) {
-          after = entries.at(-1)!.redeemed_at
+          after = entries.at(-1)!.received_at
           queue.push(...entries)
           land()
         }

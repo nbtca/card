@@ -46,7 +46,8 @@ export const GET: APIRoute = async ({ params, url }) => {
   return new Response(lines.map(fold).join("\r\n") + "\r\n", {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${event.slug}.ics"`,
+      // Inline lets iOS open its add-to-calendar sheet instead of saving a file.
+      "Content-Disposition": `inline; filename="${event.slug}.ics"`,
       "Cache-Control": "public, max-age=300",
     },
   })

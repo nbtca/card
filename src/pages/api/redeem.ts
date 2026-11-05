@@ -29,8 +29,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   const { meta } = await db()
-    .prepare("UPDATE passes SET redeemed_at = ?, redeemed_by = ? WHERE id = ? AND redeemed_at IS NULL")
-    .bind(at, locals.user!.email, pass.id)
+    .prepare("UPDATE passes SET redeemed_at = ?, received_at = ?, redeemed_by = ? WHERE id = ? AND redeemed_at IS NULL")
+    .bind(at, now, locals.user!.email, pass.id)
     .run()
   const fresh = meta.changes > 0
   return Response.json({
