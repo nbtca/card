@@ -21,6 +21,8 @@ The page around the cards follows the system light or dark setting, and the foot
 
 An event can ask everyone claiming a pass for their name, student ID, class and phone number, so attendance can be reported for course credit. Student IDs are checked against the NingboTech format: 3 for undergraduates or 2 for graduates, the entry year, a four-digit major and a three-digit number. That rules out typos and invented numbers but cannot prove an ID is the claimant's own, and one student ID can hold only one pass per event. The creator and admins see the details on the edit page with phone numbers masked, and export everyone or only those who checked in as a CSV that opens in Excel with the digits intact.
 
+On the member wall a card can be pulled off and held: it follows the pointer, leans with how fast it moves, and springs back into its slot when let go (`pluck.ts`). A plain click still opens it.
+
 ## Designing a pass
 
 Each `.astro` file in `src/cards/passes/` is a pass design, named after the file, and appears in the design menu of the event editor. A design receives `PassProps` from `src/cards/pass.ts`, and `ticket()` there gives it the dates, serial number, check-in state and QR code path, so a new design only decides how they look. Mark elements with `data-bind` to have the editor update them live. Events whose design file is missing fall back to `default`.
