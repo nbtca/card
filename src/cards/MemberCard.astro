@@ -302,23 +302,25 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   pointer-events: none;
 }
 
-/* Foil sits only where a real card has it, the logo and the edge. The masks never change; a rainbow band
-   slides underneath with translate, so tilting moves a composited layer and repaints nothing. */
+/* Foil sits only where a real card has it, the logo and the edge, and like real foil it shows only when
+   light catches it: invisible at rest, brighter the further the card tilts. The masks never change and the
+   band only moves and fades, so tilting repaints nothing. */
 .band {
   position: absolute;
   inset: -100%;
-  background: linear-gradient(115deg, transparent 40%, #ff9b96 44%, #ffef8a 47%, #b9ff8a 50%, #9ffff8 53%, #9cb0ff 56%, #e3a3ff 59%, transparent 63%);
+  background: linear-gradient(115deg, transparent 44%, #ffc4c1 47%, #fff6c2 49%, #d4ffc4 51%, #c6fffb 53%, #c9d3ff 55%, #f0cfff 57%, transparent 60%);
   translate: calc(var(--x, 0) * -32%) calc(var(--y, 0) * -24%);
-  will-change: translate;
+  opacity: min(1, calc((abs(var(--x, 0)) + abs(var(--y, 0))) * 1.4));
+  will-change: translate, opacity;
 }
 
 .frame {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  padding: 1cqi;
+  padding: 0.6cqi;
   border-radius: inherit;
-  background: rgb(255 255 255 / 0.35);
+  background: rgb(255 255 255 / 0.12);
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
   pointer-events: none;
