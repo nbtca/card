@@ -19,7 +19,7 @@ const sections = new Set(members.map((m) => m.section).filter(Boolean)).size
         <div><dt>部门</dt><dd>{sections}</dd></div>
       </dl>
     </header>
-    <ul>
+    <ul data-pluck>
       {members.map((member, i) => (
         <li class="rise" style={`--r: ${((i * 7) % 5) - 2}deg`}>
           <MemberCard member={member} size="thumb" />
@@ -28,6 +28,10 @@ const sections = new Set(members.map((m) => m.section).filter(Boolean)).size
     </ul>
   </main>
 </Base>
+
+<script>
+  import "../../cards/pluck"
+</script>
 
 <style>
   main {
@@ -80,6 +84,27 @@ const sections = new Set(members.map((m) => m.section).filter(Boolean)).size
     transition: rotate 0.5s var(--ease), translate 0.5s var(--ease), scale 0.5s var(--ease);
     content-visibility: auto;
     contain-intrinsic-size: auto 300px;
+  }
+
+  li :global(.card) {
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+  }
+
+  /* Held above the rest of the wall, with a deeper shadow while it is off its slot. */
+  /* content-visibility implies paint containment, which would clip a card lifted off its slot, and the
+     scroll-driven entry would leave a card in a half-visible row see-through while held. */
+  ul li[data-plucked] {
+    z-index: 5;
+    content-visibility: visible;
+    animation: none;
+  }
+
+  li[data-plucked] :global(.card) {
+    cursor: grabbing;
+    filter: drop-shadow(0 2rem 2.5rem rgb(0 0 0 / 0.55));
   }
 
   li:hover,
