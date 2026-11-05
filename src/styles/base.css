@@ -228,10 +228,44 @@ p {
   background: rgb(var(--tint) / 0.09);
 }
 
-.button.small {
+/* Secondary actions stay quiet next to the page's one main button and only fill in on hover. */
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
   min-height: 2.3rem;
-  padding-inline: 1rem;
-  font-size: 0.85rem;
+  padding: 0 0.95rem 0 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--muted);
+  font: 600 0.84rem / 1 var(--sans);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s, border-color 0.2s;
+}
+
+.action:hover,
+.action:focus-visible {
+  color: var(--fg);
+  border-color: rgb(var(--tint) / 0.2);
+  background: rgb(var(--tint) / 0.05);
+}
+
+.action svg {
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.action:disabled {
+  opacity: 0.6;
+  cursor: progress;
 }
 
 .button:disabled {

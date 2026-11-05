@@ -130,11 +130,21 @@ const chip = {
       </div>
 
       {event.summary && <p class="summary reveal" style="--i: 3">{event.summary}</p>}
-      {event.album && <a class="button ghost small album reveal" style="--i: 3" href={event.album}>看活动相册</a>}
+      {event.album && (
+        <a class="action album reveal" style="--i: 3" href={event.album}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="3" /><path d="m4 16 4.5-4.5 4 4 2.5-2.5 5 5" /><circle cx="15.5" cy="9.5" r="1.5" /></svg>
+          活动相册
+        </a>
+      )}
       {(host || editable) && (
         <div class="host reveal" style="--i: 3">
           {host && <a href={`/members/${host.id}`} class="by"><span class="avatar" style={`--hue: ${host.hue}`}>{[...host.name][0]}</span>由 {host.name} 发起</a>}
-          {editable && <a class="button ghost small" href={`/e/${event.slug}/edit`}>编辑活动与名单</a>}
+          {editable && (
+            <a class="action" href={`/e/${event.slug}/edit`} title="编辑活动、查看领取名单">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></svg>
+              管理活动
+            </a>
+          )}
         </div>
       )}
 
@@ -189,7 +199,10 @@ const chip = {
                   : <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>登录后领取活动券</a>}
         <div class="extras">
           {pass && !pass.redeemed_at && checkInPhase(event) !== "ended" && (
-            <a class="button ghost small" href={`/e/${event.slug}/calendar.ics`}>加入日历，开场前半小时提醒我</a>
+            <a class="action" href={`/e/${event.slug}/calendar.ics`} title="开场前半小时提醒">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
+              加入日历
+            </a>
           )}
           <SharePoster
           footage=".stage video"
