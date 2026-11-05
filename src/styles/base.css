@@ -228,6 +228,12 @@ p {
   background: rgb(var(--tint) / 0.09);
 }
 
+.button.small {
+  min-height: 2.3rem;
+  padding-inline: 1rem;
+  font-size: 0.85rem;
+}
+
 .button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
