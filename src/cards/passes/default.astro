@@ -75,7 +75,7 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
             <div class="serial">
               <span>{serial}</span>
               <span>Admit one</span>
-              <small>{{ preview: "领取后生成入场码", valid: "入场时出示此码", redeemed: "已入场", expired: "活动已结束" }[state]}</small>
+              <small>{{ preview: "领取后生成入场码", valid: "到场后在活动页撕开", redeemed: "已入场", expired: "活动已结束" }[state]}</small>
             </div>
           </div>
         )}
@@ -406,7 +406,8 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     opacity: 0.25;
   }
 
-  [data-state="preview"] .qr {
+  [data-state="preview"] .qr,
+  [data-state="valid"] .qr {
     opacity: 0.18;
     filter: blur(0.5cqi);
   }

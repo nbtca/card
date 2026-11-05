@@ -39,7 +39,7 @@ async function signingKey(kid: string) {
   return keys?.byId.get(kid)
 }
 
-function token(request: Request) {
+export function accessToken(request: Request) {
   const header = request.headers.get("Cf-Access-Jwt-Assertion")
   if (header) return header
   for (const pair of (request.headers.get("Cookie") ?? "").split("; ")) {
@@ -95,7 +95,7 @@ async function identity(jwt: string, email: string): Promise<Visitor> {
 
 // Access only guards some paths, and public pages read the same cookie, so every token is verified here.
 export async function accessVisitor(request: Request) {
-  const jwt = token(request)
+  const jwt = accessToken(request)
   const [header, payload, signature] = jwt?.split(".") ?? []
   if (!env.ACCESS_AUD || !jwt || !header || !payload || !signature) return null
   try {

@@ -1,9 +1,12 @@
 ---
 import EventList from "../../components/EventList.astro"
+import PassShelf from "../../components/PassShelf.astro"
 import Base from "../../layouts/Base.astro"
-import { upcomingEvents } from "../../lib/db"
+import { checkInPhase, passesOf, upcomingEvents } from "../../lib/db"
 
-const events = await upcomingEvents()
+const { user } = Astro.locals
+const [events, passes] = await Promise.all([upcomingEvents(), user ? passesOf(user.email) : []])
+const mine = passes.filter((p) => !p.redeemed_at && checkInPhase(p) !== "ended")
 ---
 
 <Base title="活动 · NBTCA">
@@ -12,8 +15,9 @@ const events = await upcomingEvents()
       <p class="eyebrow reveal">Events</p>
       <h1 class="title reveal" style="--i: 1">活动</h1>
       <p class="lede reveal" style="--i: 2">每场活动都有一张专属的券。在开放时间里领一张，活动当天出示给工作人员扫码入场。</p>
-      {Astro.locals.user?.member && <a class="button reveal" style="--i: 3" href="/e/new">发起活动</a>}
+      {user?.member && <a class="button reveal" style="--i: 3" href="/e/new">发起活动</a>}
     </header>
+    {mine.length > 0 && <PassShelf stubs={mine} guest={!user?.member} eyebrow="Your passes" title="我的券" lede="到场后打开券，撕开贴纸给工作人员扫码。" named={false} />}
     {events.length ? <EventList events={events} /> : <p class="muted">最近还没有活动，过几天再来看看。</p>}
   </main>
 </Base>

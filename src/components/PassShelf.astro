@@ -1,0 +1,127 @@
+---
+import { passDesign } from "../cards/pass"
+import { checkInOpensAt, checkInPhase, formatShort, stubPass, type Stub } from "../lib/db"
+
+interface Props {
+  stubs: Stub[]
+  guest: boolean
+  eyebrow: string
+  title: string
+  lede?: string
+  empty?: string
+  // Pages that also list the same events leave the transition names to that list.
+  named?: boolean
+}
+
+const { stubs, guest, eyebrow, title, lede, empty, named = true } = Astro.props
+const note = (s: Stub) =>
+  s.redeemed_at
+    ? `${formatShort(new Date(s.redeemed_at).toISOString())} 入场`
+    : checkInPhase(s) === "open"
+      ? "已经可以入场，点开券撕下贴纸"
+      : `${formatShort(checkInOpensAt(s))} 起可以入场`
+---
+
+<section class="shelf">
+  <header>
+    <p class="eyebrow">{eyebrow}</p>
+    <h2>{title}</h2>
+    {lede && <p class="muted">{lede}</p>}
+  </header>
+  {!stubs.length && empty && <p class="muted">{empty}</p>}
+  <ul>
+    {stubs.map((s, i) => {
+      const Design = passDesign(s.design)
+      return (
+        <li class="rise" style={`--r: ${((i * 7) % 5) - 2}deg`}>
+          <Design event={s} pass={stubPass(s)} holder={s.holder} guest={guest} size="thumb" transitionName={named ? `pass-${s.slug}` : null} />
+          <p>
+            <b>{s.title}</b>
+            <span>{note(s)}</span>
+            <small>№ {String(s.serial).padStart(4, "0")}</small>
+          </p>
+        </li>
+      )
+    })}
+  </ul>
+</section>
+
+<style>
+  .shelf {
+    display: grid;
+    gap: 2.25rem;
+  }
+
+  header {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  h2 {
+    font: 800 clamp(1.5rem, 3vw, 2rem) / 1.1 var(--wide);
+    font-stretch: 112%;
+  }
+
+  header .muted {
+    margin: 0;
+  }
+
+  ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr));
+    gap: 2.75rem 2rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    min-width: 0;
+    display: grid;
+    gap: 1.1rem;
+    align-content: start;
+  }
+
+  /* Kept stubs lie a little askew, like ones pinned to a board, and straighten when picked up. */
+  li :global(.pass-card.thumb) {
+    rotate: var(--r);
+    transition: rotate 0.4s var(--ease);
+  }
+
+  li:hover :global(.pass-card.thumb),
+  li:focus-within :global(.pass-card.thumb) {
+    rotate: 0deg;
+  }
+
+  /* A torn pass is missing its stub, so the caption moves up into the space it left. */
+  li:has(:global([data-torn])) p {
+    margin-top: -30%;
+  }
+
+  p {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding-inline: 0.2rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  b {
+    font-size: 1rem;
+    color: var(--fg);
+  }
+
+  small {
+    font: 600 0.7rem / 1 var(--wide);
+    letter-spacing: 0.12em;
+    color: var(--faint);
+  }
+
+  @media (max-width: 560px) {
+    ul {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 2rem 1rem;
+    }
+  }
+</style>

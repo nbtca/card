@@ -1,9 +1,11 @@
 ---
 import MemberCard from "../cards/MemberCard.astro"
+import PassShelf from "../components/PassShelf.astro"
 import Base from "../layouts/Base.astro"
-import { db, getMember, mediaUrl } from "../lib/db"
+import { checkInPhase, db, forgetCard, getMember, mediaUrl, passesOf } from "../lib/db"
 
-const id = Astro.locals.user!.member!.id
+const user = Astro.locals.user!
+const id = user.member!.id
 let saved = false
 
 if (Astro.request.method === "POST") {
@@ -25,10 +27,13 @@ if (Astro.request.method === "POST") {
       id,
     )
     .run()
+  forgetCard(user.email)
   saved = true
 }
 
-const member = (await getMember(id))!
+const [member, passes] = await Promise.all([getMember(id).then((m) => m!), passesOf(user.email)])
+const upcoming = passes.filter((p) => !p.redeemed_at && checkInPhase(p) !== "ended")
+const kept = passes.filter((p) => p.redeemed_at)
 const swatches = [212, 248, 280, 320, 350, 18, 42, 140, 172, 196]
 const uploads = [
   { kind: "portrait", label: "人像", hint: "去掉背景的透明 PNG 效果最好，上传后可以拖动、缩放来摆位置。", key: member.portrait },
@@ -117,7 +122,19 @@ const uploads = [
         <button class="button ghost" type="button" data-crop-cancel>取消</button>
       </div>
     </dialog>
+
   </main>
+  <section class="wrap passes">
+    {upcoming.length > 0 && <PassShelf stubs={upcoming} guest={false} eyebrow="Upcoming" title="待入场" lede="到场后打开券，撕开贴纸给工作人员扫码。" />}
+    <PassShelf
+      stubs={kept}
+      guest={false}
+      eyebrow="Ticket stubs"
+      title={kept.length ? `票夹 · ${kept.length} 场` : "票夹"}
+      lede="每次入场后被撕过、盖了章的券都留在这里。"
+      empty="还没有入场过的活动。去活动页领一张券吧。"
+    />
+  </section>
 </Base>
 
 <script>
@@ -396,6 +413,12 @@ const uploads = [
     align-items: start;
     gap: 3rem 4rem;
     padding-block: 3rem;
+  }
+
+  .passes {
+    display: grid;
+    gap: 5rem;
+    padding-block: 3rem 5rem;
   }
 
   .stage {

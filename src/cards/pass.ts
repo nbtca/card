@@ -4,7 +4,7 @@ import { checkInOpensAt, checkInPhase, mediaUrl, posterKey, ZONE, type Event, ty
 // Elements marked data-bind="word|title|venue|date|day|time|footage" update live in the event editor.
 export interface PassProps {
   event: Event
-  pass: Pass | null
+  pass: Pick<Pass, "id" | "serial" | "redeemed_at"> | null
   holder: string
   guest: boolean
   size?: "thumb" | "full"
@@ -15,15 +15,16 @@ export interface PassProps {
 
 export function ticket({ event, pass }: PassProps, origin: string) {
   const when = new Date(event.starts_at)
-  // Staff can scan this with any camera app: the URL opens the check-in page.
-  const qr = encode(pass ? `${origin}/scan#${pass.id}` : `${origin}/e/${event.slug}`, { ecc: "M", border: 0 })
   const checkIn = checkInPhase(event)
+  // The code only reaches the page once it can be used, so a screenshot taken earlier carries nothing.
+  const showCode = !!pass && !pass.redeemed_at && checkIn === "open"
+  // Staff can scan this with any camera app: the URL opens the check-in page.
+  const qr = encode(showCode ? `${origin}/scan#${pass!.id}` : `${origin}/e/${event.slug}`, { ecc: "M", border: 0 })
   return {
     checkIn,
     opensAt: checkInOpensAt(event),
-    // The code only reaches the page once it can be used, so a screenshot taken earlier carries nothing.
-    showCode: !!pass && !pass.redeemed_at && checkIn === "open",
-    state: !pass ? "preview" : pass.redeemed_at ? "redeemed" : checkInPhase(event) === "ended" ? "expired" : "valid",
+    showCode,
+    state: !pass ? "preview" : pass.redeemed_at ? "redeemed" : checkIn === "ended" ? "expired" : "valid",
     date: when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: ZONE }),
     day: when.toLocaleDateString("zh-CN", { month: "long", day: "numeric", timeZone: ZONE }),
     time: when.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: ZONE }),

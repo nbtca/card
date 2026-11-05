@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro"
 import { env } from "cloudflare:workers"
-import { db, getMember, randomId, thumbKey } from "../../../lib/db"
+import { db, forgetCard, getMember, randomId, thumbKey } from "../../../lib/db"
 
 const KINDS = ["portrait", "background"] as const
 const MAX_BYTES = 4 * 1024 * 1024
@@ -35,6 +35,7 @@ export const PUT: APIRoute = async ({ request, url, locals }) => {
   const httpMetadata = { contentType: type }
   await Promise.all([env.MEDIA.put(key, full!, { httpMetadata }), env.MEDIA.put(thumbKey(key), thumb!, { httpMetadata })])
   await db().prepare(`UPDATE members SET ${t.kind} = ? WHERE id = ?`).bind(key, t.member.id).run()
+  forgetCard(t.member.email)
   await drop(t.old)
   return Response.json({ key })
 }
@@ -43,6 +44,7 @@ export const DELETE: APIRoute = async ({ url, locals }) => {
   const t = await target(url, locals)
   if (!t) return new Response("unknown kind", { status: 400 })
   await db().prepare(`UPDATE members SET ${t.kind} = NULL WHERE id = ?`).bind(t.member.id).run()
+  forgetCard(t.member.email)
   await drop(t.old)
   return new Response(null, { status: 204 })
 }
