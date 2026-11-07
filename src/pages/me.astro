@@ -125,10 +125,7 @@ const uploads = [
 
   </main>
   <section class="wrap passes">
-    <div class="links">
-      {kept.length > 0 && <a class="button ghost" href="/recap">年度回顾</a>}
-      <a class="button ghost" href="/me/print">打印实体卡</a>
-    </div>
+    {kept.length > 0 && <a class="button ghost recap-link" href="/recap">年度回顾</a>}
     {upcoming.length > 0 && <PassShelf stubs={upcoming} guest={false} eyebrow="Upcoming" title="待入场" lede="到场后撕开贴纸扫码。" />}
     <PassShelf
       stubs={kept}
@@ -419,10 +416,8 @@ const uploads = [
     padding-block: 3rem;
   }
 
-  .links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+  .recap-link {
+    justify-self: start;
   }
 
   .passes {
