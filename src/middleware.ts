@@ -4,7 +4,7 @@ import { accessToken, accessVisitor, type Visitor } from "./lib/access"
 import { sharedPage } from "./lib/cache"
 import { cachedCard, db, memberByEmail, randomId, rememberCard, type Member } from "./lib/db"
 
-const MEMBERS_ONLY = ["/members", "/me", "/dev", "/scan", "/e/new", "/api/me", "/api/redeem", "/api/entries", "/media/members/"]
+const MEMBERS_ONLY = ["/members", "/me", "/dev", "/scan", "/e/new", "/api/me", "/api/redeem", "/api/entries", "/media/members/", "/meet"]
 
 // Pages that look the same to every signed-out visitor.
 const SHARED = /^\/(e(\/(?!new$)[a-z0-9][a-z0-9-]*)?|r\/\d{1,9})?$/

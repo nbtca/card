@@ -57,8 +57,9 @@ A member's card appears after their first visit. Name and alias follow their Log
 3. From an hour before the start, the sticker peels to show the code. Before that the page does not contain the code, so a screenshot carries nothing.
 4. Staff scan `https://card.nbtca.space/scan#<pass id>` at `/scan` or with the phone's camera. A pass checks in once.
 5. Once the sticker is peeled, the pass page checks every few seconds and tears the stub off after the scan.
-6. The torn pass joins the holder's stubs on `/me` and their member page.
-7. The creator exports everyone, or only those who checked in, as a CSV that keeps leading digits in Excel.
+6. While the event is on, members who are in see a code on the event page. Another member who is in scans it with their camera, and each of them sees on the other's card where they met.
+7. The torn pass joins the holder's stubs on `/me` and their member page.
+8. The creator exports everyone, or only those who checked in, as a CSV that keeps leading digits in Excel.
 
 Student IDs must match `[23]` + entry year + 4-digit major + 3-digit number, and one ID holds one pass per event. This rules out typos and invented numbers, not borrowed IDs.
 

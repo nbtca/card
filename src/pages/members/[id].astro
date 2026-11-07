@@ -4,10 +4,13 @@ import PassShelf from "../../components/PassShelf.astro"
 import SharePoster from "../../components/SharePoster.astro"
 import Base from "../../layouts/Base.astro"
 import { getMember, keptBy } from "../../lib/db"
+import { metWhere } from "../../lib/meets"
 
-const [member, kept] = await Promise.all([getMember(Astro.params.id!), keptBy(Astro.params.id!)])
+const me = Astro.locals.user!.member!
+const id = Astro.params.id!
+const [member, kept, met] = await Promise.all([getMember(id), keptBy(id), id === me.id ? [] : metWhere(me.id, id)])
 if (!member) return new Response(null, { status: 404 })
-const mine = member.id === Astro.locals.user?.member?.id
+const mine = member.id === me.id
 ---
 
 <Base title={`${member.name} · NBTCA 社员卡`}>
@@ -20,6 +23,11 @@ const mine = member.id === Astro.locals.user?.member?.id
     <div class="caption reveal">
       <h1>{member.name}</h1>
       <p class="muted">{[member.section, member.role].filter(Boolean).join(" · ")} · {member.joined} 年入会</p>
+      {met.length > 0 && (
+        <p class="met" data-fresh={Astro.url.searchParams.has("met") ? "" : undefined}>
+          在 {met.map((e, i) => <>{i > 0 && "、"}<a href={`/e/${e.slug}`}>{e.title}</a></>)} 认识
+        </p>
+      )}
       <p class="hint">点击卡片翻到背面</p>
       {mine && (
         <div class="row">
@@ -95,6 +103,25 @@ const mine = member.id === Astro.locals.user?.member?.id
 
   .caption p {
     margin: 0;
+  }
+
+  .met {
+    font-size: 0.92rem;
+  }
+
+  .met a {
+    color: var(--fg);
+  }
+
+  .met[data-fresh] {
+    animation: met 1.2s var(--ease) both;
+  }
+
+  @keyframes met {
+    from {
+      opacity: 0;
+      translate: 0 0.5rem;
+    }
   }
 
   .hint {

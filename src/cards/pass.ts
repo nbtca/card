@@ -18,13 +18,20 @@ export interface PassProps {
 const teeth = Array.from({ length: 25 }, (_, i) => `${100 - i * (100 / 24)}% ${i % 2 ? 76.9 : 75.6}%`)
 export const TEAR = `polygon(0 0, 100% 0, ${teeth.join(", ")})`
 
+export function qrCode(text: string) {
+  const qr = encode(text, { ecc: "M", border: 0 })
+  return {
+    size: qr.size,
+    path: qr.data.flatMap((row, y) => row.flatMap((on, x) => (on ? [`M${x} ${y}h1v1h-1z`] : []))).join(""),
+  }
+}
+
 export function ticket({ event, pass }: PassProps, origin: string) {
   const when = new Date(event.starts_at)
   const checkIn = checkInPhase(event)
   // The code only reaches the page once it can be used, so a screenshot taken earlier carries nothing.
   const showCode = !!pass && !pass.redeemed_at && checkIn === "open"
   // Staff can scan this with any camera app: the URL opens the check-in page.
-  const qr = encode(showCode ? `${origin}/scan#${pass!.id}` : `${origin}/e/${event.slug}`, { ecc: "M", border: 0 })
   return {
     checkIn,
     opensAt: checkInOpensAt(event),
@@ -39,10 +46,7 @@ export function ticket({ event, pass }: PassProps, origin: string) {
       : null,
     video: mediaUrl(event.video),
     poster: event.video ? mediaUrl(posterKey(event.video)) : null,
-    qr: {
-      size: qr.size,
-      path: qr.data.flatMap((row, y) => row.flatMap((on, x) => (on ? [`M${x} ${y}h1v1h-1z`] : []))).join(""),
-    },
+    qr: qrCode(showCode ? `${origin}/scan#${pass!.id}` : `${origin}/e/${event.slug}`),
   } as const
 }
 

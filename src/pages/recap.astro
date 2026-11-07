@@ -19,7 +19,7 @@ interface Kept extends Event {
 }
 
 // Both read the visitor's passes through the holder index; companions are limited to members, who already see each other.
-const [{ results: passes }, { results: companions }] = await Promise.all([
+const [{ results: passes }, { results: companions }, metCount] = await Promise.all([
   db()
     .prepare(
       `SELECT e.*, p.serial, p.redeemed_at FROM passes p JOIN events e ON e.slug = p.event
@@ -38,7 +38,17 @@ const [{ results: passes }, { results: companions }] = await Promise.all([
     )
     .bind(user.email, from, until)
     .all<{ id: string; name: string; hue: number; n: number }>(),
+  user.member
+    ? db()
+        .prepare(
+          `SELECT COUNT(*) AS n FROM meets x JOIN events e ON e.slug = x.event
+           WHERE (x.a = ?1 OR x.b = ?1) AND e.starts_at >= ?2 AND e.starts_at < ?3`,
+        )
+        .bind(user.member.id, from, until)
+        .first<{ n: number }>()
+    : null,
 ])
+const metThisYear = metCount?.n ?? 0
 
 const kept = passes.filter((p) => p.redeemed_at)
 const missed = passes.filter((p) => !p.redeemed_at && Date.parse(p.ends_at) < Date.now()).length
@@ -129,6 +139,7 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
               <ul class="stubs">
                 {kept.map((p) => <li style={`--r: ${((p.serial * 37) % 7) - 3}deg`}><b>{p.word}</b><span>{formatShort(p.starts_at).split(" ")[0]}</span></li>)}
               </ul>
+              {metThisYear > 0 && <p class="muted">还在活动上认识了 {metThisYear} 位社员。</p>}
               {tier && <p class="tier">累计入场 {total} 场，你的社员卡已经换上了{tier}。</p>}
               <div class="row">
                 <SharePoster

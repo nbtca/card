@@ -47,6 +47,7 @@ export interface Pass {
   student_id: string | null
   class_name: string | null
   phone: string | null
+  meet_code: string | null
 }
 
 export const db = () => env.DB
