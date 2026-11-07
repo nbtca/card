@@ -70,7 +70,7 @@ const uploads = [
           <span>主色调</span>
           <div class="swatches">
             {swatches.map((h) => (
-              <button type="button" class="swatch" style={`--h: ${h}`} data-hue={h} aria-label={`色相 ${h}`} aria-pressed={String(h === member.hue)} />
+              <button type="button" class="swatch" style={`--h: ${h}`} data-hue={h} aria-label={`色相 ${h}`} aria-pressed={h === member.hue ? "true" : "false"} />
             ))}
           </div>
           <input name="hue" type="range" min="0" max="360" value={member.hue} data-live="hue" aria-label="自定义色相" />

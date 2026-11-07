@@ -2,4 +2,5 @@ onlyBuiltDependencies:
   - esbuild
   - workerd
 overrides:
+  # Keeps the plugin on the same wrangler and workerd as the wrangler devDependency.
   "@cloudflare/vite-plugin": 1.64.0

@@ -19,11 +19,11 @@ if (!canEdit(event, user)) return Astro.redirect(`/e/${event.slug}`)
 let error = ""
 if (Astro.request.method === "POST") {
   const result = await saveEvent(await Astro.request.formData(), event, event.created_by)
-  if (result.slug) {
+  if (result.error) error = result.error
+  else {
     purgePages(Astro.url, ["/", "/e", `/e/${event.slug}`])
     return Astro.redirect(`/e/${event.slug}`, 303)
   }
-  error = result.error
 }
 
 const entered = passes.filter((p) => p.redeemed_at).length

@@ -43,7 +43,7 @@ const events = await recentEvents()
 </Base>
 
 <script>
-  import { formatClock, formatTime } from "../lib/format"
+  import { formatClock, formatSerial, formatTime } from "../lib/format"
 
   const video = document.querySelector<HTMLVideoElement>("[data-video]")!
   const start = document.querySelector<HTMLButtonElement>("[data-start]")!
@@ -83,7 +83,7 @@ const events = await recentEvents()
       ended: "活动已经结束",
       queued: "已离线记下",
     }[outcome.status]
-    const who = `${outcome.name} · ${outcome.title} · ${formatSerial(outcome.serial)}`
+    const who = `${outcome.name} · ${outcome.title} · ${formatSerial(outcome.serial!)}`
     detail.textContent = {
       ok: who,
       already: `${who} · ${formatClock(outcome.redeemedAt!)} 已入场`,

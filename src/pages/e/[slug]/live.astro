@@ -82,13 +82,13 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
       const el = document.createElement(tag)
       if (className) el.className = className
       el.textContent = text
-      paper.append(el)
+      paper.appendChild(el)
     }
     add("span", "serial", formatSerial(entry.serial))
     add("b", "", entry.name)
     add("time", "", formatClock(entry.redeemed_at))
     add("span", "admit", "Admit one")
-    li.append(paper)
+    li.appendChild(paper)
     paper.addEventListener("animationend", () => li.classList.remove("arriving"), { once: true })
     return li
   }
@@ -101,7 +101,7 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
     while (queue.length) {
       const entry = queue.shift()!
       document.querySelector("[data-empty]")?.remove()
-      wall.prepend(stub(entry))
+      wall.insertBefore(stub(entry), wall.firstChild)
       while (wall.children.length > shown) wall.lastElementChild!.remove()
       count.textContent = String(Number(count.textContent) + 1)
       welcome.textContent = `欢迎，${entry.name}`
