@@ -1,30 +1,40 @@
 ---
-interface Props {
-  from: string
-  until: string
-  // The entry wall shows only the counts, large; the event page also lists the latest tickets.
+// Either the tickets opened during a repair day, or the tickets one member took on.
+type Props = ({ from: string; until: string; alias?: never } | { alias: string; from?: never; until?: never }) & {
+  // The entry wall shows only the counts, large; other pages also list the latest tickets.
   compact?: boolean
+  eyebrow?: string
+  title?: string
 }
 
-const { from, until, compact = false } = Astro.props
+const { from, until, alias, compact = false, eyebrow, title } = Astro.props
 ---
 
-<section class:list={["tally", { compact }]} data-repair-tally data-from={from} data-until={until} hidden>
-  <p class="counts"><b data-received>0</b> 台已接待<span>·</span><b data-fixed>0</b> 台已修好</p>
+<section class:list={["tally", { compact }]} data-repair-tally data-from={from} data-until={until} data-alias={alias} hidden>
+  {title && (
+    <header>
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      <h2>{title}</h2>
+    </header>
+  )}
+  {alias
+    ? <p class="counts">接过<b data-received>0</b>单<span>·</span>修好<b data-fixed>0</b>台</p>
+    : <p class="counts"><b data-received>0</b>台已接待<span>·</span><b data-fixed>0</b>台已修好</p>}
   {!compact && <ul data-list />}
 </section>
 
 <script>
-  import { fetchRepairsBetween, type Repair } from "../lib/repair"
+  import { fetchMemberRepairs, fetchRepairsBetween, type Repair } from "../lib/repair"
 
   const LISTED = 6
   const POLL = 30_000
   const status = (r: Repair) => (r.cancelled ? "已取消" : ["等待接单", "维修中", "已修好", "已完成"][r.steps.findLastIndex((s) => s.done)])
 
   for (const tally of document.querySelectorAll<HTMLElement>("[data-repair-tally]")) {
-    const { from, until } = tally.dataset as { from: string; until: string }
+    const { from, until, alias } = tally.dataset
     const list = tally.querySelector("[data-list]")
-    const show = (repairs: Repair[]) => {
+    const show = (repairs: Repair[] | null) => {
+      if (!repairs) return
       const kept = repairs.filter((r) => !r.cancelled)
       tally.querySelector("[data-received]")!.textContent = String(kept.length)
       tally.querySelector("[data-fixed]")!.textContent = String(kept.filter((r) => r.steps[2]!.done).length)
@@ -43,9 +53,11 @@ const { from, until, compact = false } = Astro.props
       )
       tally.hidden = kept.length === 0
     }
-    // The page may stay open on a projector for the whole day, so it keeps checking until the event ends.
+    // A repair day's page may stay open on a projector all day, so it keeps checking until the event ends.
     const load = () =>
-      fetchRepairsBetween(from, until).then(show, () => {}).finally(() => Date.now() < Date.parse(until) && setTimeout(load, POLL))
+      (alias ? fetchMemberRepairs(alias) : fetchRepairsBetween(from!, until!))
+        .then(show, () => {})
+        .finally(() => until && Date.now() < Date.parse(until) && setTimeout(load, POLL))
     load()
   }
 </script>
@@ -57,11 +69,22 @@ const { from, until, compact = false } = Astro.props
     width: 100%;
   }
 
+  header {
+    display: grid;
+    gap: 0.7rem;
+    margin-bottom: 0.6rem;
+  }
+
+  h2 {
+    font: 800 clamp(1.5rem, 3vw, 2rem) / 1.1 var(--wide);
+    font-stretch: 112%;
+  }
+
   .counts {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 0.4rem;
+    gap: 0.35rem;
     margin: 0;
     color: var(--muted);
   }
@@ -80,6 +103,7 @@ const { from, until, compact = false } = Astro.props
   ul {
     display: grid;
     gap: 0.4rem;
+    max-width: 40rem;
     margin: 0;
     padding: 0;
     list-style: none;

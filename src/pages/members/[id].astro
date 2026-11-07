@@ -1,6 +1,7 @@
 ---
 import MemberCard from "../../cards/MemberCard.astro"
 import PassShelf from "../../components/PassShelf.astro"
+import RepairTally from "../../components/RepairTally.astro"
 import SharePoster from "../../components/SharePoster.astro"
 import Base from "../../layouts/Base.astro"
 import { getMember, keptBy } from "../../lib/db"
@@ -50,6 +51,9 @@ const mine = member.id === me.id
         <PassShelf stubs={kept} guest={false} eyebrow="Ticket stubs" title={`去过的 ${kept.length} 场活动`} />
       </div>
     )}
+    <div class="repairs">
+      <RepairTally alias={member.alias} eyebrow="Repairs" title="修过的电脑" />
+    </div>
   </main>
 </Base>
 
@@ -103,6 +107,10 @@ const mine = member.id === me.id
 
   .caption p {
     margin: 0;
+  }
+
+  .repairs {
+    justify-self: stretch;
   }
 
   .met {
