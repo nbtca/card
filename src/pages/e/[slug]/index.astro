@@ -1,6 +1,7 @@
 ---
 import Lanyard from "../../../cards/Lanyard.astro"
 import { passDesign, qrCode } from "../../../cards/pass"
+import RepairTally from "../../../components/RepairTally.astro"
 import SharePoster from "../../../components/SharePoster.astro"
 import Timeline from "../../../components/Timeline.astro"
 import Base from "../../../layouts/Base.astro"
@@ -91,6 +92,8 @@ const Design = passDesign(event.design)
 const meeting = !!user?.member && !!pass?.redeemed_at && checkInPhase(event) === "open"
 const [code, met] = meeting ? await Promise.all([pass!.meet_code ?? meetCode(pass!.id), metAt(event.slug, user!.member!.id)]) : [null, []]
 const meetQr = code ? qrCode(`${Astro.url.origin}/meet/${code}`) : null
+// A repair day counts the tickets opened from the moment check-in opens.
+const repairFrom = event.repair ? checkInOpensAt(event) : null
 const editable = canEdit(event, user)
 
 const now = Date.now()
@@ -155,6 +158,7 @@ const chip = {
       )}
 
       <Timeline class="reveal" style="--i: 4" steps={milestones} countdown />
+      {repairFrom && Date.parse(repairFrom) <= Date.now() && <RepairTally from={repairFrom} until={event.ends_at} />}
 
       <div class="act reveal" style="--i: 6">
         {pass

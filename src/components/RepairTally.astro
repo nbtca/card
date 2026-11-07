@@ -1,0 +1,125 @@
+---
+interface Props {
+  from: string
+  until: string
+  // The entry wall shows only the counts, large; the event page also lists the latest tickets.
+  compact?: boolean
+}
+
+const { from, until, compact = false } = Astro.props
+---
+
+<section class:list={["tally", { compact }]} data-repair-tally data-from={from} data-until={until} hidden>
+  <p class="counts"><b data-received>0</b> 台已接待<span>·</span><b data-fixed>0</b> 台已修好</p>
+  {!compact && <ul data-list />}
+</section>
+
+<script>
+  import { fetchRepairsBetween, type Repair } from "../lib/repair"
+
+  const LISTED = 6
+  const POLL = 30_000
+  const status = (r: Repair) => (r.cancelled ? "已取消" : ["等待接单", "维修中", "已修好", "已完成"][r.steps.findLastIndex((s) => s.done)])
+
+  for (const tally of document.querySelectorAll<HTMLElement>("[data-repair-tally]")) {
+    const { from, until } = tally.dataset as { from: string; until: string }
+    const list = tally.querySelector("[data-list]")
+    const show = (repairs: Repair[]) => {
+      const kept = repairs.filter((r) => !r.cancelled)
+      tally.querySelector("[data-received]")!.textContent = String(kept.length)
+      tally.querySelector("[data-fixed]")!.textContent = String(kept.filter((r) => r.steps[2]!.done).length)
+      list?.replaceChildren(
+        ...kept.slice(0, LISTED).map((r) => {
+          const li = document.createElement("li")
+          const a = Object.assign(document.createElement("a"), { href: `/r/${r.id}` })
+          const [serial, model, state] = ["span", "b", "small"].map((t) => document.createElement(t))
+          serial!.textContent = `№ ${String(r.id).padStart(4, "0")}`
+          model!.textContent = r.model || "未填写机型"
+          state!.textContent = status(r)!
+          a.append(serial!, model!, state!)
+          li.append(a)
+          return li
+        }),
+      )
+      tally.hidden = kept.length === 0
+    }
+    // The page may stay open on a projector for the whole day, so it keeps checking until the event ends.
+    const load = () =>
+      fetchRepairsBetween(from, until).then(show, () => {}).finally(() => Date.now() < Date.parse(until) && setTimeout(load, POLL))
+    load()
+  }
+</script>
+
+<style>
+  .tally {
+    display: grid;
+    gap: 0.9rem;
+    width: 100%;
+  }
+
+  .counts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .counts b {
+    font: 800 1.4rem / 1 var(--wide);
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+  }
+
+  .counts span {
+    margin-inline: 0.3rem;
+    color: var(--faint);
+  }
+
+  ul {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* The list is built by the script, so its items carry no scoped attribute. */
+  ul :global(a) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    font-size: 0.88rem;
+    text-decoration: none;
+  }
+
+  ul :global(span) {
+    font: 600 0.72rem / 1 var(--wide);
+    letter-spacing: 0.12em;
+    color: var(--faint);
+  }
+
+  ul :global(b) {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  ul :global(small) {
+    color: var(--muted);
+  }
+
+  .compact .counts {
+    font-size: 1.15rem;
+  }
+
+  .compact .counts b {
+    font-size: 1.6rem;
+  }
+</style>
