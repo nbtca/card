@@ -13,6 +13,10 @@ export interface PassProps {
   anatomy?: boolean
 }
 
+// Teeth along the perforation, where the stub was torn away.
+const teeth = Array.from({ length: 25 }, (_, i) => `${100 - i * (100 / 24)}% ${i % 2 ? 76.9 : 75.6}%`)
+export const TEAR = `polygon(0 0, 100% 0, ${teeth.join(", ")})`
+
 export function ticket({ event, pass }: PassProps, origin: string) {
   const when = new Date(event.starts_at)
   const checkIn = checkInPhase(event)

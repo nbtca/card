@@ -5,16 +5,17 @@ interface Props {
   event: { slug: string; title: string; word: string; starts_at: string }
   // The pass id, so each holder's impression lands at its own angle and wears its own way.
   seed: string
+  ink?: string
   class?: string
 }
 
-const { event, seed, class: className } = Astro.props
+const { event, seed, ink: given, class: className } = Astro.props
 const hash = (s: string) => {
   const h = [...s].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 0x45d9f3b), 7)
   return (Math.imul(h ^ (h >>> 16), 0x45d9f3b) ^ (h >>> 15)) >>> 0
 }
 const INKS = ["#c8372a", "#2449b8", "#1d6e4a", "#6a3aa8", "#a8541c"]
-const ink = INKS[hash(event.slug) % INKS.length]
+const ink = given ?? INKS[hash(event.slug) % INKS.length]
 const h = hash(seed)
 const turn = (h % 31) - 15
 const grit = `${h % 240}px ${(h >> 8) % 240}px`
