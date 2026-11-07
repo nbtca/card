@@ -18,6 +18,7 @@
 - **Cards that feel like objects.** They tilt with the pointer or the phone, drift apart in layers, and catch foil only when they lean.
 - **Footage through type.** An event pass plays its video through the letters of one large word.
 - **Check-in at the door.** Peel the sticker to reveal the QR code; when staff scan it, the stub tears off and the event's stamp lands on the pass and on the back of the member card.
+- **In the wallet.** `/me/print` lays out the card front and back as two CR80 pages, with a strip carrying a QR code and the URL to write to an NFC tag.
 - **On the badge.** Members save their card as a round 360 px wallpaper for [CABadge](https://github.com/nbtca/CABadge).
 - **Repair tags.** `/r/<id>` shows a repair ticket from [Saturday](https://github.com/nbtca/Saturday) as a tag that gets punched at each step and loses its stub when the repair is done.
 - **Course credit.** An event can collect validated student details and export them as CSV.
@@ -65,7 +66,7 @@ Student IDs must match `[23]` + entry year + 4-digit major + 3-digit number, and
 
 ## Designing a pass
 
-Each `.astro` file in `src/cards/passes/` is a design, named after the file and listed in the event editor. It receives `PassProps` from `src/cards/pass.ts`, whose `ticket()` supplies the dates, serial, check-in state and QR path. Mark elements with `data-bind` for live preview in the editor. Events whose design file is missing fall back to `default`. `/dev/passes` shows every design in each state a pass goes through, from preview to torn.
+Each `.astro` file in `src/cards/passes/` is a design, named after the file and listed in the event editor. It receives `PassProps` from `src/cards/pass.ts`, whose `ticket()` supplies the dates, serial, check-in state and QR path. Mark elements with `data-bind` for live preview in the editor. Events whose design file is missing fall back to `default`. `/dev/passes` shows every design in each state a pass goes through, from preview to torn, along with a sheet of sample stamps. Propose a new design with the [券面设计投稿](https://github.com/nbtca/card/issues/new?template=pass-design.yml) issue form.
 
 ## Project structure
 

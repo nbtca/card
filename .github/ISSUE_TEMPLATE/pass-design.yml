@@ -1,0 +1,34 @@
+name: 券面设计投稿
+description: 为活动券提一个新的卡面设计
+title: "券面设计："
+labels: ["pass design"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: 设计名
+      description: 小写英文，会成为 src/cards/passes/ 里的文件名
+      placeholder: riso
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: 想法
+      description: 一两句话说清它和默认券面的不同
+    validations:
+      required: true
+  - type: textarea
+    id: sketch
+    attributes:
+      label: 草图或参考
+      description: 拖入图片或贴链接。手绘也可以
+  - type: dropdown
+    id: build
+    attributes:
+      label: 谁来写代码
+      options:
+        - 我自己写，完成后提 PR
+        - 需要有人帮忙实现
+    validations:
+      required: true
