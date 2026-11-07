@@ -19,7 +19,7 @@
 - **Footage through type.** An event pass plays its video through the letters of one large word.
 - **Check-in at the door.** Peel the sticker to reveal the QR code; when staff scan it, the stub tears off and the event's stamp lands on the pass and on the back of the member card.
 - **On the badge.** Members save their card as a round 360 px wallpaper for [CABadge](https://github.com/nbtca/CABadge).
-- **Repair tags.** `/r/<id>` shows a repair ticket from [Saturday](https://github.com/nbtca/Saturday) as a tag that gets punched at each step and loses its stub when the repair is done. Events marked as repair days count the tickets opened while they run, on the event page and the entry wall.
+- **Repair tags.** `/r/<id>` shows a repair ticket from [Saturday](https://github.com/nbtca/Saturday) as a tag that gets punched at each step and loses its stub when the repair is done. Events marked as repair days count the tickets opened while they run, on the event page and the entry wall. Member pages and the yearly recap show the repairs each member took on, matched by their NBTCA username.
 - **Course credit.** An event can collect validated student details and export them as CSV.
 - **Light on devices and on D1.** Effects animate only `translate` and `opacity`, and pages read a handful of indexed rows.
 

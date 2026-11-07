@@ -72,6 +72,7 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
             <p class="eyebrow">{year} · Your year</p>
             <h1>{year} 年还没有入场过的活动</h1>
             {passes.length > 0 && <p class="muted">领过 {passes.length} 张券，还没有到场过。</p>}
+            {user.member && <p class="muted" data-repairs={user.member.alias} data-year={year} hidden>不过你今年修好了 <b data-fixed /> 台电脑。</p>}
             <a class="button" href="/e">近期活动</a>
           </section>
         )
@@ -133,6 +134,15 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
               </section>
             )}
 
+            {user.member && (
+              <section class="slide" data-slide data-repairs={user.member.alias} data-year={year} hidden>
+                <p class="eyebrow">Repairs</p>
+                <p class="big"><span data-fixed /><small>台</small></p>
+                <h2>今年经你手修好的电脑</h2>
+                <p class="muted" data-busiest />
+              </section>
+            )}
+
             <section class="slide summary" data-slide>
               <p class="eyebrow">{year} · Wrapped</p>
               <h2>{kept.length} 场活动，{kept.length} 张票根</h2>
@@ -170,19 +180,46 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
 
 <script>
   import { dissolveMask } from "../lib/dissolve"
+  import { fetchMemberRepairs } from "../lib/repair"
+  import { ZONE } from "../lib/time"
   import { tap } from "../lib/sound"
 
   const root = document.querySelector<HTMLElement>("[data-recap]")!
-  const slides = [...root.querySelectorAll<HTMLElement>("[data-slide]")]
   const progress = root.querySelector<HTMLOListElement>("[data-progress]")
   const STAY = 6000
+  let slides: HTMLElement[] = []
   let index = 0
   let timer = 0
 
+  // Slides can arrive late, like the repairs read from Saturday, so the list and its bars are rebuilt.
+  const collect = () => {
+    const current = slides[index]
+    slides = [...root.querySelectorAll<HTMLElement>("[data-slide]:not([hidden])")]
+    index = Math.max(0, slides.indexOf(current!))
+    progress?.replaceChildren(...slides.map(() => Object.assign(document.createElement("li"), { innerHTML: "<i></i>" })))
+  }
+  collect()
+
   if (progress) {
-    progress.append(...slides.map(() => Object.assign(document.createElement("li"), { innerHTML: "<i></i>" })))
     root.style.setProperty("--sprite", dissolveMask({ cols: 9, rows: 16, seed: 7 }))
     root.style.setProperty("--stay", `${STAY}ms`)
+  }
+
+  const repairs = root.querySelector<HTMLElement>("[data-repairs]")
+  if (repairs) {
+    const year = repairs.dataset.year!
+    fetchMemberRepairs(repairs.dataset.repairs!).then((all) => {
+      const day = (iso: string) => new Date(iso).toLocaleDateString("zh-CN", { month: "long", day: "numeric", timeZone: ZONE })
+      const fixed = (all ?? []).filter((r) => r.done && new Date(r.steps[0]!.at!).toLocaleString("en-US", { year: "numeric", timeZone: ZONE }) === year)
+      if (!fixed.length) return
+      repairs.querySelectorAll("[data-fixed]").forEach((el) => (el.textContent = String(fixed.length)))
+      const [busiest, count] = Object.entries(Object.groupBy(fixed, (r) => day(r.steps[0]!.at!))).sort((a, b) => b[1]!.length - a[1]!.length)[0]!
+      const note = repairs.querySelector("[data-busiest]")
+      if (note && count!.length > 1) note.textContent = `最忙的一天是 ${busiest}，修了 ${count!.length} 台。`
+      repairs.hidden = false
+      collect()
+      if (progress) show(index, false)
+    }, () => {})
   }
 
   // Each slide develops cell by cell and the bar above it fills while it stays; the last one stays put.
