@@ -1,0 +1,36 @@
+---
+import Base from "../../layouts/Base.astro"
+import { meet } from "../../lib/meets"
+
+// Members only, by the middleware; the camera app opens this when one member scans another's code.
+const outcome = await meet(Astro.params.code!, Astro.locals.user!.member!)
+if (outcome.status === "ok") return Astro.redirect(`/members/${outcome.other.id}?met`)
+if (outcome.status === "self") return Astro.redirect(`/e/${outcome.event}`)
+const message = {
+  unknown: "这个码不属于任何人。",
+  absent: "你还没有在这场活动入场，入场后再扫。",
+  closed: "活动已经结束，只能在活动期间认识。",
+}[outcome.status]
+---
+
+<Base title="认识一下 · NBTCA">
+  <main class="wrap">
+    <h1>没能记下</h1>
+    <p class="muted">{message}</p>
+    {outcome.event && <a class="button ghost" href={`/e/${outcome.event}`}>回到活动</a>}
+  </main>
+</Base>
+
+<style>
+  main {
+    display: grid;
+    justify-items: center;
+    gap: 1rem;
+    padding-block: 6rem;
+    text-align: center;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+  }
+</style>

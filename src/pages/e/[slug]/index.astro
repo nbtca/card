@@ -1,6 +1,6 @@
 ---
 import Lanyard from "../../../cards/Lanyard.astro"
-import { passDesign } from "../../../cards/pass"
+import { passDesign, qrCode } from "../../../cards/pass"
 import SharePoster from "../../../components/SharePoster.astro"
 import Timeline from "../../../components/Timeline.astro"
 import Base from "../../../layouts/Base.astro"
@@ -9,6 +9,7 @@ import { formatClock, formatRange, formatTime, sameDay, ZONE } from "../../../li
 import { parseAttendee } from "../../../lib/attendee"
 import { purgePages } from "../../../lib/cache"
 import { canEdit } from "../../../lib/events"
+import { meetCode, metAt } from "../../../lib/meets"
 
 const { slug } = Astro.params
 const { user } = Astro.locals
@@ -86,6 +87,10 @@ const passNotice = pass?.redeemed_at
       ? "到场后撕开贴纸，给工作人员扫码。"
       : `${formatTime(checkInOpensAt(event))} 起可以撕开贴纸。`
 const Design = passDesign(event.design)
+// Members who are in can meet each other while the event is on.
+const meeting = !!user?.member && !!pass?.redeemed_at && checkInPhase(event) === "open"
+const [code, met] = meeting ? await Promise.all([pass!.meet_code ?? meetCode(pass!.id), metAt(event.slug, user!.member!.id)]) : [null, []]
+const meetQr = code ? qrCode(`${Astro.url.origin}/meet/${code}`) : null
 const editable = canEdit(event, user)
 
 const now = Date.now()
@@ -216,6 +221,20 @@ const chip = {
           </div>
         )}
       </div>
+      {meetQr && (
+        <div class="meet reveal" style="--i: 7">
+          <svg class="code" viewBox={`-2 -2 ${meetQr.size + 4} ${meetQr.size + 4}`} shape-rendering="crispEdges" aria-label="认识一下的二维码"><path d={meetQr.path} /></svg>
+          <div>
+            <b>认识一下</b>
+            <p class="muted">让同场的社员用相机扫这个码。</p>
+            {met.length > 0 && (
+              <ul>
+                {met.map((m) => <li><a href={`/members/${m.id}`}><span class="avatar" style={`--hue: ${m.hue}`}>{[...m.name][0]}</span>{m.name}</a></li>)}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   </main>
 </Base>
@@ -379,6 +398,54 @@ const chip = {
     display: flex;
     flex-wrap: wrap;
     gap: 0.6rem;
+  }
+
+  .meet {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 1.25rem;
+  }
+
+  .meet .code {
+    flex: none;
+    width: 7.5rem;
+    aspect-ratio: 1;
+    border-radius: 0.75rem;
+    background: #fff;
+    fill: #0b0d12;
+  }
+
+  .meet b {
+    font-size: 1.05rem;
+  }
+
+  .meet p {
+    margin: 0.35rem 0 0;
+    font-size: 0.88rem;
+  }
+
+  .meet ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.85rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .meet li a {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.7rem 0.2rem 0.2rem;
+    border-radius: 99px;
+    background: rgb(var(--tint) / 0.06);
+    font-size: 0.82rem;
+    text-decoration: none;
   }
 
   .act {
