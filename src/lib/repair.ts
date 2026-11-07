@@ -1,0 +1,55 @@
+// Repair tickets live in Saturday, the repair service's API; this site only shows them.
+const SATURDAY = "https://api.nbtca.space/v2"
+
+type Action = "create" | "accept" | "drop" | "commit" | "alterCommit" | "reject" | "close" | "cancel" | "update"
+
+interface Ticket {
+  eventId: number
+  model: string
+  problem: string
+  status: "open" | "accepted" | "committed" | "closed" | "cancelled"
+  member: { alias: string; avatar: string } | null
+  closedBy: { alias: string } | null
+  logs: { action: Action; gmtCreate: string }[] | null
+  gmtCreate: string
+}
+
+export interface Repair {
+  id: number
+  model: string
+  problem: string
+  cancelled: boolean
+  done: boolean
+  repairer: { alias: string; avatar: string | null } | null
+  steps: { label: string; at: string | null; done: boolean }[]
+}
+
+const STEPS = [
+  { label: "提交", action: "create", status: "open" },
+  { label: "接单", action: "accept", status: "accepted" },
+  { label: "修好", action: "commit", status: "committed" },
+  { label: "完成", action: "close", status: "closed" },
+] as const
+
+export async function getRepair(id: number): Promise<Repair | null> {
+  const response = await fetch(`${SATURDAY}/events/${id}`, { signal: AbortSignal.timeout(5000) })
+  // Saturday answers an unknown id with 422.
+  if (response.status === 404 || response.status === 422) return null
+  if (!response.ok) throw new Error(`Saturday answered ${response.status}`)
+  const t: Ticket = await response.json()
+  // A ticket can be dropped and taken again, so the latest log of each kind is the one that counts.
+  const last = (action: Action) => t.logs?.findLast((l) => l.action === action)?.gmtCreate ?? null
+  const reached = STEPS.findIndex((s) => s.status === t.status)
+  return {
+    id: t.eventId,
+    model: t.model.trim(),
+    problem: t.problem.trim(),
+    cancelled: t.status === "cancelled",
+    done: t.status === "closed",
+    repairer: t.member?.alias.trim() && t.status !== "open" ? { alias: t.member.alias.trim(), avatar: t.member.avatar.startsWith("https://") ? t.member.avatar : null } : null,
+    steps: STEPS.map((s, i) => {
+      const at = i === 0 ? t.gmtCreate : last(s.action)
+      return { label: s.label, at: at && new Date(at).toISOString(), done: reached >= i || (t.status === "cancelled" && !!at) }
+    }),
+  }
+}

@@ -1,0 +1,109 @@
+---
+import { formatShort, ZONE } from "../lib/db"
+
+interface Props {
+  steps: { label: string; at: string | null; done: boolean }[]
+  // Shows the time left to the next step; the page runs the clock.
+  countdown?: boolean
+  // A stopped process has no next step to point at.
+  halted?: boolean
+  class?: string
+  style?: string
+}
+
+const { steps, countdown = false, halted = false, class: className, style } = Astro.props
+const next = halted ? undefined : steps.find((s) => !s.done)
+const year = (iso: string) => new Date(iso).toLocaleString("en-US", { year: "numeric", timeZone: ZONE })
+const now = year(new Date().toISOString())
+const when = (iso: string) => (year(iso) === now ? formatShort(iso) : `${year(iso)}/${formatShort(iso)}`)
+---
+
+<ol class:list={["timeline", className]} style={style}>
+  {steps.map((s) => (
+    <li data-done={s.done ? "" : undefined} data-next={s === next ? "" : undefined}>
+      <span class="dot" />
+      <b>{s.label}</b>
+      {s.at && <span>{when(s.at)}</span>}
+      {countdown && s === next && s.at && <span class="countdown" data-target={s.at}>还有 <span data-left>…</span></span>}
+    </li>
+  ))}
+</ol>
+
+<style>
+  .timeline {
+    --dot: 0.7rem;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .timeline li {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 0.35rem;
+    padding-top: 1.5rem;
+    font-size: 0.78rem;
+    color: var(--faint);
+  }
+
+  .timeline li::before {
+    content: "";
+    position: absolute;
+    top: calc(var(--dot) / 2 - 1px);
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--line);
+  }
+
+  .timeline li[data-done]::before {
+    background: var(--glow);
+  }
+
+  .timeline .dot {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    width: var(--dot);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--line);
+  }
+
+  .timeline li[data-done] .dot {
+    background: var(--glow);
+    border-color: var(--glow);
+  }
+
+  .timeline li[data-next] .dot {
+    border-color: var(--glow);
+    box-shadow: 0 0 0 5px rgb(59 141 255 / 0.2);
+  }
+
+  .timeline b {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .timeline li:is([data-done], [data-next]) b {
+    color: var(--fg);
+  }
+
+  .countdown {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 900px) {
+    .timeline {
+      grid-template-columns: repeat(2, 1fr);
+      row-gap: 1.25rem;
+    }
+  }
+</style>

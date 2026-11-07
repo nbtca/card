@@ -2,8 +2,9 @@
 import Lanyard from "../../../cards/Lanyard.astro"
 import { passDesign } from "../../../cards/pass"
 import SharePoster from "../../../components/SharePoster.astro"
+import Timeline from "../../../components/Timeline.astro"
 import Base from "../../../layouts/Base.astro"
-import { checkInOpensAt, checkInPhase, claimPhase, db, formatClock, formatRange, formatShort, formatTime, getEvent, randomId, sameDay, ZONE, type Member, type Pass } from "../../../lib/db"
+import { checkInOpensAt, checkInPhase, claimPhase, db, formatClock, formatRange, formatTime, getEvent, randomId, sameDay, ZONE, type Member, type Pass } from "../../../lib/db"
 import { parseAttendee } from "../../../lib/attendee"
 import { purgePages } from "../../../lib/cache"
 import { canEdit } from "../../../lib/events"
@@ -93,7 +94,6 @@ const milestones = [
   { at: event.starts_at, label: "活动开始" },
   { at: event.ends_at, label: "活动结束" },
 ].map((m) => ({ ...m, done: Date.parse(m.at) <= now }))
-const next = milestones.find((m) => !m.done)
 const start = new Date(event.starts_at)
 const local = (options: Intl.DateTimeFormatOptions) => start.toLocaleString("en-US", { timeZone: ZONE, ...options })
 const chip = {
@@ -148,16 +148,7 @@ const chip = {
         </div>
       )}
 
-      <ol class="timeline reveal" style="--i: 4">
-        {milestones.map((m) => (
-          <li data-done={m.done ? "" : undefined} data-next={m === next ? "" : undefined}>
-            <span class="dot" />
-            <b>{m.label}</b>
-            <span>{formatShort(m.at)}</span>
-            {m === next && <span class="countdown" data-target={m.at}>还有 <span data-left>…</span></span>}
-          </li>
-        ))}
-      </ol>
+      <Timeline class="reveal" style="--i: 4" steps={milestones} countdown />
 
       <div class="act reveal" style="--i: 6">
         {pass
@@ -389,76 +380,6 @@ const chip = {
     gap: 0.6rem;
   }
 
-  .timeline {
-    --dot: 0.7rem;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .timeline li {
-    position: relative;
-    display: grid;
-    align-content: start;
-    gap: 0.35rem;
-    padding-top: 1.5rem;
-    font-size: 0.78rem;
-    color: var(--faint);
-  }
-
-  .timeline li::before {
-    content: "";
-    position: absolute;
-    top: calc(var(--dot) / 2 - 1px);
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--line);
-  }
-
-  .timeline li[data-done]::before {
-    background: var(--glow);
-  }
-
-  .timeline .dot {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 1;
-    width: var(--dot);
-    aspect-ratio: 1;
-    border-radius: 50%;
-    background: var(--bg);
-    border: 2px solid var(--line);
-  }
-
-  .timeline li[data-done] .dot {
-    background: var(--glow);
-    border-color: var(--glow);
-  }
-
-  .timeline li[data-next] .dot {
-    border-color: var(--glow);
-    box-shadow: 0 0 0 5px rgb(59 141 255 / 0.2);
-  }
-
-  .timeline b {
-    font-size: 0.85rem;
-    color: var(--muted);
-  }
-
-  .timeline li:is([data-done], [data-next]) b {
-    color: var(--fg);
-  }
-
-  .countdown {
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
-  }
-
   .act {
     display: grid;
     gap: 1rem;
@@ -507,11 +428,6 @@ const chip = {
 
     .stage :global(.pass-card) {
       width: min(300px, 80vw);
-    }
-
-    .timeline {
-      grid-template-columns: repeat(2, 1fr);
-      row-gap: 1.25rem;
     }
   }
 </style>

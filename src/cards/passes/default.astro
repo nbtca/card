@@ -1,5 +1,5 @@
 ---
-import { ticket, type PassProps } from "../pass"
+import { TEAR, ticket, type PassProps } from "../pass"
 import Stamp from "../Stamp.astro"
 
 type Props = PassProps
@@ -10,9 +10,6 @@ const { state, date, day, time, serial, video, poster, qr, checkIn, opensAt, sho
 // A valid pass on its own page carries the stub as a separate, peelable and tearable piece.
 const live = size === "full" && !anatomy && state === "valid"
 const torn = state === "redeemed" && !anatomy
-// Teeth along the perforation, where the stub was torn away.
-const teeth = Array.from({ length: 25 }, (_, i) => `${100 - i * (100 / 24)}% ${i % 2 ? 76.9 : 75.6}%`)
-const tear = `polygon(0 0, 100% 0, ${teeth.join(", ")})`
 // Full-size passes play footage, falling back to the shared clip. Thumbnails show a still or the gradient,
 // so a list of passes downloads no video at all.
 const footage = size === "full" ? (video ?? "/footage/nbtca.mp4") : null
@@ -27,7 +24,7 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
   data-state={state}
   data-anatomy={anatomy ? "" : undefined}
   data-torn={torn ? "" : undefined}
-  style={`--fit: min(34cqi, ${(84 / Math.max(units, 1)).toFixed(2)}cqi); --tear: ${tear}${transitionName ? `; view-transition-name: ${transitionName}` : ""}`}
+  style={`--fit: min(34cqi, ${(84 / Math.max(units, 1)).toFixed(2)}cqi); --tear: ${TEAR}${transitionName ? `; view-transition-name: ${transitionName}` : ""}`}
 >
   <div class="shadows" aria-hidden="true">
     <span class="ambient"><i /></span>

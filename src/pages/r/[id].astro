@@ -1,0 +1,117 @@
+---
+import RepairTag from "../../cards/RepairTag.astro"
+import Timeline from "../../components/Timeline.astro"
+import Base from "../../layouts/Base.astro"
+import { getRepair, type Repair } from "../../lib/repair"
+
+const id = Number(Astro.params.id)
+if (!Number.isSafeInteger(id) || id < 1) return new Response(null, { status: 404 })
+let repair: Repair | null = null
+try {
+  repair = await getRepair(id)
+  if (!repair) return new Response(null, { status: 404 })
+} catch {
+  Astro.response.status = 502
+}
+
+const serial = `№ ${String(id).padStart(4, "0")}`
+const reached = repair?.steps.findLastIndex((s) => s.done) ?? 0
+const chip = repair?.cancelled
+  ? { tone: "", text: "已取消" }
+  : [{ tone: "warn", text: "等待接单" }, { tone: "warn", text: "维修中" }, { tone: "ok", text: "已修好" }, { tone: "ok", text: "已完成" }][reached]!
+---
+
+<Base title={`维修单 ${serial} · NBTCA`} description={repair ? `${repair.model || "维修单"}，${chip.text}` : undefined}>
+  <main class="wrap">
+    {repair
+      ? (
+          <>
+            <div class="stage">
+              <RepairTag repair={repair} />
+              <div class="spot" />
+            </div>
+            <section class="info">
+              <span class="chip reveal" data-tone={chip.tone}>{chip.text}</span>
+              <h1 class="reveal" style="--i: 1">{repair.model || "维修单"}<small>{serial}</small></h1>
+              {repair.problem && <p class="problem reveal" style="--i: 2">{repair.problem}</p>}
+              <Timeline class="reveal" style="--i: 3" steps={repair.steps} halted={repair.cancelled} />
+              <a class="action reveal" style="--i: 4" href={`https://nbtca.space/repair/ticket-detail?eventId=${id}`}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10" /></svg>
+                在维修系统查看
+              </a>
+            </section>
+          </>
+        )
+      : <p class="muted down">维修系统暂时连不上，请稍后再试。</p>}
+  </main>
+</Base>
+
+<style>
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 3rem 5rem;
+    min-height: calc(100svh - 8rem);
+    padding-block: 2rem 4rem;
+  }
+
+  .stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding-block: 2rem;
+  }
+
+  .spot {
+    position: absolute;
+    inset: 10% 5% -5%;
+    z-index: -1;
+    background: radial-gradient(closest-side, rgb(200 55 42 / 0.18), transparent);
+    filter: blur(30px);
+  }
+
+  .info {
+    display: grid;
+    justify-items: start;
+    gap: 1.6rem;
+  }
+
+  h1 {
+    display: grid;
+    gap: 0.6rem;
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+  }
+
+  h1 small {
+    font: 600 0.8rem / 1 var(--wide);
+    letter-spacing: 0.18em;
+    color: var(--faint);
+  }
+
+  .problem {
+    margin: 0;
+    max-width: 32rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .down {
+    grid-column: 1 / -1;
+    text-align: center;
+  }
+
+  @media (max-width: 900px) {
+    main {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      min-height: 0;
+    }
+
+    .stage :global(.repair-tag) {
+      width: min(280px, 72vw);
+    }
+  }
+</style>

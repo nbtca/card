@@ -1,0 +1,287 @@
+---
+import type { Repair } from "../lib/repair"
+import { TEAR } from "./pass"
+import Stamp from "./Stamp.astro"
+
+interface Props {
+  repair: Repair
+}
+
+const { repair } = Astro.props
+const serial = `№ ${String(repair.id).padStart(4, "0")}`
+// One punched hole per step reached, like a card clipped at each counter.
+const HOLES = [17.75, 39.25, 60.75, 82.25]
+const punched = repair.steps.flatMap((s, i) => (s.done ? [`radial-gradient(circle at ${HOLES[i]}cqi 92cqi, #0000 2.1cqi, #000 2.3cqi)`] : []))
+const closedAt = repair.steps.at(-1)!.at
+const stamp = repair.done
+  ? { slug: "repair", title: "计算机协会维修", word: "FIXED", starts_at: closedAt ?? new Date().toISOString() }
+  : repair.cancelled
+    ? { slug: "repair", title: "已取消", word: "VOID", starts_at: repair.steps.findLast((s) => s.at)!.at! }
+    : null
+const torn = repair.done
+---
+
+<div class="repair-tag" data-card="stage" data-torn={torn ? "" : undefined} style={`--tear: ${TEAR}; --holes: ${punched.join(", ") || "linear-gradient(#000 0 0)"}`}>
+  <div class="tilt">
+    <article class="card" aria-label={`维修单 ${serial}`}>
+      <div class="texture" />
+      <header class="head">
+        <span>NBTCA Repair Tag</span>
+        <span>{serial}</span>
+      </header>
+      <p class="number">{repair.id}</p>
+      <p class="model">{repair.model || "未填写机型"}</p>
+      {repair.problem && <p class="problem">{repair.problem}</p>}
+      <ol class="steps">
+        {repair.steps.map((s) => <li data-done={s.done ? "" : undefined}><i />{s.label}</li>)}
+      </ol>
+      {repair.repairer && (
+        <p class="repairer">
+          {repair.repairer.avatar
+            ? <img src={repair.repairer.avatar} alt="" referrerpolicy="no-referrer" loading="lazy" />
+            : <span class="initial">{[...repair.repairer.alias][0]}</span>}
+          <span><small>Repaired by</small>{repair.repairer.alias}</span>
+        </p>
+      )}
+      {!torn && (
+        <div class="stub">
+          <b>取机回执</b>
+          <span>{serial}</span>
+          <small>{repair.cancelled ? "已取消" : "完成时撕下"}</small>
+        </div>
+      )}
+      {stamp && (
+        <div class="stamp">
+          <Stamp event={stamp} seed={String(repair.id)} ink={repair.cancelled ? "#5f6670" : "#c8372a"} />
+        </div>
+      )}
+      <div class="glare" />
+      <svg class="edge" viewBox="0 0 500 800" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M80 0H420L500 80V590A18 18 0 0 0 500 626V776A24 24 0 0 1 476 800H24A24 24 0 0 1 0 776V626A18 18 0 0 0 0 590V80Z" />
+        <circle cx="250" cy="72" r="34" />
+      </svg>
+    </article>
+  </div>
+</div>
+
+<style>
+  .repair-tag {
+    --ink: #0b0d12;
+    --muted: rgb(11 13 18 / 0.55);
+    --line: rgb(11 13 18 / 0.14);
+    --die: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 800' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M80 0H420L500 80V590A18 18 0 0 0 500 626V776A24 24 0 0 1 476 800H24A24 24 0 0 1 0 776V626A18 18 0 0 0 0 590V80ZM250 50A22 22 0 1 0 250 94A22 22 0 1 0 250 50Z'/%3E%3C/svg%3E");
+    position: relative;
+    display: block;
+    width: min(340px, 100%, (100svh - 10rem) * 5 / 8);
+    aspect-ratio: 5 / 8;
+    perspective: 1400px;
+    container-type: inline-size;
+    color: var(--ink);
+    rotate: -2deg;
+  }
+
+  .tilt {
+    position: absolute;
+    inset: 0;
+    transform: rotateX(calc(var(--y, 0) * -9deg)) rotateY(calc(var(--x, 0) * 12deg));
+  }
+
+  .card {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: linear-gradient(170deg, #fbfaf6, #efede6);
+    mask: var(--die) 0 0 / 100% 100% no-repeat, var(--holes);
+    mask-composite: intersect;
+  }
+
+  [data-torn] .card {
+    clip-path: var(--tear);
+  }
+
+  .texture {
+    position: absolute;
+    inset: 0;
+    opacity: 0.07;
+    background: repeating-linear-gradient(0deg, var(--ink) 0 1px, transparent 1px 1.8cqi);
+    mask: linear-gradient(transparent 60cqi, #000 64cqi, #000 84cqi, transparent 86cqi);
+  }
+
+  .head {
+    position: absolute;
+    inset: 25cqi 7cqi auto;
+    display: flex;
+    justify-content: space-between;
+    font: 600 2.8cqi / 1 var(--wide);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .number {
+    position: absolute;
+    inset: 31cqi 6cqi auto;
+    margin: 0;
+    font: 900 28cqi / 1 var(--wide);
+    font-stretch: 125%;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .model {
+    position: absolute;
+    inset: 62cqi 7cqi auto;
+    margin: 0;
+    font-size: 6cqi;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .problem {
+    position: absolute;
+    inset: 71cqi 7cqi auto;
+    display: -webkit-box;
+    margin: 0;
+    font-size: 3.6cqi;
+    line-height: 1.5;
+    color: var(--muted);
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .steps {
+    position: absolute;
+    inset: 89.5cqi 7cqi auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font: 600 2.8cqi / 1 system-ui, sans-serif;
+    letter-spacing: 0.1em;
+    text-align: center;
+    color: var(--muted);
+  }
+
+  .steps li {
+    display: grid;
+    justify-items: center;
+    gap: 2.2cqi;
+  }
+
+  .steps li[data-done] {
+    color: var(--ink);
+  }
+
+  .steps i {
+    width: 5cqi;
+    aspect-ratio: 1;
+    border: 1px dashed var(--line);
+    border-radius: 50%;
+  }
+
+  .steps li[data-done] i {
+    border-style: solid;
+  }
+
+  .repairer {
+    position: absolute;
+    inset: 106cqi 7cqi auto;
+    display: flex;
+    align-items: center;
+    gap: 3cqi;
+    margin: 0;
+    font-size: 3.8cqi;
+    font-weight: 600;
+  }
+
+  .repairer img,
+  .initial {
+    width: 8cqi;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--line);
+  }
+
+  .initial {
+    display: grid;
+    place-items: center;
+    font-size: 3.6cqi;
+  }
+
+  .repairer span {
+    display: grid;
+    gap: 0.8cqi;
+  }
+
+  .repairer small {
+    font: 600 2.2cqi / 1 var(--wide);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .stub {
+    position: absolute;
+    inset: 121.6cqi 4cqi 0;
+    display: grid;
+    align-content: center;
+    gap: 2cqi;
+    padding: 0 5cqi;
+    border-top: 1.5px dashed var(--line);
+  }
+
+  .stub b {
+    font-size: 5cqi;
+  }
+
+  .stub span {
+    font: 600 3cqi / 1 var(--wide);
+    letter-spacing: 0.14em;
+  }
+
+  .stub small {
+    font-size: 2.8cqi;
+    color: var(--muted);
+  }
+
+  .stamp {
+    position: absolute;
+    right: 5cqi;
+    top: 30cqi;
+    width: 32cqi;
+    mix-blend-mode: multiply;
+  }
+
+  .glare {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at calc(50% + var(--x, 0) * 45%) calc(30% + var(--y, 0) * 40%), rgb(255 255 255 / 0.55), transparent 55%);
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+
+  .edge {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .edge path {
+    fill: none;
+    stroke: rgb(0 0 0 / 0.16);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .edge circle {
+    fill: none;
+    stroke: rgb(11 13 18 / 0.35);
+    stroke-width: 7;
+  }
+</style>

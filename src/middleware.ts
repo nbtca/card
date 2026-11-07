@@ -7,7 +7,7 @@ import { cachedCard, db, memberByEmail, randomId, rememberCard, type Member } fr
 const MEMBERS_ONLY = ["/members", "/me", "/dev", "/scan", "/e/new", "/api/me", "/api/redeem", "/api/entries", "/media/members/"]
 
 // Pages that look the same to every signed-out visitor.
-const SHARED = /^\/(e(\/(?!new$)[a-z0-9][a-z0-9-]*)?)?$/
+const SHARED = /^\/(e(\/(?!new$)[a-z0-9][a-z0-9-]*)?|r\/\d{1,9})?$/
 
 const under = (path: string, prefixes: string[]) =>
   prefixes.some((p) => path === p || path.startsWith(p.endsWith("/") ? p : `${p}/`))
