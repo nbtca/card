@@ -1,6 +1,7 @@
 // Repair tickets live in Saturday, the repair service's API. Its server is in mainland China and cannot be
 // reached from Cloudflare's overseas data centres, so visitors' browsers fetch it; Saturday allows this origin.
 const SATURDAY = "https://api.nbtca.space/v2"
+const PAGE = 100
 
 type Action = "create" | "accept" | "drop" | "commit" | "alterCommit" | "reject" | "close" | "cancel" | "update"
 
@@ -31,12 +32,34 @@ export const STEPS = [
   { label: "完成", action: "close", status: "closed" },
 ] as const
 
-export async function fetchRepair(id: number): Promise<Repair | null> {
-  const response = await fetch(`${SATURDAY}/events/${id}`, { signal: AbortSignal.timeout(8000) })
+const get = async <T>(path: string): Promise<T | null> => {
+  const response = await fetch(`${SATURDAY}${path}`, { signal: AbortSignal.timeout(8000) })
   // Saturday answers an unknown id with 422.
   if (response.status === 404 || response.status === 422) return null
   if (!response.ok) throw new Error(`Saturday answered ${response.status}`)
-  const t: Ticket = await response.json()
+  return response.json()
+}
+
+export async function fetchRepair(id: number) {
+  const t = await get<Ticket>(`/events/${id}`)
+  return t && toRepair(t)
+}
+
+// Newest first, page by page, until the tickets are older than the window.
+export async function fetchRepairsBetween(from: string, until: string) {
+  const [start, end] = [Date.parse(from), Date.parse(until)]
+  const found: Repair[] = []
+  for (let offset = 0; ; offset += PAGE) {
+    const page = (await get<Ticket[]>(`/events?order=desc&limit=${PAGE}&offset=${offset}`)) ?? []
+    for (const t of page) {
+      const at = Date.parse(t.gmtCreate)
+      if (at >= start && at <= end) found.push(toRepair(t))
+    }
+    if (page.length < PAGE || Date.parse(page.at(-1)!.gmtCreate) < start) return found
+  }
+}
+
+function toRepair(t: Ticket): Repair {
   // A ticket can be dropped and taken again, so the latest log of each kind is the one that counts.
   const last = (action: Action) => t.logs?.findLast((l) => l.action === action)?.gmtCreate ?? null
   const reached = STEPS.findIndex((s) => s.status === t.status)

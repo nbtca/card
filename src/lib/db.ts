@@ -28,6 +28,7 @@ export interface Event {
   video: string | null
   capacity: number | null
   needs_info: number
+  repair: number
   claim_from: string
   claim_until: string
   starts_at: string

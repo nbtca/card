@@ -1,6 +1,7 @@
 ---
+import RepairTally from "../../../components/RepairTally.astro"
 import Base from "../../../layouts/Base.astro"
-import { db, getEvent, mediaUrl } from "../../../lib/db"
+import { checkInOpensAt, db, getEvent, mediaUrl } from "../../../lib/db"
 import { ZONE } from "../../../lib/time"
 import type { Entry } from "../../api/entries"
 
@@ -38,6 +39,7 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
         <b data-count>{counts!.entered}</b>
         <span>人已入场{counts!.claimed > 0 && ` · 共 ${counts!.claimed} 张券`}</span>
       </p>
+      {event.repair === 1 && <RepairTally from={checkInOpensAt(event)} until={event.ends_at} compact />}
       <p class="welcome" data-welcome aria-live="polite"></p>
     </section>
 

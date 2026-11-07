@@ -73,6 +73,11 @@ const times = [
         领券时登记学号、姓名、班级和手机号
       </label>
       <small class="note">用于学分申报，只有你和管理员能看到，可在编辑页导出。</small>
+      <label class="check">
+        <input name="repair" type="checkbox" checked={event.repair === 1} />
+        这是一场维修日
+      </label>
+      <small class="note">活动页和入场大屏会显示现场修了几台。</small>
       <label>
         活动相册
         <input name="album" type="url" value={event.album ?? ""} placeholder="https://photo.nbtca.space/…" />
