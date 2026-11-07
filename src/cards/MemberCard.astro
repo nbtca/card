@@ -1,12 +1,18 @@
 ---
-import { mediaUrl, type Member } from "../lib/db"
+import { mediaUrl, type Member, type Stub } from "../lib/db"
+import Stamp from "./Stamp.astro"
 
 interface Props {
   member: Member
   size: "thumb" | "full"
+  // Entered events, newest first; the latest are stamped on the back like a passport page.
+  stamps?: Stub[]
 }
 
-const { member, size } = Astro.props
+const { member, size, stamps = [] } = Astro.props
+// The newest three, in a loose row with the latest in the middle and on top.
+const SPOTS = [[50, 52], [21, 42], [79, 46]]
+const pressed = stamps.slice(0, SPOTS.length).reverse()
 const { name, alias, section, role, joined, github, motto, hue, word } = member
 const portrait = mediaUrl(member.portrait, size)
 const background = mediaUrl(member.background, size)
@@ -58,7 +64,17 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
 
       {full && (
         <section class="face back">
-          <span class="ring"><i class="band" /></span>
+          {pressed.length
+            ? (
+                <div class="stamps">
+                  {pressed.map((s, i) => (
+                    <div style={`--x0: ${SPOTS[pressed.length - 1 - i]![0]}%; --y0: ${SPOTS[pressed.length - 1 - i]![1]}%`}>
+                      <Stamp event={s} seed={s.pass_id} />
+                    </div>
+                  ))}
+                </div>
+              )
+            : <span class="ring"><i class="band" /></span>}
           <dl>
             <div><dt>代号</dt><dd>{alias}</dd></div>
             <div><dt>入会</dt><dd>{joined}</dd></div>
@@ -371,6 +387,26 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   width: 46cqi;
   justify-self: center;
   color: #fff;
+}
+
+.back .stamps {
+  position: relative;
+  height: 46cqi;
+}
+
+.stamps > div {
+  position: absolute;
+  left: var(--x0);
+  top: var(--y0);
+  width: 31cqi;
+  translate: -50% -50%;
+}
+
+/* The back is dark, so the inks are lifted towards white and laid on normally instead of multiplied. */
+.stamps :global(.stamp-mark) {
+  color: color-mix(in oklch, var(--ink) 62%, #fff);
+  mix-blend-mode: normal;
+  opacity: 0.92;
 }
 
 .back dl {

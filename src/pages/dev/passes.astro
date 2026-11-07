@@ -1,5 +1,6 @@
 ---
 import { passDesigns } from "../../cards/pass"
+import Stamp from "../../cards/Stamp.astro"
 import Base from "../../layouts/Base.astro"
 import type { Event } from "../../lib/db"
 import { showcaseEvent } from "../../lib/showcase"
@@ -15,6 +16,14 @@ const event = (startsIn: number): Event => ({
   ends_at: at(startsIn + 2 * hour),
 })
 const pass = (redeemed = false) => ({ id: "preview", serial: 42, redeemed_at: redeemed ? Date.now() - 600e3 : null })
+const samples = [
+  { slug: "repair-day", title: "理工维修日", word: "fix", starts_at: at(0) },
+  { slug: "ca101", title: "CA101 电脑使用与维护", word: "CA101", starts_at: at(-30 * 24 * hour) },
+  { slug: "hack-night", title: "Hack Night", word: "hack", starts_at: at(-60 * 24 * hour) },
+  { slug: "talk", title: "技术分享会", word: "talk", starts_at: at(-90 * 24 * hour) },
+  { slug: "linux", title: "Linux 入门", word: "linux", starts_at: at(-120 * 24 * hour) },
+  { slug: "newbie", title: "迎新", word: "迎新", starts_at: at(-150 * 24 * hour) },
+]
 const states = [
   { label: "预览", note: "活动页上还没领券时", event: event(72 * hour), pass: null },
   { label: "待入场", note: "贴纸只能掀起一角", event: event(72 * hour), pass: pass() },
@@ -46,6 +55,12 @@ const states = [
         </ol>
       </section>
     ))}
+    <section>
+      <h2>stamps</h2>
+      <div class="stamps">
+        {samples.map((e, i) => <Stamp event={e} seed={`sample-${i}`} />)}
+      </div>
+    </section>
   </main>
 </Base>
 
@@ -101,6 +116,15 @@ const states = [
     margin: 0;
     font-size: 0.85rem;
     color: var(--muted);
+  }
+
+  .stamps {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1.5rem;
+    padding: 2rem;
+    border-radius: 1.25rem;
+    background: #f6f5f1;
   }
 
   b {

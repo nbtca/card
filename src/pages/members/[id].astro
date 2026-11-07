@@ -14,7 +14,7 @@ const mine = member.id === Astro.locals.user?.member?.id
   <main class="wrap" style={`--hue: ${member.hue}`}>
     <div class="stage">
       <div class="beam" />
-      <MemberCard member={member} size="full" />
+      <MemberCard member={member} size="full" stamps={kept} />
       <div class="floor" />
     </div>
     <div class="caption reveal">

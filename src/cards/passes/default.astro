@@ -1,11 +1,12 @@
 ---
 import { ticket, type PassProps } from "../pass"
+import Stamp from "../Stamp.astro"
 
 type Props = PassProps
 
 const { event, pass, holder, guest, size = "full", transitionName, anatomy } = Astro.props
 const Tag = size === "thumb" ? "a" : "div"
-const { state, date, day, time, serial, redeemedAt: redeemed, video, poster, qr, checkIn, opensAt, showCode } = ticket(Astro.props, Astro.url.origin)
+const { state, date, day, time, serial, video, poster, qr, checkIn, opensAt, showCode } = ticket(Astro.props, Astro.url.origin)
 // A valid pass on its own page carries the stub as a separate, peelable and tearable piece.
 const live = size === "full" && !anatomy && state === "valid"
 const torn = state === "redeemed" && !anatomy
@@ -79,10 +80,9 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
             </div>
           </div>
         )}
-        <span class="stamp" hidden={!torn} data-stamp>
-          已入场
-          <small data-stamp-time>{redeemed}</small>
-        </span>
+        <div class="stamp" hidden={!torn} data-stamp>
+          <Stamp event={event} seed={pass?.id ?? event.slug} />
+        </div>
       </div>
       <div class="glare" />
       <svg class="edge" viewBox="0 0 500 800" preserveAspectRatio="none" aria-hidden="true">
@@ -428,26 +428,10 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
 
   .stamp {
     position: absolute;
-    right: 7cqi;
-    top: 64cqi;
-    display: grid;
-    justify-items: center;
-    gap: 0.6cqi;
-    padding: 1.5cqi 3cqi;
-    border: 0.7cqi solid #d93a2b;
-    border-radius: 2cqi;
-    color: #d93a2b;
-    font: 900 6cqi / 1 system-ui, sans-serif;
-    letter-spacing: 0.1em;
-    translate: 0 -50%;
-    rotate: -14deg;
+    left: 44cqi;
+    top: 67cqi;
+    width: 28cqi;
     mix-blend-mode: multiply;
-    opacity: 0.85;
-  }
-
-  .stamp small {
-    font: 700 2.4cqi / 1 var(--wide);
-    letter-spacing: 0.08em;
   }
 
   .stamp:not([hidden]) {
