@@ -1,7 +1,8 @@
 ---
 import EventEditor from "../../../components/EventEditor.astro"
 import Base from "../../../layouts/Base.astro"
-import { db, formatShort, getEvent, type Pass } from "../../../lib/db"
+import { db, getEvent, type Pass } from "../../../lib/db"
+import { formatShort } from "../../../lib/time"
 import { maskPhone } from "../../../lib/attendee"
 import { purgePages } from "../../../lib/cache"
 import { canEdit, saveEvent } from "../../../lib/events"

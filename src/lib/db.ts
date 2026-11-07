@@ -124,23 +124,6 @@ export const checkInOpensAt = (e: Pick<Event, "starts_at">) => new Date(Date.par
 export const checkInPhase = (e: Pick<Event, "starts_at" | "ends_at">, now = Date.now()) =>
   now < Date.parse(e.starts_at) - CHECK_IN_LEAD ? "early" : now > Date.parse(e.ends_at) ? "ended" : "open"
 
-export const ZONE = "Asia/Shanghai"
-
-export const formatTime = (iso: string) =>
-  new Date(iso).toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short", timeZone: ZONE })
-
-export const formatShort = (iso: string) =>
-  new Date(iso).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: ZONE })
-
-export const formatClock = (iso: string) =>
-  new Date(iso).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: ZONE })
-
-export const sameDay = (a: string, b: string) =>
-  new Date(a).toLocaleDateString("zh-CN", { timeZone: ZONE }) === new Date(b).toLocaleDateString("zh-CN", { timeZone: ZONE })
-
-export const formatRange = (from: string, until: string) =>
-  sameDay(from, until) ? `${formatTime(from)}–${formatClock(until)}` : `${formatTime(from)} 至 ${formatTime(until)}`
-
 export const thumbKey = (key: string) => key.replace(/(\.\w+)$/, ".thumb$1")
 
 // The still shown on list thumbnails, so a page of passes never downloads their videos.

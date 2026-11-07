@@ -2,49 +2,100 @@
 import RepairTag from "../../cards/RepairTag.astro"
 import Timeline from "../../components/Timeline.astro"
 import Base from "../../layouts/Base.astro"
-import { getRepair, type Repair } from "../../lib/repair"
+import { STEPS } from "../../lib/repair"
 
 const id = Number(Astro.params.id)
 if (!Number.isSafeInteger(id) || id < 1) return new Response(null, { status: 404 })
-let repair: Repair | null = null
-try {
-  repair = await getRepair(id)
-  if (!repair) return new Response(null, { status: 404 })
-} catch {
-  Astro.response.status = 502
-}
-
 const serial = `№ ${String(id).padStart(4, "0")}`
-const reached = repair?.steps.findLastIndex((s) => s.done) ?? 0
-const chip = repair?.cancelled
-  ? { tone: "", text: "已取消" }
-  : [{ tone: "warn", text: "等待接单" }, { tone: "warn", text: "维修中" }, { tone: "ok", text: "已修好" }, { tone: "ok", text: "已完成" }][reached]!
 ---
 
-<Base title={`维修单 ${serial} · NBTCA`} description={repair ? `${repair.model || "维修单"}，${chip.text}` : undefined}>
-  <main class="wrap">
-    {repair
-      ? (
-          <>
-            <div class="stage">
-              <RepairTag repair={repair} />
-              <div class="spot" />
-            </div>
-            <section class="info">
-              <span class="chip reveal" data-tone={chip.tone}>{chip.text}</span>
-              <h1 class="reveal" style="--i: 1">{repair.model || "维修单"}<small>{serial}</small></h1>
-              {repair.problem && <p class="problem reveal" style="--i: 2">{repair.problem}</p>}
-              <Timeline class="reveal" style="--i: 3" steps={repair.steps} halted={repair.cancelled} />
-              <a class="action reveal" style="--i: 4" href={`https://nbtca.space/repair/ticket-detail?eventId=${id}`}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10" /></svg>
-                在维修系统查看
-              </a>
-            </section>
-          </>
-        )
-      : <p class="muted down">维修系统暂时连不上，请稍后再试。</p>}
+<Base title={`维修单 ${serial} · NBTCA`} description="计算机协会维修单的进度。">
+  <main class="wrap" data-repair={id}>
+    <div class="stage">
+      <RepairTag id={id} />
+      <div class="spot" />
+    </div>
+    <section class="info">
+      <span class="chip" data-chip>读取中</span>
+      <h1><span data-title>维修单</span><small>{serial}</small></h1>
+      <p class="problem" data-summary hidden />
+      <Timeline steps={STEPS.map((s) => ({ label: s.label, at: null, done: false }))} halted />
+      <a class="action" href={`https://nbtca.space/repair/ticket-detail?eventId=${id}`}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10" /></svg>
+        在维修系统查看
+      </a>
+    </section>
   </main>
 </Base>
+
+<script>
+  import { fetchRepair, type Repair } from "../../lib/repair"
+  import { formatDot, formatWhen } from "../../lib/time"
+
+  // The punched hole above each step on the tag, in the tag's own units.
+  const HOLES = [17.75, 39.25, 60.75, 82.25]
+  const CHIPS = [
+    { tone: "warn", text: "等待接单" },
+    { tone: "warn", text: "维修中" },
+    { tone: "ok", text: "已修好" },
+    { tone: "ok", text: "已完成" },
+  ]
+
+  const main = document.querySelector<HTMLElement>("[data-repair]")!
+  const tag = main.querySelector<HTMLElement>("[data-repair-tag]")!
+  const chip = main.querySelector<HTMLElement>("[data-chip]")!
+  const text = (selector: string, value: string) => (main.querySelector(selector)!.textContent = value)
+
+  function show(r: Repair) {
+    const reached = r.steps.findLastIndex((s) => s.done)
+    const { tone, text: label } = r.cancelled ? { tone: "", text: "已取消" } : CHIPS[reached]!
+    chip.dataset.tone = tone
+    chip.textContent = label
+    text("[data-title]", r.model || "维修单")
+    text("[data-model]", r.model || "未填写机型")
+    text("[data-problem]", r.problem)
+    const summary = main.querySelector<HTMLElement>("[data-summary]")!
+    summary.textContent = r.problem
+    summary.hidden = !r.problem
+
+    const holes = r.steps.flatMap((s, i) => (s.done ? [`radial-gradient(circle at ${HOLES[i]}cqi 92cqi, #0000 2.1cqi, #000 2.3cqi)`] : []))
+    tag.style.setProperty("--holes", holes.join(", "))
+    const next = r.cancelled ? -1 : r.steps.findIndex((s) => !s.done)
+    const on = (el: HTMLElement, key: string, value: boolean) => (value ? (el.dataset[key] = "") : delete el.dataset[key])
+    tag.querySelectorAll<HTMLElement>("[data-step]").forEach((li, i) => on(li, "done", r.steps[i]!.done))
+    main.querySelectorAll<HTMLElement>(".timeline [data-step]").forEach((li, i) => {
+      on(li, "done", r.steps[i]!.done)
+      on(li, "next", i === next)
+      li.querySelector("[data-at]")!.textContent = r.steps[i]!.at ? formatWhen(r.steps[i]!.at!) : ""
+    })
+
+    const repairer = tag.querySelector<HTMLElement>("[data-repairer]")!
+    if (r.repairer) {
+      repairer.querySelector("b")!.textContent = r.repairer.alias
+      repairer.querySelector(".initial")!.textContent = [...r.repairer.alias][0]!
+      const avatar = repairer.querySelector("img")!
+      if (r.repairer.avatar) {
+        avatar.onload = () => (avatar.hidden = false)
+        avatar.src = r.repairer.avatar
+      }
+    }
+    repairer.hidden = !r.repairer
+
+    on(tag, "torn", r.done)
+    text("[data-stub-note]", r.cancelled ? "已取消" : "完成时撕下")
+    const kind = r.done ? "done" : r.cancelled ? "cancelled" : null
+    const last = r.steps.findLast((s) => s.at)?.at
+    for (const stamp of tag.querySelectorAll<HTMLElement>("[data-stamp]")) {
+      stamp.hidden = stamp.dataset.stamp !== kind
+      if (last) stamp.querySelector("[data-stamp-date]")!.textContent = `NBTCA · ${formatDot(last)}`
+    }
+  }
+
+  fetchRepair(Number(main.dataset.repair)).then(
+    (r) => (r ? show(r) : ((chip.textContent = "没有这张维修单"), text("[data-model]", "没有这张维修单"))),
+    () => (chip.textContent = "维修系统暂时连不上"),
+  )
+</script>
 
 <style>
   main {
@@ -96,11 +147,6 @@ const chip = repair?.cancelled
     max-width: 32rem;
     color: var(--muted);
     line-height: 1.7;
-  }
-
-  .down {
-    grid-column: 1 / -1;
-    text-align: center;
   }
 
   @media (max-width: 900px) {

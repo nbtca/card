@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro"
 import { toCsv } from "../../../lib/attendee"
-import { db, formatTime, getEvent, type Pass } from "../../../lib/db"
+import { db, getEvent, type Pass } from "../../../lib/db"
+import { formatTime } from "../../../lib/time"
 import { canEdit } from "../../../lib/events"
 
 const stamp = (ms: number | null) => (ms ? formatTime(new Date(ms).toISOString()) : "")

@@ -1,6 +1,7 @@
 ---
 import { passDesign } from "../cards/pass"
-import { checkInOpensAt, checkInPhase, formatShort, stubPass, type Stub } from "../lib/db"
+import { checkInOpensAt, checkInPhase, stubPass, type Stub } from "../lib/db"
+import { formatShort } from "../lib/time"
 
 interface Props {
   stubs: Stub[]
