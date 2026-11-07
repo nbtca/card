@@ -17,7 +17,7 @@
 
 - **Cards that feel like objects.** They tilt with the pointer or the phone, drift apart in layers, and catch foil only when they lean.
 - **Footage through type.** An event pass plays its video through the letters of one large word.
-- **Check-in at the door.** Peel the sticker to reveal the QR code; when staff scan it, the stub tears off.
+- **Check-in at the door.** Peel the sticker to reveal the QR code; when staff scan it, the stub tears off and the event's stamp lands on the pass and on the back of the member card.
 - **On the badge.** Members save their card as a round 360 px wallpaper for [CABadge](https://github.com/nbtca/CABadge).
 - **Course credit.** An event can collect validated student details and export them as CSV.
 - **Light on devices and on D1.** Effects animate only `translate` and `opacity`, and pages read a handful of indexed rows.
@@ -35,6 +35,7 @@ A pass stacks footage, a white sheet, a black word, the print and a glare. The s
 | Lanyard | A damped spring drawn as an SVG strap, which sleeps once the pass rests |
 | Peel and tear | `peel.ts` folds the sticker along the pointer; `ticket.ts` tears the stub after a scan |
 | Member wall | `pluck.ts` lets a card be pulled out, thrown and sprung back into its slot |
+| Stamps | `Stamp.astro` draws each event's seal in one ink, turned by the pass id; a fixed noise image masks the ink, so no filter runs while cards tilt |
 | Sound | Synthesised with Web Audio in `sound.ts`, only after the visitor interacts |
 
 ## Who can do what

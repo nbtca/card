@@ -19,7 +19,6 @@ for (const ticket of document.querySelectorAll<HTMLElement>("[data-ticket]")) {
     ticket.dataset.tearing = ""
     tear()
     const stamp = card.querySelector<HTMLElement>("[data-stamp]")!
-    stamp.querySelector("[data-stamp-time]")!.textContent = new Date(at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
     setTimeout(() => {
       card.dataset.torn = ""
       card.dataset.state = "redeemed"
