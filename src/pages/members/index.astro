@@ -93,7 +93,6 @@ const sections = new Set(members.map((m) => m.section).filter(Boolean)).size
     cursor: grab;
   }
 
-  /* Held above the rest of the wall, with a deeper shadow while it is off its slot. */
   /* content-visibility implies paint containment, which would clip a card lifted off its slot, and the
      scroll-driven entry would leave a card in a half-visible row see-through while held. */
   ul li[data-plucked] {

@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro"
 import { toCsv } from "../../../lib/attendee"
 import { db, getEvent, type Pass } from "../../../lib/db"
-import { formatTime } from "../../../lib/time"
+import { formatTime, padSerial } from "../../../lib/format"
 import { canEdit } from "../../../lib/events"
 
 const stamp = (ms: number | null) => (ms ? formatTime(new Date(ms).toISOString()) : "")
@@ -21,7 +21,7 @@ export const GET: APIRoute = async ({ params, url, locals }) => {
   const header = ["编号", "姓名", ...(info ? ["学号", "班级", "手机号"] : []), "领取时间", "入场时间", "是否入场"]
   const rows = results.map((p) => ({
     text: [
-      String(p.serial).padStart(4, "0"),
+      padSerial(p.serial),
       p.name,
       ...(info ? [p.student_id ?? "", p.class_name ?? "", p.phone ?? ""] : []),
       stamp(p.created_at),

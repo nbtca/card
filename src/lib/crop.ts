@@ -1,7 +1,6 @@
-// Frames an image inside a 5:7 window by dragging, wheel or pinch, then renders that window.
-export const RATIO = 7 / 5
+const RATIO = 7 / 5
 
-export interface Framing {
+interface Framing {
   x: number
   y: number
   scale: number
@@ -19,7 +18,6 @@ export class Cropper {
     private frame: HTMLElement,
     private img: HTMLImageElement,
     readonly bitmap: ImageBitmap,
-    // A background must fill the card; a cut-out portrait may sit smaller inside it.
     private cover: boolean,
     private onChange: (settled: boolean) => void,
   ) {
@@ -54,7 +52,6 @@ export class Cropper {
     this.min = this.cover ? fill : fit * 0.6
     this.max = fill * 5
     const scale = this.cover ? fill : fit
-    // Portraits start standing on the bottom edge, where the card expects them.
     this.framing = {
       scale,
       x: (w - this.bitmap.width * scale) / 2,

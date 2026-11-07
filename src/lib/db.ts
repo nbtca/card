@@ -77,7 +77,6 @@ export const countMembers = async () =>
 
 export const getEvent = (slug: string) => db().prepare("SELECT * FROM events WHERE slug = ?").bind(slug).first<Event>()
 
-// Events whose door may still be open, for checking in by serial.
 export const recentEvents = async () =>
   (
     await db()
@@ -128,7 +127,6 @@ export const checkInPhase = (e: Pick<Event, "starts_at" | "ends_at">, now = Date
 
 export const thumbKey = (key: string) => key.replace(/(\.\w+)$/, ".thumb$1")
 
-// The still shown on list thumbnails, so a page of passes never downloads their videos.
 export const posterKey = (key: string) => key.replace(/\.\w+$/, ".poster.webp")
 
 export const mediaUrl = (key: string | null, size: "full" | "thumb" = "full") =>

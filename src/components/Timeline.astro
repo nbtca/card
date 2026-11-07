@@ -1,11 +1,9 @@
 ---
-import { formatWhen } from "../lib/time"
+import { formatWhen } from "../lib/format"
 
 interface Props {
   steps: { label: string; at: string | null; done: boolean }[]
-  // Shows the time left to the next step; the page runs the clock.
   countdown?: boolean
-  // A stopped process has no next step to point at.
   halted?: boolean
   class?: string
   style?: string

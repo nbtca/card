@@ -1,7 +1,6 @@
 import { encode } from "uqr"
 
 export interface PosterSpec {
-  // A playing video, a still or nothing, in which case an aurora stands in.
   footage: HTMLVideoElement | HTMLImageElement | null
   word: string
   eyebrow: [string, string]
@@ -56,7 +55,6 @@ function spaced(ctx: OffscreenCanvasRenderingContext2D, text: string, x: number,
   ctx.textAlign = "left"
 }
 
-// Built like the pass itself: footage at the bottom, a paper sheet with the word cut out of it, the print on top.
 export async function drawPoster(spec: PosterSpec) {
   await Promise.all([document.fonts.load(font(900, 100, `"Archivo"`)), document.fonts.ready])
   const canvas = new OffscreenCanvas(W, H)
@@ -142,14 +140,12 @@ export async function drawPoster(spec: PosterSpec) {
   c.font = font(700, 18, WIDE)
   spaced(c, "ADMIT ONE", right, 1290, 5)
 
-  // A soft highlight across the top corner, the glare a real card catches.
   const glare = c.createRadialGradient(CARD.w * 0.8, 0, 0, CARD.w * 0.8, 0, CARD.w * 0.9)
   glare.addColorStop(0, "rgb(255 255 255 / 0.35)")
   glare.addColorStop(1, "transparent")
   c.fillStyle = glare
   c.fillRect(0, 0, CARD.w, CARD.h)
 
-  // The notches either side of the perforation are cut through, so the background shows in them.
   c.globalCompositeOperation = "destination-out"
   c.fillStyle = "#000"
   for (const x of [0, CARD.w]) {

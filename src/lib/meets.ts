@@ -2,7 +2,6 @@ import { checkInPhase, db, getEvent, randomId, type Member } from "./db"
 
 const pair = (x: string, y: string) => (x < y ? [x, y] : [y, x])
 
-// Made the first time it is shown, so passes that never meet anyone carry no code.
 export const meetCode = async (passId: string) =>
   (await db().prepare("UPDATE passes SET meet_code = COALESCE(meet_code, ?) WHERE id = ? RETURNING meet_code").bind(randomId(12), passId).first<{ meet_code: string }>())!
     .meet_code
@@ -26,7 +25,7 @@ export const metWhere = async (me: string, other: string) =>
       .all<{ slug: string; title: string }>()
   ).results
 
-export type MeetOutcome =
+type MeetOutcome =
   | { status: "ok" | "self"; event: string; other: Member }
   | { status: "unknown" | "absent" | "closed"; event?: string }
 

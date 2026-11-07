@@ -5,12 +5,10 @@ import Stamp from "./Stamp.astro"
 interface Props {
   member: Member
   size: "thumb" | "full"
-  // Entered events, newest first; the latest are stamped on the back like a passport page.
   stamps?: Stub[]
 }
 
 const { member, size, stamps = [] } = Astro.props
-// The newest three, in a loose row with the latest in the middle and on top.
 const SPOTS = [[50, 52], [21, 42], [79, 46]]
 const pressed = stamps.slice(0, SPOTS.length).reverse()
 const { name, alias, section, role, joined, github, motto, hue, word } = member
@@ -20,7 +18,6 @@ const full = size === "full"
 const Tag = full ? "div" : "a"
 // Each backdrop-filter layer is a full blur pass; a wall of thumbnails gets by with two.
 const layers = full ? 5 : 2
-// Members who keep turning up earn a warmer foil, like a gold card.
 const tier = member.kept >= 10 ? "aurora" : member.kept >= 5 ? "gold" : undefined
 const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.test(c) ? 1 : 0.42), 0)
 ---
@@ -322,9 +319,6 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   pointer-events: none;
 }
 
-/* Foil sits only where a real card has it, the logo and the edge, and like real foil it shows only when
-   light catches it: invisible at rest, brighter the further the card tilts. The masks never change and the
-   band only moves and fades, so tilting repaints nothing. */
 .band {
   position: absolute;
   inset: -100%;
@@ -402,7 +396,6 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   translate: -50% -50%;
 }
 
-/* The back is dark, so the inks are lifted towards white and laid on normally instead of multiplied. */
 .stamps :global(.stamp-mark) {
   color: color-mix(in oklch, var(--ink) 62%, #fff);
   mix-blend-mode: normal;
@@ -416,7 +409,6 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   gap: 4cqi 6cqi;
   margin: 0;
 }
-
 
 .back dt {
   font: 3.4cqi / 1 var(--display);

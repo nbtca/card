@@ -1,8 +1,6 @@
 ---
 interface Props {
-  // Where the lanyard slot sits, as a fraction of the card's height from its top edge.
   attach?: number
-  // Drops the card in from above, for the moment a pass has just been issued.
   drop?: boolean
 }
 
@@ -133,8 +131,7 @@ const id = `strap-${Math.random().toString(36).slice(2, 8)}`
       root.dataset.grabbed = ""
       wake()
     })
-    // Pulled past its hanging length the strap stiffens like a rubber band, so the energy it stores can never
-    // fling the pass off the screen when let go.
+    // Stiff past its hanging length, or a hard pull flings the pass off the screen.
     const leash = (x: number, y: number) => {
       const dx = x - pivot.x
       const dy = y - pivot.y

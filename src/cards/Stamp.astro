@@ -1,9 +1,8 @@
 ---
-import { formatDot } from "../lib/time"
+import { formatDot } from "../lib/format"
 
 interface Props {
   event: { slug: string; title: string; word: string; starts_at: string }
-  // The pass id, so each holder's impression lands at its own angle and wears its own way.
   seed: string
   ink?: string
   class?: string

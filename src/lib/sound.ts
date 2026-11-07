@@ -24,7 +24,6 @@ export function setSound(on: boolean) {
   if (master) master.gain.value = on ? VOLUME : 0
 }
 
-// Suspends the context shortly after the last sound so an idle page costs nothing.
 function wake(seconds: number) {
   if (!soundOn() || !navigator.userActivation?.hasBeenActive) return null
   try {
@@ -83,7 +82,6 @@ function tone(c: AudioContext, freq: number, to: number, gain: number, decay: nu
   osc.stop(t + decay + 0.05)
 }
 
-// A peel is a run of tiny clicks, one every few pixels the corner travels, like tape coming off.
 export function peel(distance: number) {
   if (!distance) return
   const c = wake(0.3)
@@ -113,7 +111,6 @@ export function land() {
   tone(c, 150, 95, 0.22, 0.08)
 }
 
-// The stub coming away along the perforation, then landing.
 export function tear() {
   peel(160)
   setTimeout(land, 420)
@@ -126,7 +123,6 @@ export function tap() {
   burst(c, { type: "bandpass", freq: 1600, q: 0.8, gain: 0.12, decay: 0.03 })
 }
 
-// A pencil stroke: band-passed noise in short, uneven scratches.
 export function scribble(delay: number, length: number) {
   const c = wake(delay + length)
   if (!c) return

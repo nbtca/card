@@ -228,7 +228,6 @@ p {
   background: rgb(var(--tint) / 0.09);
 }
 
-/* Secondary actions stay quiet next to the page's one main button and only fill in on hover. */
 .action {
   display: inline-flex;
   align-items: center;
@@ -478,7 +477,6 @@ tr[aria-current] td {
   color: var(--fg);
 }
 
-/* Scroll-linked entry runs on the compositor where supported; elsewhere items simply appear. */
 @supports (animation-timeline: view()) {
   .rise {
     animation: rise linear both;

@@ -1,5 +1,4 @@
-// Details collected for events whose attendance counts toward course credit.
-export interface Attendee {
+interface Attendee {
   name: string
   studentId: string
   className: string

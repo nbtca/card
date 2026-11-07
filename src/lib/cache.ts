@@ -20,7 +20,6 @@ function store(key: Request | string, response: Response, value: string) {
   waitUntil(edge().then((cache) => cache.put(key, copy)))
 }
 
-// Signed-out visitors all see the same page, so it renders once a minute per data centre instead of per visit.
 // Browsers must not keep it, or a visitor who signs in would be shown the signed-out page.
 export async function sharedPage(url: URL, render: () => Promise<Response>) {
   const hit = await (await edge()).match(pageKey(url))

@@ -2,12 +2,12 @@
 import SharePoster from "../components/SharePoster.astro"
 import Base from "../layouts/Base.astro"
 import { db, type Event } from "../lib/db"
-import { formatShort, ZONE } from "../lib/time"
+import { formatClock, formatSerial, formatShort, yearOf } from "../lib/format"
 
 const { user } = Astro.locals
 if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`)
 
-const thisYear = Number(new Date().toLocaleString("en-US", { year: "numeric", timeZone: ZONE }))
+const thisYear = Number(yearOf(new Date()))
 const asked = Number(Astro.url.searchParams.get("y"))
 const year = Number.isInteger(asked) && asked >= 2026 && asked <= thisYear ? asked : thisYear
 const from = new Date(`${year}-01-01T00:00:00+08:00`).toISOString()
@@ -61,7 +61,6 @@ const [venue, atVenue] = venues[0] ?? []
 const firsts = kept.filter((p) => p.serial === 1).length
 const total = user.member?.kept ?? kept.length
 const tier = total >= 10 ? "镭射箔" : total >= 5 ? "金箔" : null
-const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: ZONE })
 ---
 
 <Base title={`${year} 年度回顾 · NBTCA`} bare>
@@ -99,7 +98,7 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
             <section class="slide" data-slide>
               <p class="eyebrow">The first stub</p>
               <h2>第一张票根来自<br /><em>{first!.title}</em></h2>
-              <p class="muted">{formatShort(first!.starts_at)} · {first!.venue} · № {String(first!.serial).padStart(4, "0")}</p>
+              <p class="muted">{formatShort(first!.starts_at)} · {first!.venue} · {formatSerial(first!.serial)}</p>
             </section>
 
             {early && early.minutes > 0 && (
@@ -107,7 +106,7 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
                 <p class="eyebrow">Early bird</p>
                 <p class="big">{early.minutes}<small>分钟</small></p>
                 <h2>最早的一次，你提前 {early.minutes} 分钟就到了</h2>
-                <p class="muted">{early.p.title}，{clock(early.p.redeemed_at!)} 入场。{firsts > 0 && `你还拿到过 ${firsts} 次 № 0001。`}</p>
+                <p class="muted">{early.p.title}，{formatClock(early.p.redeemed_at!)} 入场。{firsts > 0 && `你还拿到过 ${firsts} 次 № 0001。`}</p>
               </section>
             )}
 
@@ -181,7 +180,7 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
 <script>
   import { dissolveMask } from "../lib/dissolve"
   import { fetchMemberRepairs } from "../lib/repair"
-  import { ZONE } from "../lib/time"
+  import { formatDay, yearOf } from "../lib/format"
   import { tap } from "../lib/sound"
 
   const root = document.querySelector<HTMLElement>("[data-recap]")!
@@ -209,11 +208,10 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
   if (repairs) {
     const year = repairs.dataset.year!
     fetchMemberRepairs(repairs.dataset.repairs!).then((all) => {
-      const day = (iso: string) => new Date(iso).toLocaleDateString("zh-CN", { month: "long", day: "numeric", timeZone: ZONE })
-      const fixed = (all ?? []).filter((r) => r.done && new Date(r.steps[0]!.at!).toLocaleString("en-US", { year: "numeric", timeZone: ZONE }) === year)
+      const fixed = (all ?? []).filter((r) => r.done && yearOf(r.steps[0]!.at!) === year)
       if (!fixed.length) return
       repairs.querySelectorAll("[data-fixed]").forEach((el) => (el.textContent = String(fixed.length)))
-      const [busiest, count] = Object.entries(Object.groupBy(fixed, (r) => day(r.steps[0]!.at!))).sort((a, b) => b[1]!.length - a[1]!.length)[0]!
+      const [busiest, count] = Object.entries(Object.groupBy(fixed, (r) => formatDay(r.steps[0]!.at!))).sort((a, b) => b[1]!.length - a[1]!.length)[0]!
       const note = repairs.querySelector("[data-busiest]")
       if (note && count!.length > 1) note.textContent = `最忙的一天是 ${busiest}，修了 ${count!.length} 台。`
       repairs.hidden = false
@@ -222,7 +220,6 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
     }, () => {})
   }
 
-  // Each slide develops cell by cell and the bar above it fills while it stays; the last one stays put.
   function show(next: number, sound = true) {
     index = Math.max(0, Math.min(slides.length - 1, next))
     slides.forEach((slide, i) => slide.toggleAttribute("data-current", i === index))
@@ -244,7 +241,6 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
       if (e.key === "ArrowRight" || e.key === " ") show(index + 1)
       if (e.key === "ArrowLeft") show(index - 1)
     })
-    // Holding a finger down pauses, the way stories do.
     root.addEventListener("pointerdown", () => {
       clearTimeout(timer)
       root.dataset.held = ""
@@ -375,7 +371,6 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
     color: var(--muted);
   }
 
-  /* The year cut out of a black sheet over the footage, like the word on a pass. */
   .recap .knockout {
     position: relative;
     aspect-ratio: 4 / 3;

@@ -7,7 +7,6 @@ type Props = { label?: string; hint?: string } & (
   | { kind: "badge"; spec: Omit<BadgeSpec, "background" | "portrait">; sources?: { background?: string; portrait?: string } }
 )
 
-// Sources are selectors for media already on the page, drawn as they are now.
 const { kind = "poster", spec, sources = {}, label = "生成分享图", hint = "长按保存。" } = Astro.props
 ---
 
@@ -94,7 +93,6 @@ const { kind = "poster", spec, sources = {}, label = "生成分享图", hint = "
     border-radius: 50%;
   }
 
-  /* The picture develops cell by cell, the same way stubs arrive on the entry wall. */
   .poster-dialog[open] img {
     mask: var(--sprite) 0 0 / 1500% 100% no-repeat;
     animation: develop 0.8s steps(15, jump-none) both;
