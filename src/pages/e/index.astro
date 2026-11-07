@@ -14,16 +14,16 @@ const mine = passes.filter((p) => !p.redeemed_at && checkInPhase(p) !== "ended")
     <header>
       <p class="eyebrow reveal">Events</p>
       <h1 class="title reveal" style="--i: 1">活动</h1>
-      <p class="lede reveal" style="--i: 2">每场活动都有一张专属的券。在开放时间里领一张，活动当天出示给工作人员扫码入场。</p>
+      <p class="lede reveal" style="--i: 2">每场活动一张券，当天凭券入场。</p>
       {user && (
         <div class="actions reveal" style="--i: 3">
           {user.member && <a class="button" href="/e/new">发起活动</a>}
-          {passes.some((p) => p.redeemed_at) && <a class="button ghost" href="/recap">我的年度回顾</a>}
+          {passes.some((p) => p.redeemed_at) && <a class="button ghost" href="/recap">年度回顾</a>}
         </div>
       )}
     </header>
-    {mine.length > 0 && <PassShelf stubs={mine} guest={!user?.member} eyebrow="Your passes" title="我的券" lede="到场后打开券，撕开贴纸给工作人员扫码。" named={false} />}
-    {events.length ? <EventList events={events} /> : <p class="muted">最近还没有活动，过几天再来看看。</p>}
+    {mine.length > 0 && <PassShelf stubs={mine} guest={!user?.member} eyebrow="Your passes" title="我的券" lede="到场后撕开贴纸扫码。" named={false} />}
+    {events.length ? <EventList events={events} /> : <p class="muted">近期没有活动。</p>}
   </main>
 </Base>
 

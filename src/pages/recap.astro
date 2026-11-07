@@ -60,8 +60,8 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
           <section class="slide plain" data-slide>
             <p class="eyebrow">{year} · Your year</p>
             <h1>{year} 年还没有入场过的活动</h1>
-            <p class="muted">{passes.length ? `你领过 ${passes.length} 张券，下次记得到场撕开贴纸。` : "去活动页领一张券，来现场看看吧。"}</p>
-            <a class="button" href="/e">看看最近的活动</a>
+            {passes.length > 0 && <p class="muted">领过 {passes.length} 张券，还没有到场过。</p>}
+            <a class="button" href="/e">近期活动</a>
           </section>
         )
       : (

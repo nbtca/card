@@ -49,11 +49,11 @@ const stamp = (ms: number) => formatShort(new Date(ms).toISOString())
           <div class="exports">
             <a class="button ghost" href={`/e/${event.slug}/live`} target="_blank">打开入场大屏</a>
             <a class="button" href={`/e/${event.slug}/attendees.csv?only=entered`} download>导出已入场名单</a>
-            <a class="button ghost" href={`/e/${event.slug}/attendees.csv`} download>导出全部领取名单</a>
+            <a class="button ghost" href={`/e/${event.slug}/attendees.csv`} download>导出全部名单</a>
           </div>
         )}
       </div>
-      {event.needs_info === 1 && <p class="muted privacy">名单里有学号和手机号，只用于学分申报，请不要转发到群聊或公开渠道。</p>}
+      {event.needs_info === 1 && <p class="muted privacy">名单含学号和手机号，仅用于学分申报，请勿外传。</p>}
       {passes.length
         ? (
             <table>

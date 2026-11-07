@@ -20,7 +20,7 @@ const mine = member.id === Astro.locals.user?.member?.id
       <h1>{member.name}</h1>
       <p class="muted">{[member.section, member.role].filter(Boolean).join(" · ")} · {member.joined} 年入会</p>
       <p class="hint">点击卡片翻到背面</p>
-      {mine && <a class="button ghost" href="/me">装扮我的卡片</a>}
+      {mine && <a class="button ghost" href="/me">装扮卡片</a>}
     </div>
     {kept.length > 0 && (
       <div class="kept">
