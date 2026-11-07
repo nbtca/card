@@ -8,7 +8,7 @@
     "build": "astro build",
     "preview": "astro build && wrangler d1 migrations apply card --local && wrangler dev",
     "deploy": "astro build && wrangler d1 migrations apply card --remote && wrangler deploy",
-    "typecheck": "wrangler types && astro sync && tsc --noEmit"
+    "typecheck": "wrangler types && astro check"
   },
   "dependencies": {
     "@astrojs/cloudflare": "14.4.0",
@@ -17,6 +17,7 @@
     "uqr": "0.1.2"
   },
   "devDependencies": {
+    "@astrojs/check": "0.9.12",
     "typescript": "6.0.3",
     "wrangler": "4.151.0"
   }

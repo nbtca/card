@@ -45,8 +45,8 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
           serial!.textContent = formatSerial(r.id)
           model!.textContent = r.model || "未填写机型"
           state!.textContent = status(r)!
-          a.append(serial!, model!, state!)
-          li.append(a)
+          a.replaceChildren(serial!, model!, state!)
+          li.appendChild(a)
           return li
         }),
       )

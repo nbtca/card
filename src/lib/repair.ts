@@ -61,13 +61,13 @@ export async function fetchRepairsBetween(from: string, until: string) {
 // Saturday knows members by student ID; both sides take the alias from the member's NBTCA account username.
 export async function fetchMemberRepairs(alias: string) {
   const key = alias.trim().toLowerCase()
-  const member = key && (await get<{ memberId: string; alias: string }[]>("/members?offset=0&limit=500"))?.find((m) => m.alias.trim().toLowerCase() === key)
+  // A Saturday without the member filter answers with everyone's tickets; asking for no one finds out for one ticket.
+  if (!key || (await get<Ticket[]>("/events?memberId=0&limit=1&offset=0"))?.length) return null
+  const member = (await get<{ memberId: string; alias: string }[]>("/members?offset=0&limit=500"))?.find((m) => m.alias.trim().toLowerCase() === key)
   if (!member) return null
   const found: Ticket[] = []
   for (let offset = 0; ; offset += PAGE) {
     const page = (await get<Ticket[]>(`/events?memberId=${member.memberId}&order=desc&limit=${PAGE}&offset=${offset}`)) ?? []
-    // A Saturday without the member filter answers with everyone's tickets, which must not be counted as this member's.
-    if (page.some((t) => t.member?.memberId !== member.memberId)) return null
     found.push(...page)
     if (page.length < PAGE) return found.map(toRepair)
   }
