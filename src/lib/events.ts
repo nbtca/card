@@ -14,7 +14,6 @@ export const toLocal = (iso: string) => new Date(Date.parse(iso) + SHANGHAI).toI
 export const canEdit = (event: Event, user: App.Locals["user"]) =>
   !!user?.member && (user.admin || event.created_by === user.email)
 
-// Returns the event's slug once saved, or a message saying what to fix.
 export async function saveEvent(form: FormData, editing: Event | null, createdBy: string) {
   const text = (name: string) => String(form.get(name) ?? "").trim()
   const slug = editing?.slug ?? text("slug").toLowerCase()

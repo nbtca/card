@@ -7,7 +7,6 @@ export interface BadgeSpec {
   hue: number
 }
 
-// CABadge's round screen is 360 px across.
 const S = 360
 const R = S / 2
 const SANS = `system-ui, -apple-system, "PingFang SC", "Noto Sans SC", sans-serif`
@@ -58,8 +57,6 @@ async function logo() {
   return tinted
 }
 
-// Built like the front of the member card, fitted to a circle: the word near the top, where the circle is
-// widest, and the name low enough to clear the bezel.
 export async function drawBadge(spec: BadgeSpec) {
   await Promise.all([document.fonts.load(`400 100px "Bebas Neue"`), document.fonts.ready])
   const canvas = new OffscreenCanvas(S, S)
@@ -82,7 +79,6 @@ export async function drawBadge(spec: BadgeSpec) {
   if (spec.portrait) cover(ctx, spec.portrait, 1.08, 1)
   else ctx.drawImage(await logo(), 0, 0)
 
-  // The card's progressive blur, approximated by one blurred copy faded in towards the bottom.
   const blurred = new OffscreenCanvas(S, S)
   const b = blurred.getContext("2d")!
   b.filter = "blur(10px)"

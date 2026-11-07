@@ -43,12 +43,13 @@ const events = await recentEvents()
 </Base>
 
 <script>
+  import { formatClock, formatTime } from "../lib/format"
+
   const video = document.querySelector<HTMLVideoElement>("[data-video]")!
   const start = document.querySelector<HTMLButtonElement>("[data-start]")!
   const result = document.querySelector<HTMLOutputElement>("[data-result]")!
   const headline = result.querySelector<HTMLElement>("[data-headline]")!
   const detail = result.querySelector<HTMLElement>("[data-detail]")!
-  const time = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
 
   interface Outcome {
     status: "ok" | "already" | "unknown" | "early" | "ended" | "queued"
@@ -82,12 +83,12 @@ const events = await recentEvents()
       ended: "活动已经结束",
       queued: "已离线记下",
     }[outcome.status]
-    const who = `${outcome.name} · ${outcome.title} · № ${String(outcome.serial).padStart(4, "0")}`
+    const who = `${outcome.name} · ${outcome.title} · ${formatSerial(outcome.serial)}`
     detail.textContent = {
       ok: who,
-      already: `${who} · ${time(outcome.redeemedAt!)} 已入场`,
+      already: `${who} · ${formatClock(outcome.redeemedAt!)} 已入场`,
       unknown: "不是本站的券。",
-      early: `${who} · ${new Date(outcome.startsAt!).toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short" })} 开始，开场前一小时起可核销`,
+      early: `${who} · ${formatTime(outcome.startsAt!)} 开始，开场前一小时起可核销`,
       ended: `${who} · 活动期间未使用`,
       queued: "没有网络，联网后按扫码时间自动补交。",
     }[outcome.status]

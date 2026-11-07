@@ -6,7 +6,7 @@ import SharePoster from "../../../components/SharePoster.astro"
 import Timeline from "../../../components/Timeline.astro"
 import Base from "../../../layouts/Base.astro"
 import { checkInOpensAt, checkInPhase, claimPhase, db, getEvent, randomId, type Member, type Pass } from "../../../lib/db"
-import { formatClock, formatRange, formatTime, sameDay, ZONE } from "../../../lib/time"
+import { formatClock, formatDay, formatRange, formatTime, sameDay, ZONE } from "../../../lib/format"
 import { parseAttendee } from "../../../lib/attendee"
 import { purgePages } from "../../../lib/cache"
 import { canEdit } from "../../../lib/events"
@@ -18,7 +18,6 @@ const { user } = Astro.locals
 const findPass = () =>
   user ? db().prepare("SELECT * FROM passes WHERE event = ? AND email = ?").bind(slug, user.email).first<Pass>() : null
 
-// Prefilled from the visitor's last registration so returning students do not type it all again.
 const findPrevious = () =>
   user
     ? db()
@@ -88,11 +87,9 @@ const passNotice = pass?.redeemed_at
       ? "到场后撕开贴纸，给工作人员扫码。"
       : `${formatTime(checkInOpensAt(event))} 起可以撕开贴纸。`
 const Design = passDesign(event.design)
-// Members who are in can meet each other while the event is on.
 const meeting = !!user?.member && !!pass?.redeemed_at && checkInPhase(event) === "open"
 const [code, met] = meeting ? await Promise.all([pass!.meet_code ?? meetCode(pass!.id), metAt(event.slug, user!.member!.id)]) : [null, []]
 const meetQr = code ? qrCode(`${Astro.url.origin}/meet/${code}`) : null
-// A repair day counts the tickets opened from the moment check-in opens.
 const repairFrom = event.repair ? checkInOpensAt(event) : null
 const editable = canEdit(event, user)
 
@@ -210,7 +207,7 @@ const chip = {
             title: event.title,
             facts: [
               ["Venue", event.venue],
-              ["Date", start.toLocaleDateString("zh-CN", { month: "long", day: "numeric", timeZone: ZONE })],
+              ["Date", formatDay(start)],
               ["Time", formatClock(event.starts_at)],
             ],
             link: `${Astro.url.origin}/e/${event.slug}`,
@@ -245,6 +242,7 @@ const chip = {
 
 <script>
   import { checkStudentId, describeStudentId } from "../../../lib/attendee"
+  import { formatClock } from "../../../lib/format"
 
   const idInput = document.querySelector<HTMLInputElement>("[data-student-id]")
   const idHint = document.querySelector<HTMLElement>("[data-student-hint]")
@@ -286,8 +284,7 @@ const chip = {
   addEventListener("pass:locked", () => notice?.animate([{ scale: 1 }, { scale: 1.03 }, { scale: 1 }], { duration: 300 }))
   addEventListener("pass:redeemed", (e) => {
     const at = new Date((e as CustomEvent<{ at: number }>).detail.at)
-    say(`${at.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} 已入场，玩得开心。`)
-    // A reminder to arrive means nothing once the holder is in.
+    say(`${formatClock(at)} 已入场，玩得开心。`)
     document.querySelector("[data-calendar]")?.remove()
   })
 </script>

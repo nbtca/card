@@ -111,7 +111,6 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
     }
   }
 
-  // Past halfway the sticker comes off for good, the way a real one would not stick back.
   const reveal = () => {
     revealing = true
     go({ x: -w * 0.9, y: -h * 1.6 }, () => {
@@ -136,7 +135,6 @@ for (const root of document.querySelectorAll<HTMLElement>("[data-peel]")) {
     const box = sticker.getBoundingClientRect()
     let p = { x: ((e.clientX - box.left) / box.width) * w, y: ((e.clientY - box.top) / box.height) * h }
     if (locked) {
-      // Too early to check in: the corner lifts a little and goes no further.
       const corner = { x: w, y: h }
       const d = Math.hypot(corner.x - p.x, corner.y - p.y)
       const max = w * 0.16

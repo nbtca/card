@@ -1,6 +1,5 @@
-// After Jhey Tompkins' generative sprite masks: a grid of cells appears in a noisy sweep, one sprite frame per
-// animation step, so an element can arrive pixel by pixel with nothing but a stepped mask-position.
-export const FRAMES = 14
+// After Jhey Tompkins' generative sprite masks.
+const FRAMES = 14
 
 const random = (seed: number) => () => {
   seed = (seed + 0x6d2b79f5) | 0
@@ -11,7 +10,6 @@ const random = (seed: number) => () => {
 
 export function dissolveMask({ cols = 10, rows = 6, seed = 1 } = {}) {
   const next = random(seed)
-  // Mostly top to bottom, loosened by noise so the edge never reads as a straight line.
   const order = Array.from({ length: cols * rows }, (_, i) => [Math.floor(i / cols) / rows + next() * 0.7, i] as const)
   order.sort((a, b) => a[0] - b[0])
   const frameOf = new Array<number>(cols * rows)

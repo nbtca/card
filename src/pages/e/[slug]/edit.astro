@@ -2,7 +2,7 @@
 import EventEditor from "../../../components/EventEditor.astro"
 import Base from "../../../layouts/Base.astro"
 import { db, getEvent, type Pass } from "../../../lib/db"
-import { formatShort } from "../../../lib/time"
+import { formatShort, padSerial } from "../../../lib/format"
 import { maskPhone } from "../../../lib/attendee"
 import { purgePages } from "../../../lib/cache"
 import { canEdit, saveEvent } from "../../../lib/events"
@@ -68,7 +68,7 @@ const stamp = (ms: number) => formatShort(new Date(ms).toISOString())
               <tbody>
                 {passes.map((p) => (
                   <tr>
-                    <td>{String(p.serial).padStart(4, "0")}</td>
+                    <td>{padSerial(p.serial)}</td>
                     <td>{p.name}</td>
                     {event.needs_info === 1 && (
                       <>

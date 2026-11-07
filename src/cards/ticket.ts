@@ -1,6 +1,5 @@
 import { tear } from "../lib/sound"
 
-// Staff usually scan within moments of the peel, so checks start quick and slow down while nobody scans.
 const FIRST_POLL = 2500
 const LAST_POLL = 15000
 
@@ -28,7 +27,6 @@ for (const ticket of document.querySelectorAll<HTMLElement>("[data-ticket]")) {
     }, 700)
   }
 
-  // Only a peeled sticker shows the code, so until then nobody can scan it and there is nothing to ask.
   let timer = 0
   let polling = false
   let wait = FIRST_POLL

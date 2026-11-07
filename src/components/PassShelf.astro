@@ -1,7 +1,7 @@
 ---
 import { passDesign } from "../cards/pass"
 import { checkInOpensAt, checkInPhase, stubPass, type Stub } from "../lib/db"
-import { formatShort } from "../lib/time"
+import { formatSerial, formatShort } from "../lib/format"
 
 interface Props {
   stubs: Stub[]
@@ -39,7 +39,7 @@ const note = (s: Stub) =>
           <p>
             <b>{s.title}</b>
             <span>{note(s)}</span>
-            <small>№ {String(s.serial).padStart(4, "0")}</small>
+            <small>{formatSerial(s.serial)}</small>
             {s.album && <a href={s.album}>看相册</a>}
           </p>
         </li>
@@ -84,7 +84,6 @@ const note = (s: Stub) =>
     align-content: start;
   }
 
-  /* Kept stubs lie a little askew, like ones pinned to a board, and straighten when picked up. */
   li :global(.pass-card.thumb) {
     rotate: var(--r);
     transition: rotate 0.4s var(--ease);
@@ -95,7 +94,6 @@ const note = (s: Stub) =>
     rotate: 0deg;
   }
 
-  /* A torn pass is missing its stub, so the caption moves up into the space it left. */
   li:has(:global([data-torn])) p {
     margin-top: -30%;
   }

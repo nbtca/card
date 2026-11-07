@@ -1,7 +1,5 @@
 ---
-// Either the tickets opened during a repair day, or the tickets one member took on.
 type Props = ({ from: string; until: string; alias?: never } | { alias: string; from?: never; until?: never }) & {
-  // The entry wall shows only the counts, large; other pages also list the latest tickets.
   compact?: boolean
   eyebrow?: string
   title?: string
@@ -24,6 +22,7 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
 </section>
 
 <script>
+  import { formatSerial } from "../lib/format"
   import { fetchMemberRepairs, fetchRepairsBetween, type Repair } from "../lib/repair"
 
   const LISTED = 6
@@ -43,7 +42,7 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
           const li = document.createElement("li")
           const a = Object.assign(document.createElement("a"), { href: `/r/${r.id}` })
           const [serial, model, state] = ["span", "b", "small"].map((t) => document.createElement(t))
-          serial!.textContent = `№ ${String(r.id).padStart(4, "0")}`
+          serial!.textContent = formatSerial(r.id)
           model!.textContent = r.model || "未填写机型"
           state!.textContent = status(r)!
           a.append(serial!, model!, state!)
@@ -53,7 +52,6 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
       )
       tally.hidden = kept.length === 0
     }
-    // A repair day's page may stay open on a projector all day, so it keeps checking until the event ends.
     const load = () =>
       (alias ? fetchMemberRepairs(alias) : fetchRepairsBetween(from!, until!))
         .then(show, () => {})

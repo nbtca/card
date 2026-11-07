@@ -1,7 +1,5 @@
 import { land, tap } from "../lib/sound"
 
-// Cards on the wall can be pulled off and held: the card follows the pointer, swings with how fast it is
-// moved, and springs back into its slot when let go. A plain click still opens the card.
 const motion = matchMedia("(prefers-reduced-motion: no-preference)")
 const START = 6
 const K = 180
@@ -35,7 +33,6 @@ for (const card of document.querySelectorAll<HTMLElement>("[data-pluck] [data-ca
         pos.x += vel.x * h
         pos.y += vel.y * h
       }
-      // Leans into the direction of travel, like a card held by its top edge.
       swing += (Math.max(-18, Math.min(18, vel.x * 0.025)) - swing) * Math.min(1, h * 12)
       lift += (targetLift - lift) * Math.min(1, h * 14)
       dt -= h

@@ -45,7 +45,6 @@ export async function fetchRepair(id: number) {
   return t && toRepair(t)
 }
 
-// Newest first, page by page, until the tickets are older than the window.
 export async function fetchRepairsBetween(from: string, until: string) {
   const [start, end] = [Date.parse(from), Date.parse(until)]
   const found: Repair[] = []

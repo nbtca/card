@@ -92,7 +92,6 @@ const layers = [
   const pass = section?.querySelector<HTMLElement>("[data-anatomy]")
   if (section && pass) {
     let frame = 0
-    // Clicking takes over from the scroll position until the visitor scrolls out of the section.
     const button = section.querySelector<HTMLButtonElement>("[data-explode]")!
     let forced: number | null = null
     let shown = 0
@@ -129,7 +128,6 @@ const layers = [
     const shafts = [...box.querySelectorAll<SVGPathElement>(".leaders .shaft")]
     const heads = [...box.querySelectorAll<SVGPathElement>(".leaders .head")]
     const drawn = new Set<number>()
-    // A slight wobble from the note's index keeps each stroke looking hand-drawn but stable between frames.
     const wobble = (i: number, k: number) => Math.sin(i * 12.9898 + k * 78.233) * 6
     const notes = matchMedia("(min-width: 1100px)").matches ? [...box.querySelectorAll<HTMLElement>(".notes li")] : []
     let wasOpen: boolean | null = null
@@ -138,7 +136,6 @@ const layers = [
       const rects = planes.map((p) => p.getBoundingClientRect())
       const edge = Math.min(...rects.map((r) => r.left)) - origin.left - 50
       const e = Number(section.style.getPropertyValue("--e"))
-      // Bottom layer first, each label at least 34px above the one before so they never stack up.
       let floor = Infinity
       rects.forEach((r, i) => {
         const ax = r.left - origin.left + r.width * 0.1

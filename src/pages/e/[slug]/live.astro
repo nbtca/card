@@ -2,7 +2,7 @@
 import RepairTally from "../../../components/RepairTally.astro"
 import Base from "../../../layouts/Base.astro"
 import { checkInOpensAt, db, getEvent, mediaUrl } from "../../../lib/db"
-import { ZONE } from "../../../lib/time"
+import { formatClock, formatSerial } from "../../../lib/format"
 import type { Entry } from "../../api/entries"
 
 const { user } = Astro.locals
@@ -21,8 +21,6 @@ const [event, { results: entries }, counts] = await Promise.all([
 ])
 if (!event) return new Response(null, { status: 404 })
 
-const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: ZONE })
-const serial = (n: number) => `№ ${String(n).padStart(4, "0")}`
 const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
 ---
 
@@ -47,9 +45,9 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
       {entries.map((e) => (
         <li class="stub" style={`--r: ${tilt(e.serial)}`}>
           <div class="paper">
-            <span class="serial">{serial(e.serial)}</span>
+            <span class="serial">{formatSerial(e.serial)}</span>
             <b>{e.name}</b>
-            <time>{clock(e.redeemed_at)}</time>
+            <time>{formatClock(e.redeemed_at)}</time>
             <span class="admit">Admit one</span>
           </div>
         </li>
@@ -61,6 +59,7 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
 
 <script>
   import { dissolveMask } from "../../../lib/dissolve"
+  import { formatClock, formatSerial } from "../../../lib/format"
   import { tear } from "../../../lib/sound"
   import type { Entry } from "../../api/entries"
 
@@ -71,8 +70,7 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
   const shown = Number(wall.dataset.shown)
   let after = Number(wall.dataset.after)
   const masks = [1, 2, 3].map((seed) => dissolveMask({ seed }))
-  const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
-
+  
   function stub(entry: Entry) {
     const li = document.createElement("li")
     li.className = "stub arriving"
@@ -86,16 +84,15 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
       el.textContent = text
       paper.append(el)
     }
-    add("span", "serial", `№ ${String(entry.serial).padStart(4, "0")}`)
+    add("span", "serial", formatSerial(entry.serial))
     add("b", "", entry.name)
-    add("time", "", clock(entry.redeemed_at))
+    add("time", "", formatClock(entry.redeemed_at))
     add("span", "admit", "Admit one")
     li.append(paper)
     paper.addEventListener("animationend", () => li.classList.remove("arriving"), { once: true })
     return li
   }
 
-  // Arrivals that come in together still land one at a time, the way people walk through a door.
   let queue: Entry[] = []
   let landing = false
   async function land() {
@@ -148,7 +145,6 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
     gap: 1.1rem;
   }
 
-  /* Black sheet, white word, multiplied over the footage: on a dark room's screen the clip lights only the letters. */
   .live .poster {
     position: relative;
     display: grid;
@@ -238,7 +234,6 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
     background: #f6f5f1;
     color: #0b0d12;
     box-shadow: 0 10px 24px -14px rgb(0 0 0 / 0.8);
-    /* Torn along the perforation at the top, where it came off the pass. */
     clip-path: polygon(0 6%, 5% 0, 10% 6%, 15% 0, 20% 6%, 25% 0, 30% 6%, 35% 0, 40% 6%, 45% 0, 50% 6%, 55% 0, 60% 6%, 65% 0, 70% 6%, 75% 0, 80% 6%, 85% 0, 90% 6%, 95% 0, 100% 6%, 100% 100%, 0 100%);
   }
 
@@ -270,7 +265,6 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
     color: rgb(11 13 18 / 0.45);
   }
 
-  /* Two coloured bands run ahead of the stub, each a few sprite frames apart. */
   .live .arriving::before,
   .live .arriving::after,
   .live .arriving .paper {

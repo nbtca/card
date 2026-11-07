@@ -2,11 +2,12 @@
 import RepairTag from "../../cards/RepairTag.astro"
 import Timeline from "../../components/Timeline.astro"
 import Base from "../../layouts/Base.astro"
+import { formatSerial } from "../../lib/format"
 import { STEPS } from "../../lib/repair"
 
 const id = Number(Astro.params.id)
 if (!Number.isSafeInteger(id) || id < 1) return new Response(null, { status: 404 })
-const serial = `№ ${String(id).padStart(4, "0")}`
+const serial = formatSerial(id)
 ---
 
 <Base title={`维修单 ${serial} · NBTCA`} description="计算机协会维修单的进度。">
@@ -30,9 +31,8 @@ const serial = `№ ${String(id).padStart(4, "0")}`
 
 <script>
   import { fetchRepair, type Repair } from "../../lib/repair"
-  import { formatDot, formatWhen } from "../../lib/time"
+  import { formatDot, formatWhen } from "../../lib/format"
 
-  // The punched hole above each step on the tag, in the tag's own units.
   const HOLES = [17.75, 39.25, 60.75, 82.25]
   const CHIPS = [
     { tone: "warn", text: "等待接单" },

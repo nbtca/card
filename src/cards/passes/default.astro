@@ -7,7 +7,6 @@ type Props = PassProps
 const { event, pass, holder, guest, size = "full", transitionName, anatomy } = Astro.props
 const Tag = size === "thumb" ? "a" : "div"
 const { state, date, day, time, serial, video, poster, qr, checkIn, opensAt, showCode } = ticket(Astro.props, Astro.url.origin)
-// A valid pass on its own page carries the stub as a separate, peelable and tearable piece.
 const live = size === "full" && !anatomy && state === "valid"
 const torn = state === "redeemed" && !anatomy
 // Full-size passes play footage, falling back to the shared clip. Thumbnails show a still or the gradient,
@@ -253,7 +252,6 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     animation: none;
   }
 
-  /* White over footage stays white under screen; the black word lets it through. */
   .knockout {
     position: absolute;
     inset: 0;
@@ -469,7 +467,6 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     pointer-events: none;
   }
 
-  /* The stub is its own piece so it can be peeled open at the door and torn off once checked in. */
   .ticket {
     position: absolute;
     inset: 121.6cqi 0 0;
@@ -518,7 +515,6 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06) inset;
   }
 
-  /* Diffraction lines like a security sticker: their angle turns with the tilt, so they flicker as it moves. */
   .sticker::after {
     content: "";
     position: absolute;
