@@ -23,7 +23,7 @@ const times = [
 <div class="studio">
   <aside class="preview">
     <Design event={event} pass={null} holder={holder} guest={false} />
-    <p class="hint">实时预览 · 移动鼠标看看卡面的光泽</p>
+    <p class="hint">实时预览</p>
   </aside>
 
   <form class="sheets form" method="post" enctype="multipart/form-data">
@@ -35,13 +35,13 @@ const times = [
       <label>
         卡面大字
         <input class="big" name="word" required maxlength="16" value={event.word} data-live="word" placeholder="fix" />
-        <small>视频会从这几个字里透出来，2 到 6 个字符最好看。</small>
+        <small>视频从字里透出，2 到 6 个字符最好。</small>
       </label>
       {isNew && (
         <label>
           链接名
           <span class="slug"><em>card.nbtca.space/e/</em><input name="slug" required pattern="[a-z0-9][a-z0-9\-]{1,40}" placeholder="repair-day" /></span>
-          <small>小写字母、数字和连字符，创建后不能再改。</small>
+          <small>小写字母、数字和连字符，创建后不可改。</small>
         </label>
       )}
       {Object.keys(passDesigns).length > 1 && (
@@ -57,7 +57,7 @@ const times = [
     <section class="panel">
       <h2><span>02</span>时间</h2>
       <fieldset>
-        <p>按北京时间填写。只有在领券时间里才能领券，活动开始前一小时到结束之间才能核销。</p>
+        <p>北京时间。开场前一小时起可以核销。</p>
         {times.map(([name, label]) => (
           <label>{label}<input name={name} type="datetime-local" required value={event[name] && toLocal(event[name])} data-live={name} /></label>
         ))}
@@ -67,18 +67,18 @@ const times = [
     <section class="panel">
       <h2><span>03</span>地点与名额</h2>
       <label>地点<input name="venue" required maxlength="40" value={event.venue} data-live="venue" placeholder="图书馆一楼大厅" /></label>
-      <label>名额<input name="capacity" type="number" min="1" value={event.capacity ?? ""} placeholder="不限" /><small>留空表示不限名额。</small></label>
+      <label>名额<input name="capacity" type="number" min="1" value={event.capacity ?? ""} placeholder="不限" /></label>
       <label class="check">
         <input name="needs_info" type="checkbox" checked={event.needs_info === 1} />
         领券时登记学号、姓名、班级和手机号
       </label>
-      <small class="note">用于讲座等校内活动的学分申报。登记的信息只有你和管理员能看到，可以在编辑页导出成表格。</small>
+      <small class="note">用于学分申报，只有你和管理员能看到，可在编辑页导出。</small>
       <label>
         活动相册
         <input name="album" type="url" value={event.album ?? ""} placeholder="https://photo.nbtca.space/…" />
-        <small>活动结束后填上 photo.nbtca.space 的相册链接，活动页和每个人的票夹里都会出现入口。</small>
+        <small>活动结束后填写 photo.nbtca.space 的相册链接。</small>
       </label>
-      <label>简介<textarea name="summary" rows="3" maxlength="200" placeholder="一两句话介绍这场活动">{event.summary}</textarea></label>
+      <label>简介<textarea name="summary" rows="3" maxlength="200" placeholder="一句话介绍">{event.summary}</textarea></label>
     </section>
 
     <section class="panel">
@@ -86,8 +86,8 @@ const times = [
       <label class="drop">
         <input name="video" type="file" accept="video/mp4,video/webm" data-live="video" data-max-mb={MAX_VIDEO_MB} data-max-seconds={MAX_VIDEO_SECONDS} />
         <input name="poster" type="file" hidden data-poster />
-        <strong data-file>{event.video ? "已上传视频，选择新文件可替换" : "选择一段视频"}</strong>
-        <small>{MAX_VIDEO_SECONDS} 秒以内、{MAX_VIDEO_MB}MB 以内的 MP4 或 WebM，循环画面最好。不上传就用默认的动画。</small>
+        <strong data-file>{event.video ? "更换视频" : "选择一段视频"}</strong>
+        <small>{MAX_VIDEO_SECONDS} 秒、{MAX_VIDEO_MB}MB 以内的 MP4 或 WebM，可以不传。</small>
       </label>
     </section>
 
@@ -133,7 +133,7 @@ const times = [
     const file = picker.files?.[0]
     posterInput.value = ""
     if (!file) return (label.textContent = "选择一段视频")
-    if (file.size > Number(picker.dataset.maxMb) * 1024 * 1024) return reject(`这段视频超过 ${picker.dataset.maxMb}MB 了，剪短一点再试。`)
+    if (file.size > Number(picker.dataset.maxMb) * 1024 * 1024) return reject(`视频超过 ${picker.dataset.maxMb}MB。`)
     const video = Object.assign(document.createElement("video"), {
       src: URL.createObjectURL(file),
       muted: true,
@@ -149,8 +149,8 @@ const times = [
       })
     // Duration needs only metadata, which every browser loads; frame data may never arrive on iOS
     // for a video outside the page, so the still is a best effort that never blocks the upload.
-    if (!(await once("loadedmetadata", 8000))) return reject("这段视频浏览器打不开，换成 MP4 再试。")
-    if (video.duration > Number(picker.dataset.maxSeconds)) return reject(`这段视频有 ${Math.round(video.duration)} 秒，剪到 ${picker.dataset.maxSeconds} 秒以内再试。`)
+    if (!(await once("loadedmetadata", 8000))) return reject("视频打不开，换成 MP4 试试。")
+    if (video.duration > Number(picker.dataset.maxSeconds)) return reject(`视频有 ${Math.round(video.duration)} 秒，需在 ${picker.dataset.maxSeconds} 秒以内。`)
     label.textContent = file.name
     document.querySelector<HTMLElement>(".preview [data-bind=footage]")?.replaceChildren(video)
 

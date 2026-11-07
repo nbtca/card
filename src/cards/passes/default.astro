@@ -75,7 +75,7 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
             <div class="serial">
               <span>{serial}</span>
               <span>Admit one</span>
-              <small>{{ preview: "领取后生成入场码", valid: "到场后在活动页撕开", redeemed: "已入场", expired: "活动已结束" }[state]}</small>
+              <small>{{ preview: "领取后生成入场码", valid: "到场后撕开", redeemed: "已入场", expired: "活动已结束" }[state]}</small>
             </div>
           </div>
         )}
@@ -105,7 +105,7 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
                   </div>
                 </>
               )
-            : <p class="locked">活动开始前一小时<br />才能撕开</p>}
+            : <p class="locked">开场前一小时<br />可以撕开</p>}
         </div>
         <div class="frame" data-peel data-locked={showCode ? undefined : ""}>
           <div class="fold-shade" data-peel-shade aria-hidden="true" />

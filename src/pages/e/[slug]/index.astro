@@ -64,7 +64,7 @@ if (Astro.request.method === "POST") {
         .run()
     } catch (e) {
       if (!String(e).includes("UNIQUE")) throw e
-      claimError = "这个学号已经领过这场活动的券了。如果不是你本人领的，请联系活动发起人。"
+      claimError = "这个学号已经领过券。如非本人，请联系发起人。"
     }
     if (await findPass()) {
       purgePages(Astro.url, [Astro.url.pathname])
@@ -77,12 +77,12 @@ const claimed = counted!.n
 const full = event.capacity !== null && claimed >= event.capacity
 const phase = claimPhase(event)
 const passNotice = pass?.redeemed_at
-  ? `你已经在 ${formatTime(new Date(pass.redeemed_at).toISOString())} 入场。`
+  ? `${formatTime(new Date(pass.redeemed_at).toISOString())} 已入场。`
   : checkInPhase(event) === "ended"
-    ? "活动已经结束了。"
+    ? "活动已结束。"
     : checkInPhase(event) === "open"
-      ? "到场后把票根上的贴纸撕开，露出入场码给工作人员扫。扫过之后票根会被撕下，就算入场了。"
-      : `入场码藏在票根的贴纸下面，${formatTime(checkInOpensAt(event))} 起才能撕开。`
+      ? "到场后撕开贴纸，给工作人员扫码。"
+      : `${formatTime(checkInOpensAt(event))} 起可以撕开贴纸。`
 const Design = passDesign(event.design)
 const editable = canEdit(event, user)
 
@@ -154,15 +154,10 @@ const chip = {
             <span class="dot" />
             <b>{m.label}</b>
             <span>{formatShort(m.at)}</span>
+            {m === next && <span class="countdown" data-target={m.at}>还有 <span data-left>…</span></span>}
           </li>
         ))}
       </ol>
-
-      {next && (
-        <p class="countdown reveal" style="--i: 5" data-target={next.at}>
-          距{next.label}还有 <span data-left>…</span>
-        </p>
-      )}
 
       <div class="act reveal" style="--i: 6">
         {pass
@@ -172,11 +167,11 @@ const chip = {
               </>
             )
           : phase === "upcoming"
-            ? <p class="notice">{formatTime(event.claim_from)} 开放领取，到时再来吧。</p>
+            ? <p class="notice">{formatTime(event.claim_from)} 开放领取。</p>
             : phase === "closed"
-              ? <p class="notice">领取已经在 {formatTime(event.claim_until)} 截止。</p>
+              ? <p class="notice">领取已于 {formatTime(event.claim_until)} 截止。</p>
               : full
-                ? <p class="notice">名额已经领完了。</p>
+                ? <p class="notice">名额已满。</p>
                 : user
                   ? (
                       <form class="form claim" method="post">
@@ -185,18 +180,18 @@ const chip = {
                           ? (
                               <fieldset class="credit">
                                 <legend>学分登记</legend>
-                                <p>这场活动可以申报学分，请如实填写。信息只给活动发起人用于申报。</p>
+                                <p>可申报学分，信息只交给发起人。</p>
                                 <label>姓名<input name="name" required maxlength="20" autocomplete="name" value={form.name} /></label>
                                 <label>学号<input name="student_id" required inputmode="numeric" pattern="[23][0-9]{9}" maxlength="10" value={form.studentId} data-student-id /><small data-student-hint /></label>
                                 <label>班级<input name="class_name" required minlength="2" maxlength="20" placeholder="计算机 2101" value={form.className} /></label>
                                 <label>手机号<input name="phone" required type="tel" inputmode="numeric" pattern="1[3-9][0-9]{9}" maxlength="11" autocomplete="tel" value={form.phone} /></label>
                               </fieldset>
                             )
-                          : !user.member && <label>印在券上的名字<input name="name" maxlength="20" required value={user.name} /></label>}
-                        <button class="button">领取活动券</button>
+                          : !user.member && <label>券上的名字<input name="name" maxlength="20" required value={user.name} /></label>}
+                        <button class="button">领券</button>
                       </form>
                     )
-                  : <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>登录后领取活动券</a>}
+                  : <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>登录领券</a>}
         <div class="extras">
           {pass && !pass.redeemed_at && checkInPhase(event) !== "ended" && (
             <a class="action" href={`/e/${event.slug}/calendar.ics`} title="开场前半小时提醒" data-calendar>
@@ -276,7 +271,7 @@ const chip = {
   addEventListener("pass:locked", () => notice?.animate([{ scale: 1 }, { scale: 1.03 }, { scale: 1 }], { duration: 300 }))
   addEventListener("pass:redeemed", (e) => {
     const at = new Date((e as CustomEvent<{ at: number }>).detail.at)
-    say(`已核销，${at.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} 入场。玩得开心！`)
+    say(`${at.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} 已入场，玩得开心。`)
     // A reminder to arrive means nothing once the holder is in.
     document.querySelector("[data-calendar]")?.remove()
   })
@@ -407,6 +402,7 @@ const chip = {
   .timeline li {
     position: relative;
     display: grid;
+    align-content: start;
     gap: 0.35rem;
     padding-top: 1.5rem;
     font-size: 0.78rem;
@@ -459,14 +455,8 @@ const chip = {
   }
 
   .countdown {
-    margin: 0;
     color: var(--muted);
-  }
-
-  .countdown span {
-    font: 700 1.05rem / 1 var(--wide);
     font-variant-numeric: tabular-nums;
-    color: var(--fg);
   }
 
   .act {

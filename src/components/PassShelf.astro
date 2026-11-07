@@ -18,8 +18,8 @@ const note = (s: Stub) =>
   s.redeemed_at
     ? `${formatShort(new Date(s.redeemed_at).toISOString())} 入场`
     : checkInPhase(s) === "open"
-      ? "已经可以入场，点开券撕下贴纸"
-      : `${formatShort(checkInOpensAt(s))} 起可以入场`
+      ? "可以入场了"
+      : `${formatShort(checkInOpensAt(s))} 起入场`
 ---
 
 <section class="shelf">

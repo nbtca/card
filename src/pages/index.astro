@@ -12,11 +12,11 @@ const [events, count] = await Promise.all([upcomingEvents(6), me ? countMembers(
 const featured = events[0] ?? showcaseEvent()
 const Featured = passDesign(featured.design)
 const layers = [
-  { name: "视频层", text: "最底下是一段循环视频，没有视频时是一团流动的渐变。", note: "the footage", plane: ".footage" },
-  { name: "白色底板", text: "整张铺满的白纸，和下面一层用 screen 模式混合，白色依旧是白色。", note: "white sheet · screen", plane: ".sheet" },
-  { name: "镂空大字", text: "黑色的字在 screen 混合下变成透明，视频就从字形里透出来。", note: "type punches through", plane: ".word" },
-  { name: "印刷层", text: "名字、全息印章、时间地点和二维码，正常印在最上面。", note: "the print", plane: ".print" },
-  { name: "光泽", text: "跟着指针移动的一层高光，让卡面看起来是一张真的卡。", note: "the glare", plane: ".glare" },
+  { name: "视频层", text: "一段循环视频，没有视频时是流动的渐变。", note: "the footage", plane: ".footage" },
+  { name: "白色底板", text: "一张白纸，以 screen 模式叠在视频上。", note: "white sheet · screen", plane: ".sheet" },
+  { name: "镂空大字", text: "黑字在 screen 下变透明，视频从字里透出。", note: "type punches through", plane: ".word" },
+  { name: "印刷层", text: "名字、印章、时间地点和二维码。", note: "the print", plane: ".print" },
+  { name: "光泽", text: "随指针移动的高光。", note: "the glare", plane: ".glare" },
 ]
 ---
 
@@ -26,16 +26,12 @@ const layers = [
       <div class="copy">
         <p class="eyebrow reveal">Computer Association · NingboTech</p>
         <h1 class="title reveal" style="--i: 1">把每一次相遇<br />做成一张卡</h1>
-        <p class="lede reveal" style="--i: 2">
-          社员卡是你在计算机协会的身份，活动券记下你去过的每一场活动。移动鼠标，或者拿起手机晃一晃，它们会跟着你动。
-        </p>
+        <p class="lede reveal" style="--i: 2">社员卡是你在协会的身份，活动券记下你去过的每一场。</p>
         <div class="actions reveal" style="--i: 3">
           {me
-            ? <a class="button" href={`/members/${me.id}`}>看我的社员卡</a>
+            ? <a class="button" href={`/members/${me.id}`}>我的社员卡</a>
             : <a class="button" href={events.length ? `/e/${featured.slug}` : "/e"}>去领活动券</a>}
-          {me
-            ? <a class="button ghost" href="/members">全部 {count} 位社员</a>
-            : !user && <a class="button ghost" href="/login?next=/members">社员登录</a>}
+          {me && <a class="button ghost" href="/members">全部 {count} 位社员</a>}
         </div>
       </div>
 
@@ -84,7 +80,7 @@ const layers = [
         <h2>近期活动</h2>
         <a class="more" href="/e">全部活动 →</a>
       </header>
-      {events.length ? <EventList events={events} /> : <p class="muted">最近还没有活动，过几天再来看看。</p>}
+      {events.length ? <EventList events={events} /> : <p class="muted">近期没有活动。</p>}
     </section>
   </main>
 </Base>

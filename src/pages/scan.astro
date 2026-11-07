@@ -86,10 +86,10 @@ const events = await recentEvents()
     detail.textContent = {
       ok: who,
       already: `${who} · ${time(outcome.redeemedAt!)} 已入场`,
-      unknown: "这张码不属于任何活动。",
-      early: `${who} · 活动开始前一小时起才能核销，活动 ${new Date(outcome.startsAt!).toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short" })} 开始`,
-      ended: `${who} · 这张券没有在活动期间使用`,
-      queued: "现在没有网络，无法确认这张券。联网后会按扫码的时间自动补交。",
+      unknown: "不是本站的券。",
+      early: `${who} · ${new Date(outcome.startsAt!).toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short" })} 开始，开场前一小时起可核销`,
+      ended: `${who} · 活动期间未使用`,
+      queued: "没有网络，联网后按扫码时间自动补交。",
     }[outcome.status]
     navigator.vibrate?.(outcome.status === "ok" || outcome.status === "queued" ? 80 : [60, 60, 60])
   }

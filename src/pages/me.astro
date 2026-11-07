@@ -36,8 +36,8 @@ const upcoming = passes.filter((p) => !p.redeemed_at && checkInPhase(p) !== "end
 const kept = passes.filter((p) => p.redeemed_at)
 const swatches = [212, 248, 280, 320, 350, 18, 42, 140, 172, 196]
 const uploads = [
-  { kind: "portrait", label: "人像", hint: "去掉背景的透明 PNG 效果最好，上传后可以拖动、缩放来摆位置。", key: member.portrait },
-  { kind: "background", label: "背景", hint: "任意照片都行，上传后选择要显示的部分。", key: member.background },
+  { kind: "portrait", label: "人像", hint: "透明背景的 PNG 最好。", key: member.portrait },
+  { kind: "background", label: "背景", hint: "任意照片。", key: member.background },
 ]
 ---
 
@@ -52,10 +52,10 @@ const uploads = [
       <header class="reveal">
         <p class="eyebrow">Customize</p>
         <h1>装扮我的卡片</h1>
-        <p class="muted">姓名和代号来自你的 Logto 账号，其他都由你决定。卡面上的改动会立刻出现在左边。</p>
+        <p class="muted">姓名和代号来自 Logto 账号。</p>
       </header>
 
-      {saved && <p class="notice reveal">已保存，所有人看到的都是新卡面了。</p>}
+      {saved && <p class="notice reveal">已保存。</p>}
 
       <form class="panel form reveal" style="--i: 1" method="post">
         <label>
@@ -107,7 +107,7 @@ const uploads = [
 
     <dialog class="cropper panel" data-cropper aria-labelledby="crop-title">
       <h2 id="crop-title" data-crop-title>调整画面</h2>
-      <p class="muted">拖动照片选择要显示的部分，滚轮或双指可以缩放。框里的画面就是卡片上会显示的样子。</p>
+      <p class="muted">拖动选取画面，滚轮或双指缩放。</p>
       <div class="frame" data-frame tabindex="0" aria-label="拖动调整画面，方向键移动，加减号缩放">
         <img alt="" draggable="false" data-crop-img />
         <span class="guides" aria-hidden="true" />
@@ -125,15 +125,15 @@ const uploads = [
 
   </main>
   <section class="wrap passes">
-    {kept.length > 0 && <a class="button ghost recap-link" href="/recap">看我的年度回顾</a>}
-    {upcoming.length > 0 && <PassShelf stubs={upcoming} guest={false} eyebrow="Upcoming" title="待入场" lede="到场后打开券，撕开贴纸给工作人员扫码。" />}
+    {kept.length > 0 && <a class="button ghost recap-link" href="/recap">年度回顾</a>}
+    {upcoming.length > 0 && <PassShelf stubs={upcoming} guest={false} eyebrow="Upcoming" title="待入场" lede="到场后撕开贴纸扫码。" />}
     <PassShelf
       stubs={kept}
       guest={false}
       eyebrow="Ticket stubs"
       title={kept.length ? `票夹 · ${kept.length} 场` : "票夹"}
-      lede="每次入场后被撕过、盖了章的券都留在这里。"
-      empty="还没有入场过的活动。去活动页领一张券吧。"
+      lede="撕过的券都留在这里。"
+      empty="还没有入场过的活动。"
     />
   </section>
 </Base>
@@ -246,7 +246,7 @@ const uploads = [
         })
         frame.focus()
       } catch {
-        show("这张图片打不开，换一张试试。")
+        show("图片打不开，换一张试试。")
       }
     })
   }
