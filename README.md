@@ -18,6 +18,7 @@
 - **Cards that feel like objects.** They tilt with the pointer or the phone, drift apart in layers, and catch foil only when they lean.
 - **Footage through type.** An event pass plays its video through the letters of one large word.
 - **Check-in at the door.** Peel the sticker to reveal the QR code; when staff scan it, the stub tears off.
+- **On the badge.** Members save their card as a round 360 px wallpaper for [CABadge](https://github.com/nbtca/CABadge).
 - **Course credit.** An event can collect validated student details and export them as CSV.
 - **Light on devices and on D1.** Effects animate only `translate` and `opacity`, and pages read a handful of indexed rows.
 

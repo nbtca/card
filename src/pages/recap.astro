@@ -131,7 +131,7 @@ const clock = (ms: number) => new Date(ms).toLocaleTimeString("zh-CN", { hour: "
               {tier && <p class="tier">累计入场 {total} 场，你的社员卡已经换上了{tier}。</p>}
               <div class="row">
                 <SharePoster
-                  footage=".intro video"
+                  sources={{ footage: ".intro video" }}
                   label="保存年度分享图"
                   spec={{
                     word: String(year),
