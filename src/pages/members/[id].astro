@@ -1,6 +1,7 @@
 ---
 import MemberCard from "../../cards/MemberCard.astro"
 import PassShelf from "../../components/PassShelf.astro"
+import SharePoster from "../../components/SharePoster.astro"
 import Base from "../../layouts/Base.astro"
 import { getMember, keptBy } from "../../lib/db"
 
@@ -20,7 +21,21 @@ const mine = member.id === Astro.locals.user?.member?.id
       <h1>{member.name}</h1>
       <p class="muted">{[member.section, member.role].filter(Boolean).join(" · ")} · {member.joined} 年入会</p>
       <p class="hint">点击卡片翻到背面</p>
-      {mine && <a class="button ghost" href="/me">装扮卡片</a>}
+      {mine && (
+        <div class="row">
+          <a class="action" href="/me">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></svg>
+            装扮卡片
+          </a>
+          <SharePoster
+            kind="badge"
+            label="吧唧壁纸"
+            hint="长按保存，再到吧唧的「连接 → 手机管理」上传。"
+            sources={{ background: ".front .sky img", portrait: ".front .subject img" }}
+            spec={{ word: member.word || member.alias, name: member.name, sub: [member.section, member.role].filter(Boolean).join(" · "), hue: member.hue }}
+          />
+        </div>
+      )}
     </div>
     {kept.length > 0 && (
       <div class="kept">
@@ -87,7 +102,12 @@ const mine = member.id === Astro.locals.user?.member?.id
     color: var(--faint);
   }
 
-  .caption .button {
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem;
     margin-top: 0.75rem;
   }
 </style>

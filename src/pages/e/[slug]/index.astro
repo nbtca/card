@@ -200,7 +200,7 @@ const chip = {
             </a>
           )}
           <SharePoster
-          footage=".stage video"
+          sources={{ footage: ".stage video" }}
           spec={{
             word: event.word,
             eyebrow: ["NBTCA Event Pass", local({ day: "numeric", month: "short", year: "numeric" })],
