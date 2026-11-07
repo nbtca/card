@@ -1,27 +1,19 @@
 ---
-import type { Repair } from "../lib/repair"
+import { STEPS } from "../lib/repair"
 import { TEAR } from "./pass"
 import Stamp from "./Stamp.astro"
 
 interface Props {
-  repair: Repair
+  id: number
 }
 
-const { repair } = Astro.props
-const serial = `№ ${String(repair.id).padStart(4, "0")}`
-// One punched hole per step reached, like a card clipped at each counter.
-const HOLES = [17.75, 39.25, 60.75, 82.25]
-const punched = repair.steps.flatMap((s, i) => (s.done ? [`radial-gradient(circle at ${HOLES[i]}cqi 92cqi, #0000 2.1cqi, #000 2.3cqi)`] : []))
-const closedAt = repair.steps.at(-1)!.at
-const stamp = repair.done
-  ? { slug: "repair", title: "计算机协会维修", word: "FIXED", starts_at: closedAt ?? new Date().toISOString() }
-  : repair.cancelled
-    ? { slug: "repair", title: "已取消", word: "VOID", starts_at: repair.steps.findLast((s) => s.at)!.at! }
-    : null
-const torn = repair.done
+// Saturday is only reachable from the visitor's browser, so this is a shell the page fills in.
+const { id } = Astro.props
+const serial = `№ ${String(id).padStart(4, "0")}`
+const today = new Date().toISOString()
 ---
 
-<div class="repair-tag" data-card="stage" data-torn={torn ? "" : undefined} style={`--tear: ${TEAR}; --holes: ${punched.join(", ") || "linear-gradient(#000 0 0)"}`}>
+<div class="repair-tag" data-card="stage" data-repair-tag style={`--tear: ${TEAR}; --digits: ${String(id).length}`}>
   <div class="tilt">
     <article class="card" aria-label={`维修单 ${serial}`}>
       <div class="texture" />
@@ -29,32 +21,28 @@ const torn = repair.done
         <span>NBTCA Repair Tag</span>
         <span>{serial}</span>
       </header>
-      <p class="number">{repair.id}</p>
-      <p class="model">{repair.model || "未填写机型"}</p>
-      {repair.problem && <p class="problem">{repair.problem}</p>}
+      <p class="number">{id}</p>
+      <p class="model" data-model>&nbsp;</p>
+      <p class="problem" data-problem />
       <ol class="steps">
-        {repair.steps.map((s) => <li data-done={s.done ? "" : undefined}><i />{s.label}</li>)}
+        {STEPS.map((s) => <li data-step><i />{s.label}</li>)}
       </ol>
-      {repair.repairer && (
-        <p class="repairer">
-          {repair.repairer.avatar
-            ? <img src={repair.repairer.avatar} alt="" referrerpolicy="no-referrer" loading="lazy" />
-            : <span class="initial">{[...repair.repairer.alias][0]}</span>}
-          <span><small>Repaired by</small>{repair.repairer.alias}</span>
-        </p>
-      )}
-      {!torn && (
-        <div class="stub">
-          <b>取机回执</b>
-          <span>{serial}</span>
-          <small>{repair.cancelled ? "已取消" : "完成时撕下"}</small>
-        </div>
-      )}
-      {stamp && (
-        <div class="stamp">
-          <Stamp event={stamp} seed={String(repair.id)} ink={repair.cancelled ? "#5f6670" : "#c8372a"} />
-        </div>
-      )}
+      <p class="repairer" data-repairer hidden>
+        <img alt="" referrerpolicy="no-referrer" hidden />
+        <span class="initial" />
+        <span><small>Repaired by</small><b /></span>
+      </p>
+      <div class="stub">
+        <b>取机回执</b>
+        <span>{serial}</span>
+        <small data-stub-note>完成时撕下</small>
+      </div>
+      <div class="stamp" data-stamp="done" hidden>
+        <Stamp event={{ slug: "repair", title: "计算机协会维修", word: "FIXED", starts_at: today }} seed={String(id)} ink="#c8372a" />
+      </div>
+      <div class="stamp" data-stamp="cancelled" hidden>
+        <Stamp event={{ slug: "repair", title: "已取消", word: "VOID", starts_at: today }} seed={String(id)} ink="#5f6670" />
+      </div>
       <div class="glare" />
       <svg class="edge" viewBox="0 0 500 800" preserveAspectRatio="none" aria-hidden="true">
         <path d="M80 0H420L500 80V590A18 18 0 0 0 500 626V776A24 24 0 0 1 476 800H24A24 24 0 0 1 0 776V626A18 18 0 0 0 0 590V80Z" />
@@ -91,12 +79,16 @@ const torn = repair.done
     inset: 0;
     overflow: hidden;
     background: linear-gradient(170deg, #fbfaf6, #efede6);
-    mask: var(--die) 0 0 / 100% 100% no-repeat, var(--holes);
+    mask: var(--die) 0 0 / 100% 100% no-repeat, var(--holes, linear-gradient(#000 0 0));
     mask-composite: intersect;
   }
 
   [data-torn] .card {
     clip-path: var(--tear);
+  }
+
+  [data-torn] .stub {
+    display: none;
   }
 
   .texture {
@@ -121,7 +113,7 @@ const torn = repair.done
     position: absolute;
     inset: 31cqi 6cqi auto;
     margin: 0;
-    font: 900 28cqi / 1 var(--wide);
+    font: 900 min(28cqi, 105cqi / var(--digits)) / 1 var(--wide);
     font-stretch: 125%;
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
@@ -208,11 +200,16 @@ const torn = repair.done
 
   .initial {
     display: grid;
+    flex: none;
     place-items: center;
     font-size: 3.6cqi;
   }
 
-  .repairer span {
+  .repairer img:not([hidden]) + .initial {
+    display: none;
+  }
+
+  .repairer span:last-child {
     display: grid;
     gap: 0.8cqi;
   }

@@ -1,5 +1,5 @@
 ---
-import { ZONE } from "../lib/db"
+import { formatDot } from "../lib/time"
 
 interface Props {
   event: { slug: string; title: string; word: string; starts_at: string }
@@ -19,7 +19,6 @@ const ink = given ?? INKS[hash(event.slug) % INKS.length]
 const h = hash(seed)
 const turn = (h % 31) - 15
 const grit = `${h % 240}px ${(h >> 8) % 240}px`
-const date = new Date(event.starts_at).toLocaleDateString("en-CA", { timeZone: ZONE }).replaceAll("-", ".")
 const word = event.word.toUpperCase()
 const units = [...word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1 : 0.45), 0)
 const size = Math.min(54, 92 / Math.max(units, 1))
@@ -35,7 +34,7 @@ const id = `arc-${h.toString(36)}`
   <circle cx="100" cy="100" r="87" fill="none" stroke-width="1.5" />
   <circle cx="100" cy="100" r="54" fill="none" stroke-width="1.5" />
   <text class="arc"><textPath href={`#${id}-top`} startOffset="50%" text-anchor="middle">{event.title.length > 10 ? `${event.title.slice(0, 9)}…` : event.title}</textPath></text>
-  <text class="arc date"><textPath href={`#${id}-bottom`} startOffset="50%" text-anchor="middle">{`NBTCA · ${date}`}</textPath></text>
+  <text class="arc date"><textPath href={`#${id}-bottom`} startOffset="50%" text-anchor="middle" data-stamp-date>{`NBTCA · ${formatDot(event.starts_at)}`}</textPath></text>
   <text class="word" x="100" y="100" font-size={size} dominant-baseline="central" text-anchor="middle">{word}</text>
   <path class="star" d="M18 100l3-3 3 3-3 3zM176 100l3-3 3 3-3 3z" />
 </svg>

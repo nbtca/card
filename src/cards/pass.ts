@@ -1,5 +1,6 @@
 import { encode } from "uqr"
-import { checkInOpensAt, checkInPhase, mediaUrl, posterKey, ZONE, type Event, type Pass } from "../lib/db"
+import { checkInOpensAt, checkInPhase, mediaUrl, posterKey, type Event, type Pass } from "../lib/db"
+import { ZONE } from "../lib/time"
 
 // Elements marked data-bind="word|title|venue|date|day|time|footage" update live in the event editor.
 export interface PassProps {

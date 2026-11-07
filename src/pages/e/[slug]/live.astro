@@ -1,6 +1,7 @@
 ---
 import Base from "../../../layouts/Base.astro"
-import { db, getEvent, mediaUrl, ZONE } from "../../../lib/db"
+import { db, getEvent, mediaUrl } from "../../../lib/db"
+import { ZONE } from "../../../lib/time"
 import type { Entry } from "../../api/entries"
 
 const { user } = Astro.locals

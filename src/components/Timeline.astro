@@ -1,5 +1,5 @@
 ---
-import { formatShort, ZONE } from "../lib/db"
+import { formatWhen } from "../lib/time"
 
 interface Props {
   steps: { label: string; at: string | null; done: boolean }[]
@@ -13,17 +13,14 @@ interface Props {
 
 const { steps, countdown = false, halted = false, class: className, style } = Astro.props
 const next = halted ? undefined : steps.find((s) => !s.done)
-const year = (iso: string) => new Date(iso).toLocaleString("en-US", { year: "numeric", timeZone: ZONE })
-const now = year(new Date().toISOString())
-const when = (iso: string) => (year(iso) === now ? formatShort(iso) : `${year(iso)}/${formatShort(iso)}`)
 ---
 
 <ol class:list={["timeline", className]} style={style}>
   {steps.map((s) => (
-    <li data-done={s.done ? "" : undefined} data-next={s === next ? "" : undefined}>
+    <li data-done={s.done ? "" : undefined} data-next={s === next ? "" : undefined} data-step>
       <span class="dot" />
       <b>{s.label}</b>
-      {s.at && <span>{when(s.at)}</span>}
+      <span data-at>{s.at && formatWhen(s.at)}</span>
       {countdown && s === next && s.at && <span class="countdown" data-target={s.at}>还有 <span data-left>…</span></span>}
     </li>
   ))}

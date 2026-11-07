@@ -1,7 +1,8 @@
 ---
 import SharePoster from "../components/SharePoster.astro"
 import Base from "../layouts/Base.astro"
-import { db, formatShort, ZONE, type Event } from "../lib/db"
+import { db, type Event } from "../lib/db"
+import { formatShort, ZONE } from "../lib/time"
 
 const { user } = Astro.locals
 if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname + Astro.url.search)}`)
