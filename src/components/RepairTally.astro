@@ -19,6 +19,7 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
     ? <p class="counts">接过<b data-received>0</b>单<span>·</span>修好<b data-fixed>0</b>台</p>
     : <p class="counts"><b data-received>0</b>台已接待<span>·</span><b data-fixed>0</b>台已修好</p>}
   {!compact && <ul data-list />}
+  {!compact && <button type="button" class="button ghost more" data-more hidden />}
 </section>
 
 <script>
@@ -32,14 +33,20 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
   for (const tally of document.querySelectorAll<HTMLElement>("[data-repair-tally]")) {
     const { from, until, alias } = tally.dataset
     const list = tally.querySelector("[data-list]")
+    const more = tally.querySelector<HTMLButtonElement>("[data-more]")
+    more?.addEventListener("click", () => {
+      tally.dataset.expanded = ""
+      more.hidden = true
+      list!.querySelectorAll<HTMLElement>("li[hidden]").forEach((li) => (li.hidden = false))
+    })
     const show = (repairs: Repair[] | null) => {
       if (!repairs) return
       const kept = repairs.filter((r) => !r.cancelled)
       tally.querySelector("[data-received]")!.textContent = String(kept.length)
       tally.querySelector("[data-fixed]")!.textContent = String(kept.filter((r) => r.steps[2]!.done).length)
       list?.replaceChildren(
-        ...kept.slice(0, LISTED).map((r) => {
-          const li = document.createElement("li")
+        ...kept.map((r, i) => {
+          const li = Object.assign(document.createElement("li"), { hidden: i >= LISTED && !("expanded" in tally.dataset) })
           const a = Object.assign(document.createElement("a"), { href: `/r/${r.id}` })
           const [serial, model, state] = ["span", "b", "small"].map((t) => document.createElement(t))
           serial!.textContent = formatSerial(r.id)
@@ -50,6 +57,10 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
           return li
         }),
       )
+      if (more && !("expanded" in tally.dataset)) {
+        more.textContent = `全部 ${kept.length} 单`
+        more.hidden = kept.length <= LISTED
+      }
       tally.hidden = kept.length === 0
     }
     const load = () =>
@@ -118,6 +129,10 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
     border-radius: 0.75rem;
     font-size: 0.88rem;
     text-decoration: none;
+  }
+
+  .more {
+    justify-self: start;
   }
 
   ul :global(span) {
