@@ -107,6 +107,7 @@ CI checks every pull request and deploys every push to `main`. The `production` 
 pnpm install
 pnpm preview     # production build on local workerd with local D1 and R2
 pnpm typecheck
+pnpm test        # unit tests with node:test
 ```
 
 Access does not run locally. To test signed-in pages, serve a JWKS from a local issuer, start `wrangler dev --var ACCESS_TEAM_DOMAIN:<issuer> --var ACCESS_AUD:<aud>`, and send RS256 tokens it signed in the `CF_Authorization` cookie.

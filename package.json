@@ -8,7 +8,8 @@
     "build": "astro build",
     "preview": "astro build && wrangler d1 migrations apply card --local && wrangler dev",
     "deploy": "astro build && wrangler d1 migrations apply card --remote && wrangler deploy",
-    "typecheck": "wrangler types && astro check"
+    "typecheck": "wrangler types && astro check",
+    "test": "node --test \"test/*.test.ts\""
   },
   "dependencies": {
     "@astrojs/cloudflare": "14.4.0",
