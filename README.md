@@ -40,6 +40,12 @@ A pass stacks footage, a white sheet, a black word, the print and a glare. The s
 | Stamps | `Stamp.astro` draws each event's seal in one ink, turned by the pass id; a fixed noise image masks the ink, so no filter runs while cards tilt |
 | Sound | Synthesised with Web Audio in `sound.ts`, only after the visitor interacts |
 
+## How the repair rail moves
+
+<img alt="A pointer sweeps across a rail of repair tags, which swing on their eyelets; one tag comes forward and opens into its ticket page" src="docs/repair-rail.webp" width="820">
+
+A hovered tag comes forward and hangs straight, and opening it carries the tag into its ticket page with a view transition. The demo uses sample tickets.
+
 ## Who can do what
 
 | Who | Can |
