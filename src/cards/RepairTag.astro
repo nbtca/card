@@ -4,24 +4,31 @@ import { STEPS } from "../lib/repair"
 import { TEAR } from "./pass"
 import Stamp from "./Stamp.astro"
 
+// Without an id the tag is a template that fillRepairTag numbers in the browser.
 interface Props {
-  id: number
+  id?: number
+  size?: "full" | "thumb"
 }
 
-const { id } = Astro.props
-const serial = formatSerial(id)
+const { id, size = "full" } = Astro.props
+const serial = id ? formatSerial(id) : ""
 const today = new Date().toISOString()
 ---
 
-<div class="repair-tag" data-card="stage" data-repair-tag style={`--tear: ${TEAR}; --digits: ${String(id).length}`}>
+<div
+  class:list={["repair-tag", size]}
+  data-card={size === "full" ? "stage" : undefined}
+  data-repair-tag
+  style={`--tear: ${TEAR}; --digits: ${id ? String(id).length : 3}${id ? `; view-transition-name: repair-${id}` : ""}`}
+>
   <div class="tilt">
-    <article class="card" aria-label={`维修单 ${serial}`}>
+    <article class="card" aria-label={id ? `维修单 ${serial}` : undefined}>
       <div class="texture" />
       <header class="head">
         <span>NBTCA Repair Tag</span>
-        <span>{serial}</span>
+        <span data-serial>{serial}</span>
       </header>
-      <p class="number">{id}</p>
+      <p class="number" data-number>{id}</p>
       <p class="model" data-model>&nbsp;</p>
       <p class="problem" data-problem />
       <ol class="steps">
@@ -43,7 +50,7 @@ const today = new Date().toISOString()
       <div class="stamp" data-stamp="cancelled" hidden>
         <Stamp event={{ slug: "repair", title: "已取消", word: "VOID", starts_at: today }} seed={String(id)} ink="#5f6670" />
       </div>
-      <div class="glare" />
+      {size === "full" && <div class="glare" />}
       <svg class="edge" viewBox="0 0 500 800" preserveAspectRatio="none" aria-hidden="true">
         <path d="M80 0H420L500 80V590A18 18 0 0 0 500 626V776A24 24 0 0 1 476 800H24A24 24 0 0 1 0 776V626A18 18 0 0 0 0 590V80Z" />
         <circle cx="250" cy="72" r="34" />
@@ -280,5 +287,28 @@ const today = new Date().toISOString()
     fill: none;
     stroke: rgb(11 13 18 / 0.35);
     stroke-width: 7;
+  }
+
+  /* On a rail the next tag covers the right third, so the number and the stamp move into the part that shows. */
+  .thumb {
+    width: 100%;
+    rotate: none;
+    perspective: none;
+  }
+
+  /* A 3D transform would give the card its own layer, and the rail's shadow would then be blurred on every frame. */
+  .thumb .tilt {
+    transform: none;
+  }
+
+  .thumb .number {
+    font-size: min(22cqi, 80cqi / var(--digits));
+  }
+
+  .thumb .stamp {
+    right: auto;
+    left: 30cqi;
+    top: 40cqi;
+    width: 32cqi;
   }
 </style>

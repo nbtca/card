@@ -1,4 +1,6 @@
 ---
+import RepairTag from "../cards/RepairTag.astro"
+
 type Props = ({ from: string; until: string; alias?: never } | { alias: string; from?: never; until?: never }) & {
   compact?: boolean
   eyebrow?: string
@@ -9,73 +11,174 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
 ---
 
 <section class:list={["tally", { compact }]} data-repair-tally data-from={from} data-until={until} data-alias={alias} hidden>
-  {title && (
-    <header>
-      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
-      <h2>{title}</h2>
-    </header>
+  <div class="top">
+    <div class="lead">
+      {title && (
+        <header>
+          {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+          <h2>{title}</h2>
+        </header>
+      )}
+      {alias
+        ? <p class="counts">接过<b data-received>0</b>单<span>·</span>修好<b data-fixed>0</b>台</p>
+        : <p class="counts"><b data-received>0</b>台已接待<span>·</span><b data-fixed>0</b>台已修好</p>}
+    </div>
+    {!compact && (
+      <div class="pager" data-pager hidden>
+        <button type="button" class="button ghost" data-page="-1" aria-label="往前看">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg>
+        </button>
+        <button type="button" class="button ghost" data-page="1" aria-label="往后看">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+        </button>
+      </div>
+    )}
+  </div>
+  {!compact && (
+    <div class="rail" data-rail>
+      <ul data-list aria-label={title ?? "维修单"} />
+      <template data-tag><RepairTag size="thumb" /></template>
+    </div>
   )}
-  {alias
-    ? <p class="counts">接过<b data-received>0</b>单<span>·</span>修好<b data-fixed>0</b>台</p>
-    : <p class="counts"><b data-received>0</b>台已接待<span>·</span><b data-fixed>0</b>台已修好</p>}
-  {!compact && <ul data-list />}
-  {!compact && <button type="button" class="button ghost more" data-more hidden />}
 </section>
 
 <script>
-  import { formatSerial } from "../lib/format"
+  import { fillRepairTag, repairHeadline, repairState } from "../cards/repairTag"
+  import { swingRail } from "../cards/swing"
+  import { formatSerial, yearOf } from "../lib/format"
   import { fetchMemberRepairs, fetchRepairsBetween, type Repair } from "../lib/repair"
 
-  const LISTED = 6
   const POLL = 30_000
-  const status = (r: Repair) => (r.cancelled ? "已取消" : ["等待接单", "维修中", "已修好", "已完成"][r.steps.findLastIndex((s) => s.done)])
+  const DROPPED = 12
+  const restOf = (id: number) => (((id * 2654435761) >>> 0) % 50) / 10 - 2.5
 
   for (const tally of document.querySelectorAll<HTMLElement>("[data-repair-tally]")) {
     const { from, until, alias } = tally.dataset
-    const list = tally.querySelector("[data-list]")
-    const more = tally.querySelector<HTMLButtonElement>("[data-more]")
-    more?.addEventListener("click", () => {
-      tally.dataset.expanded = ""
-      more.hidden = true
-      list!.querySelectorAll<HTMLElement>("li[hidden]").forEach((li) => (li.hidden = false))
+    const scroller = tally.querySelector<HTMLElement>("[data-rail]")
+    const list = tally.querySelector<HTMLElement>("[data-list]")
+    const template = tally.querySelector<HTMLTemplateElement>("[data-tag]")
+    const pager = tally.querySelector<HTMLElement>("[data-pager]")
+    const swing = list && scroller && swingRail(list, scroller)
+    const hung = new Map<string, HTMLLIElement>()
+
+    const pages = () => {
+      if (!scroller || !pager) return
+      const end = scroller.scrollWidth - scroller.clientWidth
+      pager.hidden = end < 4
+      pager.querySelector<HTMLButtonElement>('[data-page="-1"]')!.disabled = scroller.scrollLeft < 4
+      pager.querySelector<HTMLButtonElement>('[data-page="1"]')!.disabled = scroller.scrollLeft > end - 4
+    }
+    pager?.addEventListener("click", (e) => {
+      const button = (e.target as Element).closest<HTMLElement>("[data-page]")
+      if (button) scroller!.scrollBy({ left: Number(button.dataset.page) * scroller!.clientWidth * 0.8, behavior: "smooth" })
     })
+    scroller?.addEventListener("scroll", pages, { passive: true })
+    if (scroller) new ResizeObserver(pages).observe(scroller)
+
+    const plate = (year: string) => {
+      const li = document.createElement("li")
+      li.className = "plate"
+      li.innerHTML = `<span class="hang"><b></b></span>`
+      li.querySelector("b")!.textContent = year
+      return li
+    }
+
+    const tag = (r: Repair) => {
+      const li = document.createElement("li")
+      const a = Object.assign(document.createElement("a"), { href: `/r/${r.id}`, className: "hang" })
+      a.appendChild(template!.content.cloneNode(true))
+      a.firstElementChild!.setAttribute("aria-hidden", "true")
+      // Only the tag being opened carries a name, so leaving the page captures one element instead of every tag.
+      a.addEventListener("click", () => ((a.firstElementChild as HTMLElement).style.viewTransitionName = `repair-${r.id}`))
+      li.appendChild(a)
+      return li
+    }
+
     const show = (repairs: Repair[] | null) => {
       if (!repairs) return
       const kept = repairs.filter((r) => !r.cancelled)
       tally.querySelector("[data-received]")!.textContent = String(kept.length)
       tally.querySelector("[data-fixed]")!.textContent = String(kept.filter((r) => r.steps[2]!.done).length)
-      list?.replaceChildren(
-        ...kept.map((r, i) => {
-          const li = Object.assign(document.createElement("li"), { hidden: i >= LISTED && !("expanded" in tally.dataset) })
-          const a = Object.assign(document.createElement("a"), { href: `/r/${r.id}` })
-          const [serial, model, state] = ["span", "b", "small"].map((t) => document.createElement(t))
-          serial!.textContent = formatSerial(r.id)
-          model!.textContent = r.model || "未填写机型"
-          state!.textContent = status(r)!
-          a.replaceChildren(serial!, model!, state!)
-          li.appendChild(a)
-          return li
-        }),
-      )
-      if (more && !("expanded" in tally.dataset)) {
-        more.textContent = `全部 ${kept.length} 单`
-        more.hidden = kept.length <= LISTED
-      }
       tally.hidden = kept.length === 0
+      if (!list) return
+
+      const firstLoad = hung.size === 0
+      const years = new Set(kept.map((r) => yearOf(r.steps[0]!.at!)))
+      const order: HTMLLIElement[] = []
+      let year = ""
+      let fresh = 0
+      for (const r of kept) {
+        const y = yearOf(r.steps[0]!.at!)
+        if (y !== year && years.size > 1) {
+          const key = `y${y}`
+          if (!hung.has(key)) {
+            hung.set(key, plate(y))
+            swing!.add(hung.get(key)!.firstElementChild as HTMLElement, 0)
+          }
+          order.push(hung.get(key)!)
+        }
+        year = y
+        const key = String(r.id)
+        let li = hung.get(key)
+        if (!li) {
+          li = tag(r)
+          hung.set(key, li)
+          if (fresh < DROPPED) li.style.setProperty("--drop", String(firstLoad ? fresh : 0))
+          li.dataset.fresh = ""
+          fresh++
+        }
+        const a = li.firstElementChild as HTMLAnchorElement
+        fillRepairTag(a.firstElementChild as HTMLElement, r)
+        a.setAttribute("aria-label", `${formatSerial(r.id)} ${repairHeadline(r)} ${repairState(r)}`)
+        order.push(li)
+      }
+      for (const [key, li] of hung) {
+        if (order.includes(li)) continue
+        swing!.remove(li.firstElementChild as HTMLElement)
+        hung.delete(key)
+      }
+      order.forEach((li, i) => (li.style.zIndex = String(i + 1)))
+      list.replaceChildren(...order)
+      for (const li of order) {
+        if (!("fresh" in li.dataset)) continue
+        delete li.dataset.fresh
+        const id = Number(li.querySelector("a")!.getAttribute("href")!.slice(3))
+        swing!.add(li.firstElementChild as HTMLElement, restOf(id), firstLoad ? 0 : 60)
+      }
+      pages()
     }
+
     const load = () =>
       (alias ? fetchMemberRepairs(alias) : fetchRepairsBetween(from!, until!))
         .then(show, () => {})
         .finally(() => until && Date.now() < Date.parse(until) && setTimeout(load, POLL))
     load()
+    // Coming back from a ticket restores the page from the cache with that tag still named.
+    addEventListener("pageshow", () => list?.querySelectorAll<HTMLElement>("[data-repair-tag]").forEach((t) => (t.style.viewTransitionName = "")))
   }
 </script>
 
 <style>
   .tally {
+    --tag: clamp(150px, 34vw, 196px);
+    --step: calc(var(--tag) * 0.66);
+    --pivot: calc(var(--tag) * 0.144);
     display: grid;
     gap: 0.9rem;
     width: 100%;
+  }
+
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .lead {
+    display: grid;
+    gap: 0.9rem;
   }
 
   header {
@@ -109,47 +212,159 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
     color: var(--faint);
   }
 
-  ul {
+  .pager {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .pager button {
     display: grid;
-    gap: 0.4rem;
-    max-width: 40rem;
-    margin: 0;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
     padding: 0;
+    border-radius: 50%;
+  }
+
+  .pager button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .pager svg {
+    width: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  @media (pointer: coarse) {
+    .pager {
+      display: none;
+    }
+  }
+
+  .rail {
+    margin-inline: -16px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+    mask: linear-gradient(90deg, transparent, #000 16px calc(100% - 16px), transparent);
+  }
+
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  ul {
+    position: relative;
+    display: flex;
+    width: max-content;
+    margin: 0;
+    padding: 0.6rem calc(16px + var(--tag) - var(--step)) 2.5rem 16px;
     list-style: none;
   }
 
-  /* The list is built by the script, so its items carry no scoped attribute. */
-  ul :global(a) {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: baseline;
-    gap: 0.75rem;
-    padding: 0.55rem 0.8rem;
-    border: 1px solid var(--line);
-    border-radius: 0.75rem;
-    font-size: 0.88rem;
+  /* The rod runs through every eyelet; the tags in front show it only through their holes. */
+  ul::before {
+    content: "";
+    position: absolute;
+    inset: calc(0.6rem + var(--pivot) - 3px) 6px auto;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(#d9dde3, #8a919b 55%, #4d535c);
+    box-shadow: 0 6px 12px rgb(0 0 0 / 0.35);
+  }
+
+  ul > :global(li) {
+    flex: none;
+    width: var(--step);
+    scroll-snap-align: start;
+  }
+
+  ul > :global(li:has(:hover, :focus-visible)) {
+    z-index: 999 !important;
+  }
+
+  ul :global(.hang) {
+    position: relative;
+    display: block;
+    width: var(--tag);
+    transform-origin: 50% var(--pivot);
     text-decoration: none;
+    outline: none;
+    transition: translate 0.35s var(--ease), scale 0.35s var(--ease);
   }
 
-  .more {
-    justify-self: start;
+  /* The shadow sits inside the swinging layer, so it is painted once and turns with the tag instead of being blurred every frame. */
+  ul :global(.hang > .repair-tag) {
+    filter: drop-shadow(-6px 10px 14px rgb(0 0 0 / 0.35));
   }
 
-  ul :global(span) {
-    font: 600 0.72rem / 1 var(--wide);
-    letter-spacing: 0.12em;
-    color: var(--faint);
+  ul :global(a.hang:hover),
+  ul :global(a.hang:focus-visible) {
+    translate: 0 -0.4rem;
+    scale: 1.04;
   }
 
-  ul :global(b) {
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  ul :global(a.hang:focus-visible .card) {
+    box-shadow: inset 0 0 0 3px var(--glow);
   }
 
-  ul :global(small) {
-    color: var(--muted);
+  /* A split ring loops over the rod and through the eyelet. */
+  ul :global(.hang::before) {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    left: calc(50% - var(--tag) * 0.05);
+    top: calc(var(--pivot) - var(--tag) * 0.075);
+    width: calc(var(--tag) * 0.1);
+    height: calc(var(--tag) * 0.12);
+    border: 2px solid #b9bfc7;
+    border-top-color: #eef1f5;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    pointer-events: none;
+  }
+
+  ul > :global(li[style*="--drop"]) > :global(.hang) {
+    animation: drop 0.7s var(--ease) calc(var(--drop) * 45ms) both;
+  }
+
+  @keyframes drop {
+    from {
+      opacity: 0;
+      translate: 0 -2.5rem;
+    }
+  }
+
+  ul > :global(.plate) {
+    width: calc(var(--step) * 0.55);
+  }
+
+  ul :global(.plate .hang) {
+    width: calc(var(--step) * 0.45);
+    padding-top: calc(var(--pivot) + var(--tag) * 0.025);
+  }
+
+  ul :global(.plate b) {
+    display: grid;
+    place-items: end center;
+    width: 100%;
+    height: calc(var(--tag) * 0.62);
+    padding-bottom: 0.7rem;
+    border-radius: 0.4rem 0.4rem 0.9rem 0.9rem;
+    background: linear-gradient(160deg, #2b3038, #15181d);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 10px 18px rgb(0 0 0 / 0.35);
+    font: 700 0.95rem / 1 var(--wide);
+    font-stretch: 112%;
+    letter-spacing: 0.08em;
+    color: #e9ecf1;
+    writing-mode: vertical-rl;
   }
 
   .compact .counts {
@@ -158,5 +373,15 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
 
   .compact .counts b {
     font-size: 1.6rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    ul :global(.hang) {
+      transition: none;
+    }
+
+    ul > :global(li[style*="--drop"]) > :global(.hang) {
+      animation: none;
+    }
   }
 </style>

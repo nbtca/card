@@ -30,10 +30,10 @@ const serial = formatSerial(id)
 </Base>
 
 <script>
+  import { fillRepairTag } from "../../cards/repairTag"
+  import { formatWhen } from "../../lib/format"
   import { fetchRepair, type Repair } from "../../lib/repair"
-  import { formatDot, formatWhen } from "../../lib/format"
 
-  const HOLES = [17.75, 39.25, 60.75, 82.25]
   const CHIPS = [
     { tone: "warn", text: "等待接单" },
     { tone: "warn", text: "维修中" },
@@ -45,6 +45,7 @@ const serial = formatSerial(id)
   const tag = main.querySelector<HTMLElement>("[data-repair-tag]")!
   const chip = main.querySelector<HTMLElement>("[data-chip]")!
   const text = (selector: string, value: string) => (main.querySelector(selector)!.textContent = value)
+  const on = (el: HTMLElement, key: string, value: boolean) => (value ? (el.dataset[key] = "") : delete el.dataset[key])
 
   function show(r: Repair) {
     const reached = r.steps.findLastIndex((s) => s.done)
@@ -52,43 +53,17 @@ const serial = formatSerial(id)
     chip.dataset.tone = tone
     chip.textContent = label
     text("[data-title]", r.model || "维修单")
-    text("[data-model]", r.model || "未填写机型")
-    text("[data-problem]", r.problem)
     const summary = main.querySelector<HTMLElement>("[data-summary]")!
     summary.textContent = r.problem
     summary.hidden = !r.problem
+    fillRepairTag(tag, r)
 
-    const holes = r.steps.flatMap((s, i) => (s.done ? [`radial-gradient(circle at ${HOLES[i]}cqi 92cqi, #0000 2.1cqi, #000 2.3cqi)`] : []))
-    tag.style.setProperty("--holes", holes.join(", "))
     const next = r.cancelled ? -1 : r.steps.findIndex((s) => !s.done)
-    const on = (el: HTMLElement, key: string, value: boolean) => (value ? (el.dataset[key] = "") : delete el.dataset[key])
-    tag.querySelectorAll<HTMLElement>("[data-step]").forEach((li, i) => on(li, "done", r.steps[i]!.done))
     main.querySelectorAll<HTMLElement>(".timeline [data-step]").forEach((li, i) => {
       on(li, "done", r.steps[i]!.done)
       on(li, "next", i === next)
       li.querySelector("[data-at]")!.textContent = r.steps[i]!.at ? formatWhen(r.steps[i]!.at!) : ""
     })
-
-    const repairer = tag.querySelector<HTMLElement>("[data-repairer]")!
-    if (r.repairer) {
-      repairer.querySelector("b")!.textContent = r.repairer.alias
-      repairer.querySelector(".initial")!.textContent = [...r.repairer.alias][0]!
-      const avatar = repairer.querySelector("img")!
-      if (r.repairer.avatar) {
-        avatar.onload = () => (avatar.hidden = false)
-        avatar.src = r.repairer.avatar
-      }
-    }
-    repairer.hidden = !r.repairer
-
-    on(tag, "torn", r.done)
-    text("[data-stub-note]", r.cancelled ? "已取消" : "完成时撕下")
-    const kind = r.done ? "done" : r.cancelled ? "cancelled" : null
-    const last = r.steps.findLast((s) => s.at)?.at
-    for (const stamp of tag.querySelectorAll<HTMLElement>("[data-stamp]")) {
-      stamp.hidden = stamp.dataset.stamp !== kind
-      if (last) stamp.querySelector("[data-stamp-date]")!.textContent = `NBTCA · ${formatDot(last)}`
-    }
   }
 
   fetchRepair(Number(main.dataset.repair)).then(
