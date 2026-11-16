@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers"
 import { defineMiddleware } from "astro:middleware"
 import { accessToken, accessVisitor, type Visitor } from "./lib/access"
+import { nativeVisitor, nativeRoute, NativeAuthUnavailable } from "./lib/native-auth"
 import { sharedPage } from "./lib/cache"
 import { cachedCard, db, memberByEmail, randomId, rememberCard, type Member } from "./lib/db"
 
@@ -32,11 +33,23 @@ async function memberCard(visitor: Visitor) {
 }
 
 export const onRequest = defineMiddleware(async ({ request, url, locals, redirect }, next) => {
-  if (request.method === "GET" && !url.search && SHARED.test(url.pathname) && !accessToken(request)) {
+  const native = url.pathname.startsWith("/native/")
+  const target = new URL(url)
+  if (native) {
+    target.pathname = url.pathname.slice("/native".length)
+    if (!nativeRoute(target.pathname, request.method)) return new Response(null, { status: 404 })
+  }
+  if (!native && request.method === "GET" && !url.search && SHARED.test(url.pathname) && !accessToken(request)) {
     locals.user = null
     return sharedPage(url, next)
   }
-  const visitor = await accessVisitor(request)
+  let visitor: Visitor | null
+  try { visitor = native ? await nativeVisitor(request) : await accessVisitor(request) }
+  catch (error) {
+    if (error instanceof NativeAuthUnavailable) return new Response(null, { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "10" } })
+    throw error
+  }
+  if (native && !visitor) return new Response(null, { status: 401, headers: { "Cache-Control": "no-store", "WWW-Authenticate": "Bearer" } })
   const isMember = visitor ? hasRole(visitor, env.MEMBER_ROLES) : false
   // A failing database must not stop public pages and the outage page from rendering.
   let failure: unknown = null
@@ -49,14 +62,29 @@ export const onRequest = defineMiddleware(async ({ request, url, locals, redirec
     admin: isMember && hasRole(visitor, env.ADMIN_ROLES),
   }
 
-  const path = url.pathname
-  if (!under(path, MEMBERS_ONLY)) return next()
+  const path = target.pathname
+  const finish = async () => {
+    if (!native) return next()
+    const response = await next(new Request(target, request))
+    const headers = new Headers(response.headers)
+    headers.set("Cache-Control", path.startsWith("/media/") ? "private, max-age=3600" : "no-store")
+    headers.set("Vary", "Authorization, X-Logto-Userinfo")
+    headers.delete("Set-Cookie")
+    const location = headers.get("Location")
+    if (location) {
+      const destination = new URL(location, target)
+      if (destination.origin !== target.origin || !nativeRoute(destination.pathname, "GET")) return new Response(null, { status: 401 })
+      headers.set("Location", "/native" + destination.pathname + destination.search)
+    }
+    return new Response(response.body, { status: response.status, headers })
+  }
+  if (!under(path, MEMBERS_ONLY)) return finish()
   // Without the card the visitor would wrongly be told they are not a member.
   if (failure) throw failure
-  const api = path.startsWith("/api/") || path.startsWith("/media/")
+  const api = native || path.startsWith("/api/") || path.startsWith("/media/")
   if (!locals.user) {
     return api ? new Response(null, { status: 401 }) : redirect(`/login?next=${encodeURIComponent(path + url.search)}`)
   }
   if (!locals.user.member) return api ? new Response(null, { status: 403 }) : redirect("/forbidden")
-  return next()
+  return finish()
 })

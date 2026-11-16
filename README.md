@@ -124,3 +124,13 @@ Access does not run locally. To test signed-in pages, serve a JWKS from a local 
 - Layered parallax and progressive blur from [osaka-card](https://github.com/jh3y/osaka-card), and video through type from the [knockout video card](https://www.jhey.dev/prototypes/2026/knockout-video-card/), both by Jhey Tompkins.
 - Holographic foil after [pokemon-cards-css](https://github.com/simeydotme/pokemon-cards-css).
 - [Bebas Neue](https://github.com/dharmatype/Bebas-Neue), [Archivo](https://github.com/Omnibus-Type/Archivo) and [Caveat](https://github.com/googlefonts/caveat), under the [SIL Open Font License 1.1](https://openfontlicense.org).
+
+## Native Android authentication
+
+The Android app can use `/native/...` with a Logto resource access token in `Authorization: Bearer` and its UserInfo access token in `X-Logto-Userinfo`. The resource identifier is `https://card.nbtca.space/native`. Only tokens for the configured Android client are accepted. Signature, issuer, audience, expiry and subject are checked; UserInfo must identify the same subject with a verified email. Roles remain the existing `MEMBER_ROLES` / `ADMIN_ROLES` policy. Identity lookups are coalesced and cached for 30 seconds; JWT validation runs on every request.
+
+The native route allowlist covers member cards, event pages/claims, profile edits, member images, image uploads and pass endpoints. Middleware rewrites only these routes to existing handlers. It does not accept browser cookies as native authentication. Unauthorized requests return 401, insufficient roles 403, and identity-service outages 503. Existing Cloudflare Access browser authentication continues to work.
+
+Logto authorization must request `resource=https://card.nbtca.space/native` and `prompt=consent` with `offline_access` so refresh tokens are issued. Existing installations without a refresh token require one NBTCA sign-in to migrate; Card itself needs no separate sign-in.
+
+Deployment requires HTTPS origin access from the Worker to `auth.app.nbtca.space`. A hostname-scoped Cloudflare Configuration Rule uses **Strict** SSL for this host; the zone's Flexible default otherwise causes same-URL redirects from Workers. Do not remove signature checks or use Flexible HTTP for the identity endpoints.
