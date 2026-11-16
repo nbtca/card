@@ -1,5 +1,6 @@
 declare namespace App {
   interface Locals {
+    nativeRewrite?: { path: string; method: string }
     user: {
       email: string
       name: string

@@ -32,7 +32,13 @@ async function memberCard(visitor: Visitor) {
   return fresh
 }
 
-export const onRequest = defineMiddleware(async ({ request, url, locals, redirect }, next) => {
+export const onRequest = defineMiddleware(async ({ request, url, locals, redirect, rewrite }, next) => {
+  // Only an already-authorized internal rewrite can set this request-local marker.
+  // rewrite() rematches the route and rebuilds dynamic params (key/slug/id).
+  if (locals.nativeRewrite?.path === url.pathname && locals.nativeRewrite.method === request.method) {
+    delete locals.nativeRewrite
+    return next()
+  }
   const native = url.pathname.startsWith("/native/")
   const target = new URL(url)
   if (native) {
@@ -65,7 +71,8 @@ export const onRequest = defineMiddleware(async ({ request, url, locals, redirec
   const path = target.pathname
   const finish = async () => {
     if (!native) return next()
-    const response = await next(new Request(target, request))
+    locals.nativeRewrite = { path: target.pathname, method: request.method }
+    const response = await rewrite(new Request(target, request))
     const headers = new Headers(response.headers)
     headers.set("Cache-Control", path.startsWith("/media/") ? "private, max-age=3600" : "no-store")
     headers.set("Vary", "Authorization, X-Logto-Userinfo")
