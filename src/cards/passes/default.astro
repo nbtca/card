@@ -397,12 +397,12 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     fill: var(--ink);
   }
 
-  [data-state="expired"] .qr {
+  [data-state="expired"] .stub .qr {
     opacity: 0.25;
   }
 
-  [data-state="preview"] .qr,
-  [data-state="valid"] .qr {
+  [data-state="preview"] .stub .qr,
+  [data-state="valid"] .stub .qr {
     opacity: 0.18;
     filter: blur(0.5cqi);
   }
