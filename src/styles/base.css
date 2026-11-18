@@ -362,6 +362,57 @@ p {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+/* The shared field rule above outranks a bare `.form select`, so match its specificity. */
+.form select:not([multiple]) {
+  appearance: none;
+  padding-right: 2.75rem;
+  background: var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E") no-repeat right 1.1rem center / 0.7rem;
+}
+
+@supports (appearance: base-select) {
+  .form select:not([multiple]),
+  .form ::picker(select) {
+    appearance: base-select;
+  }
+
+  .form select:not([multiple]) {
+    display: flex;
+    align-items: center;
+  }
+
+  .form select::picker-icon {
+    display: none;
+  }
+
+  .form ::picker(select) {
+    margin-block: 0.35rem;
+    padding: 0.35rem;
+    border: 1px solid var(--line);
+    border-radius: 0.9rem;
+    background: var(--bg);
+    color: var(--fg);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+  }
+
+  .form option {
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.6rem;
+  }
+
+  .form option::checkmark {
+    display: none;
+  }
+
+  .form option:is(:hover, :focus-visible) {
+    background: rgb(var(--tint) / 0.08);
+    outline: none;
+  }
+
+  .form option:checked {
+    font-weight: 600;
+  }
+}
+
 .form :is(input, textarea, select):focus {
   outline: none;
   border-color: rgb(59 141 255 / 0.7);
