@@ -39,6 +39,16 @@ const events = await recentEvents()
         <button class="button ghost">核销</button>
       </form>
     </details>
+    <dialog class="confirm panel" data-confirm aria-labelledby="confirm-title">
+      <form method="dialog">
+        <h2 id="confirm-title">确认核销这张券？</h2>
+        <p><span data-confirm-event></span><br /><strong data-confirm-serial></strong></p>
+        <div class="actions">
+          <button class="button" value="ok">核销</button>
+          <button class="button ghost" value="">取消</button>
+        </div>
+      </form>
+    </dialog>
   </main>
 </Base>
 
@@ -209,10 +219,24 @@ const events = await recentEvents()
     tick()
   })
 
-  document.querySelector<HTMLFormElement>("[data-manual]")!.addEventListener("submit", (e) => {
+  const manual = document.querySelector<HTMLFormElement>("[data-manual]")!
+  const confirm = document.querySelector<HTMLDialogElement>("[data-confirm]")!
+
+  manual.addEventListener("submit", (e) => {
     e.preventDefault()
-    const form = new FormData(e.target as HTMLFormElement)
-    redeem({ event: String(form.get("event")), serial: Number(form.get("serial")) })
+    const event = manual.querySelector("select")!
+    const serial = Number(manual.querySelector("input")!.value)
+    confirm.querySelector("[data-confirm-event]")!.textContent = event.selectedOptions[0].text
+    confirm.querySelector("[data-confirm-serial]")!.textContent = formatSerial(serial)
+    confirm.returnValue = ""
+    confirm.showModal()
+    confirm.addEventListener(
+      "close",
+      () => {
+        if (confirm.returnValue === "ok") redeem({ event: event.value, serial })
+      },
+      { once: true },
+    )
   })
 </script>
 
@@ -370,5 +394,43 @@ const events = await recentEvents()
 
   .manual[open] summary {
     margin-bottom: 1.25rem;
+  }
+
+  .confirm {
+    width: min(22rem, calc(100vw - 32px));
+    margin: auto;
+    padding: 1.5rem;
+    color: var(--fg);
+    background: var(--bg);
+  }
+
+  .confirm::backdrop {
+    background: rgb(0 0 0 / 0.5);
+  }
+
+  .confirm form {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .confirm h2 {
+    font-size: 1.2rem;
+  }
+
+  .confirm p {
+    margin: 0;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .confirm strong {
+    color: var(--fg);
+    font-size: 1.1rem;
+    letter-spacing: 0.06em;
+  }
+
+  .actions {
+    display: flex;
+    gap: 0.6rem;
   }
 </style>
