@@ -1,5 +1,5 @@
 ---
-import { mediaUrl, type Member, type Stub } from "../lib/db"
+import { mediaUrl, tierOf, type Member, type Stub } from "../lib/db"
 import Stamp from "./Stamp.astro"
 
 interface Props {
@@ -18,7 +18,7 @@ const full = size === "full"
 const Tag = full ? "div" : "a"
 // Each backdrop-filter layer is a full blur pass; a wall of thumbnails gets by with two.
 const layers = full ? 5 : 2
-const tier = member.kept >= 10 ? "aurora" : member.kept >= 5 ? "gold" : undefined
+const tier = tierOf(member) ?? undefined
 const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.test(c) ? 1 : 0.42), 0)
 ---
 
@@ -78,6 +78,7 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
             <div><dt>部门</dt><dd>{section || "—"}</dd></div>
             <div><dt>身份</dt><dd>{role}</dd></div>
             <div><dt>入场</dt><dd>{member.kept} 场</dd></div>
+            {member.hosted > 0 && <div><dt>发起</dt><dd>{member.hosted} 场</dd></div>}
             {github && <div><dt>GitHub</dt><dd>@{github}</dd></div>}
           </dl>
           <p class="motto">{motto || "To be at the intersection of technology and liberal arts."}</p>

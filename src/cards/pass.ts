@@ -10,6 +10,7 @@ export interface PassProps {
   size?: "thumb" | "full"
   transitionName?: string | null
   anatomy?: boolean
+  host?: boolean
 }
 
 const teeth = Array.from({ length: 25 }, (_, i) => `${100 - i * (100 / 24)}% ${i % 2 ? 76.9 : 75.6}%`)
@@ -23,7 +24,7 @@ export function qrCode(text: string) {
   }
 }
 
-export function ticket({ event, pass }: PassProps, origin: string) {
+export function ticket({ event, pass, host }: PassProps, origin: string) {
   const when = new Date(event.starts_at)
   const checkIn = checkInPhase(event)
   // The code only reaches the page once it can be used, so a screenshot taken earlier carries nothing.
@@ -32,11 +33,11 @@ export function ticket({ event, pass }: PassProps, origin: string) {
     checkIn,
     opensAt: checkInOpensAt(event),
     showCode,
-    state: pass?.redeemed_at ? "redeemed" : checkIn === "ended" ? "expired" : pass ? "valid" : "preview",
+    state: host ? "host" : pass?.redeemed_at ? "redeemed" : checkIn === "ended" ? "expired" : pass ? "valid" : "preview",
     date: when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: ZONE }),
     day: formatDay(when),
     time: formatClock(when),
-    serial: pass ? formatSerial(pass.serial) : "№ ————",
+    serial: host ? formatSerial(0) : pass ? formatSerial(pass.serial) : "№ ————",
     redeemedAt: pass?.redeemed_at ? formatClock(pass.redeemed_at) : null,
     video: mediaUrl(event.video),
     poster: event.video ? mediaUrl(posterKey(event.video)) : null,

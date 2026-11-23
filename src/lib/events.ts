@@ -11,8 +11,8 @@ const TIMES = ["claim_from", "claim_until", "starts_at", "ends_at"] as const
 
 export const toLocal = (iso: string) => new Date(Date.parse(iso) + SHANGHAI).toISOString().slice(0, 16)
 
-export const canEdit = (event: Event, user: App.Locals["user"]) =>
-  !!user?.member && (user.admin || event.created_by === user.email)
+export const canEdit = (event: Event, user: App.Locals["user"], hosts: { email: string }[]) =>
+  !!user?.member && (user.admin || event.created_by === user.email || hosts.some((h) => h.email === user.email))
 
 export async function saveEvent(form: FormData, editing: Event | null, createdBy: string) {
   const text = (name: string) => String(form.get(name) ?? "").trim()
@@ -45,7 +45,9 @@ export async function saveEvent(form: FormData, editing: Event | null, createdBy
     if (editing?.video) await env.MEDIA.delete([editing.video, posterKey(editing.video)])
   }
 
-  await db()
+  const cohosts = JSON.stringify(form.getAll("hosts").map(String))
+  const hosts = "SELECT email FROM members WHERE email = ?3 OR id IN (SELECT value FROM json_each(?2))"
+  const event = db()
     .prepare(
       `INSERT INTO events (slug, title, word, design, venue, summary, video, capacity, claim_from, claim_until, starts_at, ends_at, created_by, created_at, needs_info, album, repair)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)
@@ -60,6 +62,17 @@ export async function saveEvent(form: FormData, editing: Event | null, createdBy
       album,
       form.has("repair") ? 1 : 0,
     )
-    .run()
+  // Hosts added after the first guest checked in are credited from that moment, like the rest.
+  await db().batch([
+    event,
+    db().prepare(`DELETE FROM hosts WHERE event = ?1 AND email NOT IN (${hosts})`).bind(slug, cohosts, createdBy),
+    db()
+      .prepare(
+        `INSERT INTO hosts (event, email, created_at, credited_at)
+         SELECT ?1, email, ?4, (SELECT MIN(redeemed_at) FROM passes WHERE event = ?1 AND email NOT IN (${hosts})) FROM (${hosts})
+         WHERE true ON CONFLICT DO NOTHING`, // SQLite parses ON after a bare FROM as a join, hence WHERE true.
+      )
+      .bind(slug, cohosts, createdBy, Date.now()),
+  ])
   return { slug }
 }

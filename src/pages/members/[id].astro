@@ -4,12 +4,13 @@ import PassShelf from "../../components/PassShelf.astro"
 import RepairTally from "../../components/RepairTally.astro"
 import SharePoster from "../../components/SharePoster.astro"
 import Base from "../../layouts/Base.astro"
-import { getMember, keptBy } from "../../lib/db"
+import { getMember, hostedBy, keptBy, withHosted } from "../../lib/db"
 import { metWhere } from "../../lib/meets"
 
 const me = Astro.locals.user!.member!
 const id = Astro.params.id!
-const [member, kept, met] = await Promise.all([getMember(id), keptBy(id), id === me.id ? [] : metWhere(me.id, id)])
+const [member, entered, hosted, met] = await Promise.all([getMember(id), keptBy(id), hostedBy(id), id === me.id ? [] : metWhere(me.id, id)])
+const kept = withHosted(entered, hosted.filter((h) => h.redeemed_at))
 if (!member) return new Response(null, { status: 404 })
 const mine = member.id === me.id
 ---

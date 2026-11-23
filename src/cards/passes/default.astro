@@ -4,7 +4,7 @@ import Stamp from "../Stamp.astro"
 
 type Props = PassProps
 
-const { event, pass, holder, guest, size = "full", transitionName, anatomy } = Astro.props
+const { event, pass, holder, guest, size = "full", transitionName, anatomy, host } = Astro.props
 const Tag = size === "thumb" ? "a" : "div"
 const { state, date, day, time, serial, video, poster, qr, checkIn, opensAt, showCode } = ticket(Astro.props, Astro.url.origin)
 const live = size === "full" && !anatomy && state === "valid"
@@ -55,7 +55,7 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
           <span class="holo" aria-hidden="true" />
           <p class="name">{holder}</p>
           <p class="role">
-            <span class="tag">{guest ? "Guest" : "Member"}</span>
+            <span class="tag">{host ? "Host" : guest ? "Guest" : "Member"}</span>
             <span data-bind="title">{event.title}</span>
           </p>
         </div>
@@ -64,7 +64,17 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
           <div><dt>Date</dt><dd data-bind="day">{day}</dd></div>
           <div><dt>Time</dt><dd data-bind="time">{time}</dd></div>
         </dl>
-        {!live && !torn && (
+        {host && (
+          <div class="stub">
+            <span class="seal" aria-hidden="true" />
+            <div class="serial">
+              <span>{serial}</span>
+              <span>Host</span>
+              <small>{pass?.redeemed_at ? "这场活动由你发起" : checkIn === "ended" ? "没有来宾入场" : "来宾入场后计入"}</small>
+            </div>
+          </div>
+        )}
+        {!host && !live && !torn && (
           <div class="stub">
             <svg class="qr" viewBox={`0 0 ${qr.size} ${qr.size}`} shape-rendering="crispEdges" aria-hidden="true">
               <path d={qr.path} />
@@ -72,7 +82,7 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
             <div class="serial">
               <span>{serial}</span>
               <span>Admit one</span>
-              <small>{{ preview: "领取后生成入场码", valid: "到场后撕开", redeemed: "已入场", expired: "活动已结束" }[state]}</small>
+              <small>{{ preview: "领取后生成入场码", valid: "到场后撕开", redeemed: "已入场", expired: "活动已结束", host: "" }[state]}</small>
             </div>
           </div>
         )}
@@ -438,6 +448,28 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
       scale: 1.6;
       opacity: 0;
     }
+  }
+
+  [data-state="host"] {
+    --gold: linear-gradient(115deg, #b8862b, #f6d77c, #fff4cf, #e0a93c, #f6d77c, #b8862b) calc(50% + var(--x, 0) * 50%) calc(50% + var(--y, 0) * 50%) / 300% 300%;
+  }
+
+  [data-state="host"] .tag {
+    background: var(--gold);
+    color: var(--ink);
+  }
+
+  [data-state="host"] .edge path {
+    stroke: #d9a640;
+    stroke-width: 3;
+  }
+
+  .stub .seal {
+    flex: none;
+    width: 26cqi;
+    aspect-ratio: 1;
+    background: var(--gold);
+    mask: url("/logo.svg") center / contain no-repeat;
   }
 
   .edge {

@@ -16,6 +16,7 @@ export const showcaseMember = (): Member => ({
   portrait: null,
   background: null,
   kept: 0,
+  hosted: 0,
 })
 
 export const showcaseEvent = (): Event => {
