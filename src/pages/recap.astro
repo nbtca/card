@@ -1,7 +1,7 @@
 ---
 import SharePoster from "../components/SharePoster.astro"
 import Base from "../layouts/Base.astro"
-import { db, type Event } from "../lib/db"
+import { db, tierOf, type Event } from "../lib/db"
 import { formatClock, formatSerial, formatShort, yearOf } from "../lib/format"
 
 const { user } = Astro.locals
@@ -19,7 +19,7 @@ interface Kept extends Event {
 }
 
 // Both read the visitor's passes through the holder index; companions are limited to members, who already see each other.
-const [{ results: passes }, { results: companions }, metCount] = await Promise.all([
+const [{ results: passes }, { results: companions }, metCount, { results: hosted }] = await Promise.all([
   db()
     .prepare(
       `SELECT e.*, p.serial, p.redeemed_at FROM passes p JOIN events e ON e.slug = p.event
@@ -47,20 +47,35 @@ const [{ results: passes }, { results: companions }, metCount] = await Promise.a
         .bind(user.member.id, from, until)
         .first<{ n: number }>()
     : null,
+  db()
+    .prepare(
+      `SELECT e.*, h.credited_at, (SELECT COUNT(*) FROM passes p WHERE p.event = e.slug AND p.redeemed_at IS NOT NULL) AS guests
+       FROM hosts h JOIN events e ON e.slug = h.event
+       WHERE h.email = ? AND h.credited_at IS NOT NULL AND e.starts_at >= ? AND e.starts_at < ? ORDER BY e.starts_at`,
+    )
+    .bind(user.email, from, until)
+    .all<Event & { guests: number; credited_at: number }>(),
 ])
 const metThisYear = metCount?.n ?? 0
 
-const kept = passes.filter((p) => p.redeemed_at)
+const entered = passes.filter((p) => p.redeemed_at)
+// A hosted event is a stub too, but its time is when the first guest arrived, so it stays out of the early-bird slide.
+const kept = [
+  ...entered,
+  ...hosted.filter((h) => !entered.some((p) => p.slug === h.slug)).map((h) => ({ ...h, serial: 0, redeemed_at: h.credited_at })),
+].sort((a, b) => a.starts_at.localeCompare(b.starts_at))
 const missed = passes.filter((p) => !p.redeemed_at && Date.parse(p.ends_at) < Date.now()).length
 const first = kept[0]
-const early = kept
+const early = entered
   .map((p) => ({ p, minutes: Math.round((Date.parse(p.starts_at) - p.redeemed_at!) / 60000) }))
   .sort((a, b) => b.minutes - a.minutes)[0]
 const venues = Object.entries(Object.groupBy(kept, (p) => p.venue)).sort((a, b) => b[1]!.length - a[1]!.length)
 const [venue, atVenue] = venues[0] ?? []
-const firsts = kept.filter((p) => p.serial === 1).length
+const firsts = entered.filter((p) => p.serial === 1).length
 const total = user.member?.kept ?? kept.length
-const tier = total >= 10 ? "镭射箔" : total >= 5 ? "金箔" : null
+const foil = tierOf(user.member ?? { kept: total, hosted: 0 })
+const tier = foil && { aurora: "镭射箔", gold: "金箔" }[foil]
+const guests = hosted.reduce((sum, e) => sum + e.guests, 0)
 ---
 
 <Base title={`${year} 年度回顾 · NBTCA`} bare>
@@ -133,6 +148,15 @@ const tier = total >= 10 ? "镭射箔" : total >= 5 ? "金箔" : null
               </section>
             )}
 
+            {hosted.length > 0 && (
+              <section class="slide" data-slide>
+                <p class="eyebrow">Hosted</p>
+                <p class="big">{hosted.length}<small>场</small></p>
+                <h2>今年你发起了 {hosted.length} 场活动，{guests} 人到场</h2>
+                <p class="muted">{hosted.map((e) => e.title).join("、")}</p>
+              </section>
+            )}
+
             {user.member && (
               <section class="slide" data-slide data-repairs={user.member.alias} data-year={year} hidden>
                 <p class="eyebrow">Repairs</p>
@@ -149,7 +173,7 @@ const tier = total >= 10 ? "镭射箔" : total >= 5 ? "金箔" : null
                 {kept.map((p) => <li style={`--r: ${((p.serial * 37) % 7) - 3}deg`}><b>{p.word}</b><span>{formatShort(p.starts_at).split(" ")[0]}</span></li>)}
               </ul>
               {metThisYear > 0 && <p class="muted">还在活动上认识了 {metThisYear} 位社员。</p>}
-              {tier && <p class="tier">累计入场 {total} 场，你的社员卡已经换上了{tier}。</p>}
+              {tier && <p class="tier">累计入场 {total} 场{user.member?.hosted ? `、发起 ${user.member.hosted} 场` : ""}，你的社员卡已经换上了{tier}。</p>}
               <div class="row">
                 <SharePoster
                   sources={{ footage: ".intro video" }}

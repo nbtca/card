@@ -5,7 +5,7 @@ import RepairTally from "../../../components/RepairTally.astro"
 import SharePoster from "../../../components/SharePoster.astro"
 import Timeline from "../../../components/Timeline.astro"
 import Base from "../../../layouts/Base.astro"
-import { checkInOpensAt, checkInPhase, claimPhase, db, getEvent, randomId, type Member, type Pass } from "../../../lib/db"
+import { checkInOpensAt, checkInPhase, claimPhase, db, getEvent, hostsOf, randomId, type Pass } from "../../../lib/db"
 import { formatClock, formatDay, formatRange, formatTime, sameDay, ZONE } from "../../../lib/format"
 import { parseAttendee } from "../../../lib/attendee"
 import { purgePages } from "../../../lib/cache"
@@ -27,12 +27,12 @@ const findPrevious = () =>
     : null
 
 // D1 sits in one region and every query is a round trip, so the page asks everything at once.
-const [event, pass, previous, counted, host] = await Promise.all([
+const [event, pass, previous, counted, hosts] = await Promise.all([
   getEvent(slug!),
   findPass(),
   findPrevious(),
   db().prepare("SELECT COUNT(*) AS n FROM passes WHERE event = ?").bind(slug).first<{ n: number }>(),
-  db().prepare("SELECT * FROM members WHERE email = (SELECT created_by FROM events WHERE slug = ?)").bind(slug).first<Member>(),
+  hostsOf(slug!),
 ])
 if (!event) return new Response(null, { status: 404 })
 
@@ -41,6 +41,7 @@ let claimError = ""
 
 if (Astro.request.method === "POST") {
   if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`)
+  if (hosts.some((h) => h.email === user.email)) return Astro.redirect(Astro.url.pathname, 303)
   const data = await Astro.request.formData()
   const attendee = event.needs_info ? parseAttendee(data) : null
   if (typeof attendee === "string") {
@@ -91,7 +92,8 @@ const meeting = !!user?.member && !!pass?.redeemed_at && checkInPhase(event) ===
 const [code, met] = meeting ? await Promise.all([pass!.meet_code ?? meetCode(pass!.id), metAt(event.slug, user!.member!.id)]) : [null, []]
 const meetQr = code ? qrCode(`${Astro.url.origin}/meet/${code}`) : null
 const repairFrom = event.repair ? checkInOpensAt(event) : null
-const editable = canEdit(event, user)
+const editable = canEdit(event, user, hosts)
+const hosting = hosts.find((h) => h.email === user?.email)
 
 const now = Date.now()
 const milestones = [
@@ -113,13 +115,15 @@ const chip = {
   <main class="wrap">
     <div class="stage">
       <Lanyard drop={Astro.url.searchParams.has("issued")}>
-        <Design event={event} pass={pass} holder={pass?.name ?? user?.name ?? "你的名字"} guest={!user?.member} transitionName={`pass-${event.slug}`} />
+        {hosting
+          ? <Design event={event} pass={{ id: `host-${event.slug}`, serial: 0, redeemed_at: hosting.credited_at }} holder={hosting.name} guest={false} host transitionName={`pass-${event.slug}`} />
+          : <Design event={event} pass={pass} holder={pass?.name ?? user?.name ?? "你的名字"} guest={!user?.member} transitionName={`pass-${event.slug}`} />}
       </Lanyard>
       <div class="spot" />
     </div>
 
     <section class="info">
-      <span class="chip reveal" data-tone={pass ? "ok" : chip.tone}>{pass ? "已领取" : chip.text}</span>
+      <span class="chip reveal" data-tone={hosting || pass ? "ok" : chip.tone}>{hosting ? "主办" : pass ? "已领取" : chip.text}</span>
       <h1 class="reveal" style="--i: 1">{event.title}</h1>
 
       <div class="when reveal" style="--i: 2">
@@ -142,9 +146,14 @@ const chip = {
           活动相册
         </a>
       )}
-      {(host || editable) && (
+      {(hosts.length > 0 || editable) && (
         <div class="host reveal" style="--i: 3">
-          {host && <a href={`/members/${host.id}`} class="by"><span class="avatar" style={`--hue: ${host.hue}`}>{[...host.name][0]}</span>由 {host.name} 发起</a>}
+          {hosts.length > 0 && (
+            <span class="by">
+              <span class="avatars">{hosts.map((h) => <a href={`/members/${h.id}`} class="avatar" style={`--hue: ${h.hue}`} title={h.name}>{[...h.name][0]}</a>)}</span>
+              <span>由 {hosts.map((h, i) => <>{i > 0 && "、"}<a href={`/members/${h.id}`}>{h.name}</a></>)} 发起</span>
+            </span>
+          )}
           {editable && (
             <a class="action" href={`/e/${event.slug}/edit`} title="编辑活动、查看领取名单">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></svg>
@@ -158,7 +167,9 @@ const chip = {
       {repairFrom && Date.parse(repairFrom) <= Date.now() && <RepairTally from={repairFrom} until={event.ends_at} />}
 
       <div class="act reveal" style="--i: 6">
-        {pass
+        {hosting
+          ? <p class="notice">{hosting.credited_at ? "你是这场活动的发起人，主办券已计入入场次数。" : checkInPhase(event) === "ended" ? "这场活动没有来宾入场，主办券不计入入场次数。" : "你是这场活动的发起人，不用领券。第一位来宾入场后，主办券计入你的入场次数。"}</p>
+          : pass
           ? (
               <>
                 <p class="notice" data-pass-notice>{passNotice}</p>
@@ -381,6 +392,20 @@ const chip = {
     font-size: 0.9rem;
     color: var(--muted);
     text-decoration: none;
+  }
+
+  .by a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .avatars {
+    display: flex;
+  }
+
+  .avatars .avatar + .avatar {
+    margin-left: -0.5rem;
+    box-shadow: 0 0 0 2px var(--bg);
   }
 
   .avatar {

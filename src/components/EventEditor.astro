@@ -1,6 +1,6 @@
 ---
 import { passDesign, passDesigns } from "../cards/pass"
-import type { Event } from "../lib/db"
+import type { Event, Member } from "../lib/db"
 import { MAX_VIDEO_MB, MAX_VIDEO_SECONDS, toLocal } from "../lib/events"
 
 interface Props {
@@ -8,9 +8,11 @@ interface Props {
   isNew: boolean
   error?: string
   holder: string
+  members: Member[]
+  hosts: string[]
 }
 
-const { event, isNew, error, holder } = Astro.props
+const { event, isNew, error, holder, members, hosts } = Astro.props
 const Design = passDesign(event.design)
 const times = [
   ["claim_from", "开始领券"],
@@ -22,7 +24,7 @@ const times = [
 
 <div class="studio">
   <aside class="preview">
-    <Design event={event} pass={null} holder={holder} guest={false} />
+    <Design event={event} pass={null} holder={holder} guest={false} host />
     <p class="hint">实时预览</p>
   </aside>
 
@@ -83,6 +85,24 @@ const times = [
         <input name="album" type="url" value={event.album ?? ""} placeholder="https://photo.nbtca.space/…" />
         <small>活动结束后填写 photo.nbtca.space 的相册链接。</small>
       </label>
+      <fieldset class="hosts">
+        <legend>发起人</legend>
+        <p>发起人领到主办券，不占名额，活动开始后计入入场次数。勾选一起筹备的社员。</p>
+        {members.filter((m) => hosts.includes(m.id)).map((m) => (
+          <label class="check">
+            <input name="hosts" type="checkbox" value={m.id} checked disabled={m.email === event.created_by} />
+            {m.name}
+          </label>
+        ))}
+        <details>
+          <summary>添加发起人</summary>
+          <div>
+            {members.filter((m) => !hosts.includes(m.id)).map((m) => (
+              <label class="check"><input name="hosts" type="checkbox" value={m.id} />{m.name}</label>
+            ))}
+          </div>
+        </details>
+      </fieldset>
       <label>简介<textarea name="summary" rows="3" maxlength="200" placeholder="一句话介绍">{event.summary}</textarea></label>
     </section>
 
@@ -173,6 +193,25 @@ const times = [
 </script>
 
 <style>
+  .hosts details {
+    grid-column: 1 / -1;
+  }
+
+  .hosts summary {
+    font-size: 0.88rem;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .hosts details div {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+    gap: 0.8rem 1rem;
+    max-height: 14rem;
+    margin-top: 1rem;
+    overflow-y: auto;
+  }
+
   .studio {
     display: grid;
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);

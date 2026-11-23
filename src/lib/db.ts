@@ -15,6 +15,7 @@ export interface Member {
   portrait: string | null
   background: string | null
   kept: number
+  hosted: number
 }
 
 export interface Event {
@@ -69,6 +70,12 @@ export const cachedCard = (email: string) => {
 export const rememberCard = (card: Member) => void cards.set(card.email, { at: Date.now(), card })
 export const forgetCard = (email: string) => void cards.delete(email)
 
+// Hosting an event counts twice: once as an entry and once more here.
+export const tierOf = (m: Pick<Member, "kept" | "hosted">) => {
+  const score = m.kept + m.hosted
+  return score >= 10 ? "aurora" : score >= 5 ? "gold" : null
+}
+
 export const listMembers = async () =>
   (await db().prepare("SELECT * FROM members ORDER BY joined, created_at").all<Member>()).results
 
@@ -101,12 +108,38 @@ export const pastEvents = async (limit = 50) =>
       .all<Event>()
   ).results
 
+export interface Host extends Member {
+  credited_at: number | null
+}
+
+export const hostsOf = async (slug: string) =>
+  (
+    await db()
+      .prepare("SELECT m.*, h.credited_at FROM hosts h JOIN members m ON m.email = h.email WHERE h.event = ? ORDER BY h.created_at")
+      .bind(slug)
+      .all<Host>()
+  ).results
+
 export interface Stub extends Event {
   pass_id: string
   serial: number
   holder: string
   redeemed_at: number | null
+  host?: number
 }
+
+// A host pass is not a row in passes, so it takes no seat and never reaches the door. It counts once a guest checks in.
+export const hostedBy = async (memberId: string) =>
+  (
+    await db()
+      .prepare(
+        `SELECT e.*, 'host-' || e.slug AS pass_id, 0 AS serial, m.name AS holder, h.credited_at AS redeemed_at, 1 AS host
+         FROM members m JOIN hosts h ON h.email = m.email JOIN events e ON e.slug = h.event
+         WHERE m.id = ? ORDER BY e.starts_at DESC LIMIT 100`,
+      )
+      .bind(memberId)
+      .all<Stub>()
+  ).results
 
 const STUBS = "SELECT e.*, p.id AS pass_id, p.serial, p.name AS holder, p.redeemed_at FROM passes p JOIN events e ON e.slug = p.event"
 
@@ -120,6 +153,12 @@ export const keptBy = async (memberId: string) =>
       .bind(memberId)
       .all<Stub>()
   ).results
+
+// Host passes are merged in by event date; a member who hosted is shown the host pass instead of a guest one.
+export const withHosted = (stubs: Stub[], hosted: Stub[]) => {
+  const slugs = new Set(hosted.map((h) => h.slug))
+  return [...hosted, ...stubs.filter((s) => !slugs.has(s.slug))].sort((a, b) => b.starts_at.localeCompare(a.starts_at))
+}
 
 export const stubPass = (s: Stub) => ({ id: s.pass_id, serial: s.serial, redeemed_at: s.redeemed_at })
 

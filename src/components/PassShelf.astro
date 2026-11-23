@@ -16,7 +16,9 @@ interface Props {
 
 const { stubs, guest, eyebrow, title, lede, empty, named = true } = Astro.props
 const note = (s: Stub) =>
-  s.redeemed_at
+  s.host
+    ? s.redeemed_at ? "主办" : "主办 · 待开场"
+    : s.redeemed_at
     ? `${formatShort(new Date(s.redeemed_at).toISOString())} 入场`
     : checkInPhase(s) === "open"
       ? "可以入场了"
@@ -35,7 +37,7 @@ const note = (s: Stub) =>
       const Design = passDesign(s.design)
       return (
         <li class="rise" style={`--r: ${((i * 7) % 5) - 2}deg`}>
-          <Design event={s} pass={stubPass(s)} holder={s.holder} guest={guest} size="thumb" transitionName={named ? `pass-${s.slug}` : null} />
+          <Design event={s} pass={stubPass(s)} holder={s.holder} guest={guest} host={!!s.host} size="thumb" transitionName={named ? `pass-${s.slug}` : null} />
           <p>
             <b>{s.title}</b>
             <span>{note(s)}</span>

@@ -1,15 +1,15 @@
 import type { APIRoute } from "astro"
 import { toCsv } from "../../../lib/attendee"
-import { db, getEvent, type Pass } from "../../../lib/db"
+import { db, getEvent, hostsOf, type Pass } from "../../../lib/db"
 import { formatTime, padSerial } from "../../../lib/format"
 import { canEdit } from "../../../lib/events"
 
 const stamp = (ms: number | null) => (ms ? formatTime(new Date(ms).toISOString()) : "")
 
 export const GET: APIRoute = async ({ params, url, locals }) => {
-  const event = await getEvent(params.slug!)
+  const [event, hosts] = await Promise.all([getEvent(params.slug!), hostsOf(params.slug!)])
   if (!event) return new Response(null, { status: 404 })
-  if (!canEdit(event, locals.user)) return new Response(null, { status: locals.user ? 403 : 401 })
+  if (!canEdit(event, locals.user, hosts)) return new Response(null, { status: locals.user ? 403 : 401 })
 
   const entered = url.searchParams.get("only") === "entered"
   const { results } = await db()

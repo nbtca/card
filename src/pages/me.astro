@@ -2,7 +2,7 @@
 import MemberCard from "../cards/MemberCard.astro"
 import PassShelf from "../components/PassShelf.astro"
 import Base from "../layouts/Base.astro"
-import { checkInPhase, db, forgetCard, getMember, mediaUrl, passesOf } from "../lib/db"
+import { checkInPhase, db, forgetCard, getMember, hostedBy, mediaUrl, passesOf, withHosted } from "../lib/db"
 
 const user = Astro.locals.user!
 const id = user.member!.id
@@ -31,7 +31,8 @@ if (Astro.request.method === "POST") {
   saved = true
 }
 
-const [member, passes] = await Promise.all([getMember(id).then((m) => m!), passesOf(user.email)])
+const [member, own, hosted] = await Promise.all([getMember(id).then((m) => m!), passesOf(user.email), hostedBy(id)])
+const passes = withHosted(own, hosted)
 const upcoming = passes.filter((p) => !p.redeemed_at && checkInPhase(p) !== "ended")
 const kept = passes.filter((p) => p.redeemed_at)
 const swatches = [212, 248, 280, 320, 350, 18, 42, 140, 172, 196]
