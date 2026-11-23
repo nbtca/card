@@ -53,11 +53,15 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
         </header>
         <div class="who">
           <span class="holo" aria-hidden="true" />
-          <p class="name">{holder}</p>
-          <p class="role">
-            <span class="tag">{host ? "Host" : guest ? "Guest" : "Member"}</span>
-            <span data-bind="title">{event.title}</span>
-          </p>
+          {holder && (
+            <>
+              <p class="name">{holder}</p>
+              <p class="role">
+                <span class="tag">{host ? "Host" : guest ? "Guest" : "Member"}</span>
+                <span data-bind="title">{event.title}</span>
+              </p>
+            </>
+          )}
         </div>
         <dl class="grid">
           <div><dt>Venue</dt><dd data-bind="venue">{event.venue}</dd></div>
