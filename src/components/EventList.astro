@@ -1,7 +1,7 @@
 ---
 import { passDesign } from "../cards/pass"
 import { checkInPhase, claimPhase, type Event } from "../lib/db"
-import { formatRange, formatShort } from "../lib/format"
+import { formatClock, formatDate, formatRange, formatShort, sameDay } from "../lib/format"
 
 interface Props {
   events: Event[]
@@ -25,7 +25,12 @@ const status = (e: Event) =>
         <div class="caption">
           <span class="chip" data-tone={tone}>{text}</span>
           <a href={`/e/${e.slug}`}><h3>{e.title}</h3></a>
-          <p>{formatRange(e.starts_at, e.ends_at)}<br />{e.venue}</p>
+          <p>
+            {sameDay(e.starts_at, e.ends_at)
+              ? <>{formatDate(e.starts_at)}<br />{formatClock(e.starts_at)}–{formatClock(e.ends_at)}</>
+              : formatRange(e.starts_at, e.ends_at)}
+            <br />{e.venue}
+          </p>
         </div>
       </li>
     )

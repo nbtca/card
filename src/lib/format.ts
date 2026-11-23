@@ -5,6 +5,8 @@ type When = string | number | Date
 export const formatTime = (at: When) =>
   new Date(at).toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short", timeZone: ZONE })
 
+export const formatDate = (at: When) => new Date(at).toLocaleDateString("zh-CN", { dateStyle: "medium", timeZone: ZONE })
+
 export const formatShort = (iso: string) =>
   new Date(iso).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: ZONE })
 

@@ -32,7 +32,7 @@ export function ticket({ event, pass }: PassProps, origin: string) {
     checkIn,
     opensAt: checkInOpensAt(event),
     showCode,
-    state: !pass ? "preview" : pass.redeemed_at ? "redeemed" : checkIn === "ended" ? "expired" : "valid",
+    state: pass?.redeemed_at ? "redeemed" : checkIn === "ended" ? "expired" : pass ? "valid" : "preview",
     date: when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: ZONE }),
     day: formatDay(when),
     time: formatClock(when),
