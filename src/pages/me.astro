@@ -4,11 +4,12 @@ import PassShelf from "../components/PassShelf.astro"
 import Base from "../layouts/Base.astro"
 import { checkInPhase, db, forgetCard, getMember, hostedBy, mediaUrl, passesOf, withHosted } from "../lib/db"
 
-const user = Astro.locals.user!
-const id = user.member!.id
+const { user } = Astro.locals
+if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`)
+const id = user.member?.id
 let saved = false
 
-if (Astro.request.method === "POST") {
+if (Astro.request.method === "POST" && id) {
   const form = await Astro.request.formData()
   const text = (name: string, max: number) => String(form.get(name) ?? "").trim().slice(0, max) || null
   const hue = Math.round(Number(form.get("hue")))
@@ -31,18 +32,21 @@ if (Astro.request.method === "POST") {
   saved = true
 }
 
-const [member, own, hosted] = await Promise.all([getMember(id).then((m) => m!), passesOf(user.email), hostedBy(id)])
+const [member, own, hosted] = await Promise.all([id ? getMember(id) : null, passesOf(user.email), id ? hostedBy(id) : []])
 const passes = withHosted(own, hosted)
 const upcoming = passes.filter((p) => !p.redeemed_at && checkInPhase(p) !== "ended")
 const kept = passes.filter((p) => p.redeemed_at)
 const swatches = [212, 248, 280, 320, 350, 18, 42, 140, 172, 196]
-const uploads = [
-  { kind: "portrait", label: "人像", hint: "透明背景的 PNG 最好。", key: member.portrait },
-  { kind: "background", label: "背景", hint: "任意照片。", key: member.background },
-]
+const uploads = member
+  ? [
+      { kind: "portrait", label: "人像", hint: "透明背景的 PNG 最好。", key: member.portrait },
+      { kind: "background", label: "背景", hint: "任意照片。", key: member.background },
+    ]
+  : []
 ---
 
-<Base title="装扮我的卡片 · NBTCA">
+<Base title={member ? "装扮我的卡片 · NBTCA" : "我的票夹 · NBTCA"}>
+  {member ? (
   <main class="wrap" style={`--hue: ${member.hue}`}>
     <div class="stage">
       <MemberCard member={member} size="full" stamps={kept} />
@@ -125,12 +129,19 @@ const uploads = [
     </dialog>
 
   </main>
+  ) : (
+    <header class="wrap guest">
+      <p class="eyebrow reveal">Tickets</p>
+      <h1 class="title reveal" style="--i: 1">我的票夹</h1>
+      <p class="lede reveal" style="--i: 2">领过的券和入场记录都留在这里。</p>
+    </header>
+  )}
   <section class="wrap passes">
     {kept.length > 0 && <a class="button ghost recap-link" href="/recap">年度回顾</a>}
-    {upcoming.length > 0 && <PassShelf stubs={upcoming} guest={false} eyebrow="Upcoming" title="待入场" lede="到场后撕开贴纸扫码。" />}
+    {upcoming.length > 0 && <PassShelf stubs={upcoming} guest={!member} eyebrow="Upcoming" title="待入场" lede="到场后撕开贴纸扫码。" />}
     <PassShelf
       stubs={kept}
-      guest={false}
+      guest={!member}
       eyebrow="Ticket stubs"
       title={kept.length ? `票夹 · ${kept.length} 场` : "票夹"}
       lede="撕过的券都留在这里。"
@@ -142,153 +153,155 @@ const uploads = [
 <script>
   import { Cropper } from "../lib/crop"
 
-  const card = document.querySelector<HTMLElement>("[data-card]")!
-  const main = document.querySelector<HTMLElement>("main")!
-  const status = document.querySelector<HTMLElement>("[data-status]")!
-  const show = (text: string) => {
-    status.textContent = text
-    status.hidden = false
-  }
-
-  const hue = document.querySelector<HTMLInputElement>("[data-live=hue]")!
-  const setHue = (value: string) => {
-    hue.value = value
-    card.style.setProperty("--hue", value)
-    main.style.setProperty("--hue", value)
-    document.querySelectorAll<HTMLElement>("[data-hue]").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.hue === value)))
-  }
-  hue.addEventListener("input", () => setHue(hue.value))
-  document.querySelectorAll<HTMLElement>("[data-hue]").forEach((s) => s.addEventListener("click", () => setHue(s.dataset.hue!)))
-
-  const word = card.querySelector<HTMLElement>("[data-fit]")!
-  const motto = card.querySelector<HTMLElement>(".motto")
-  const live = (name: string, apply: (value: string) => void) => {
-    const input = document.querySelector<HTMLInputElement>(`[data-live=${name}]`)!
-    input.addEventListener("input", () => apply(input.value.trim() || input.placeholder))
-  }
-  live("word", (value) => {
-    word.textContent = value
-    dispatchEvent(new Event("card:refit"))
-  })
-  if (motto) live("motto", (value) => (motto.textContent = value))
-  const sub = card.querySelector<HTMLElement>(".sub")!
-  const section = document.querySelector<HTMLInputElement>("[data-live=section]")!
-  const role = document.querySelector<HTMLInputElement>("[data-live=role]")!
-  const updateSub = () => (sub.textContent = [section.value.trim(), role.value.trim() || "社员"].filter(Boolean).join(" · "))
-  section.addEventListener("input", updateSub)
-  role.addEventListener("input", updateSub)
-
-  const dialog = document.querySelector<HTMLDialogElement>("[data-cropper]")!
-  const frame = dialog.querySelector<HTMLElement>("[data-frame]")!
-  const cropImg = dialog.querySelector<HTMLImageElement>("[data-crop-img]")!
-  const zoom = dialog.querySelector<HTMLInputElement>("[data-zoom]")!
-  let cropper: Cropper | null = null
-  let kind = ""
-  let previewUrl = ""
-  const originals = new Map<Element, string>()
-
-  const layer = (name: string) => card.querySelector<HTMLElement>(`.front > .layer.${name === "portrait" ? "subject" : "sky"}`)!
-  const showOnCard = (url: string) => {
-    const target = layer(kind)
-    if (!originals.has(target)) originals.set(target, target.innerHTML)
-    target.innerHTML = `<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover${kind === "portrait" ? ";scale:1.08;object-position:50% 100%" : ""}">`
-  }
-  const restoreCard = () => {
-    originals.forEach((html, el) => (el.innerHTML = html))
-    originals.clear()
-  }
-
-  // One render at a time; a change that lands mid-render queues one more so the card ends on the latest framing.
-  let rendering = false
-  let again = false
-  const preview = async () => {
-    if (!cropper) return
-    if (rendering) return void (again = true)
-    rendering = true
-    const blob = await cropper.render(400)
-    rendering = false
-    URL.revokeObjectURL(previewUrl)
-    previewUrl = URL.createObjectURL(blob)
-    showOnCard(previewUrl)
-    if (again) {
-      again = false
-      preview()
+  const card = document.querySelector<HTMLElement>("[data-card]")
+  if (card) {
+    const main = document.querySelector<HTMLElement>("main")!
+    const status = document.querySelector<HTMLElement>("[data-status]")!
+    const show = (text: string) => {
+      status.textContent = text
+      status.hidden = false
     }
-  }
 
-  const discard = () => {
-    cropper?.destroy()
-    cropper = null
-    URL.revokeObjectURL(cropImg.src)
-  }
+    const hue = document.querySelector<HTMLInputElement>("[data-live=hue]")!
+    const setHue = (value: string) => {
+      hue.value = value
+      card.style.setProperty("--hue", value)
+      main.style.setProperty("--hue", value)
+      document.querySelectorAll<HTMLElement>("[data-hue]").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.hue === value)))
+    }
+    hue.addEventListener("input", () => setHue(hue.value))
+    document.querySelectorAll<HTMLElement>("[data-hue]").forEach((s) => s.addEventListener("click", () => setHue(s.dataset.hue!)))
 
-  const close = () => {
-    dialog.close()
-    discard()
-  }
+    const word = card.querySelector<HTMLElement>("[data-fit]")!
+    const motto = card.querySelector<HTMLElement>(".motto")
+    const live = (name: string, apply: (value: string) => void) => {
+      const input = document.querySelector<HTMLInputElement>(`[data-live=${name}]`)!
+      input.addEventListener("input", () => apply(input.value.trim() || input.placeholder))
+    }
+    live("word", (value) => {
+      word.textContent = value
+      dispatchEvent(new Event("card:refit"))
+    })
+    if (motto) live("motto", (value) => (motto.textContent = value))
+    const sub = card.querySelector<HTMLElement>(".sub")!
+    const section = document.querySelector<HTMLInputElement>("[data-live=section]")!
+    const role = document.querySelector<HTMLInputElement>("[data-live=role]")!
+    const updateSub = () => (sub.textContent = [section.value.trim(), role.value.trim() || "社员"].filter(Boolean).join(" · "))
+    section.addEventListener("input", updateSub)
+    role.addEventListener("input", updateSub)
 
-  for (const input of document.querySelectorAll<HTMLInputElement>("[data-upload]")) {
-    input.addEventListener("change", async () => {
-      const file = input.files?.[0]
-      input.value = ""
-      if (!file) return
+    const dialog = document.querySelector<HTMLDialogElement>("[data-cropper]")!
+    const frame = dialog.querySelector<HTMLElement>("[data-frame]")!
+    const cropImg = dialog.querySelector<HTMLImageElement>("[data-crop-img]")!
+    const zoom = dialog.querySelector<HTMLInputElement>("[data-zoom]")!
+    let cropper: Cropper | null = null
+    let kind = ""
+    let previewUrl = ""
+    const originals = new Map<Element, string>()
+
+    const layer = (name: string) => card.querySelector<HTMLElement>(`.front > .layer.${name === "portrait" ? "subject" : "sky"}`)!
+    const showOnCard = (url: string) => {
+      const target = layer(kind)
+      if (!originals.has(target)) originals.set(target, target.innerHTML)
+      target.innerHTML = `<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover${kind === "portrait" ? ";scale:1.08;object-position:50% 100%" : ""}">`
+    }
+    const restoreCard = () => {
+      originals.forEach((html, el) => (el.innerHTML = html))
+      originals.clear()
+    }
+
+    // One render at a time; a change that lands mid-render queues one more so the card ends on the latest framing.
+    let rendering = false
+    let again = false
+    const preview = async () => {
+      if (!cropper) return
+      if (rendering) return void (again = true)
+      rendering = true
+      const blob = await cropper.render(400)
+      rendering = false
+      URL.revokeObjectURL(previewUrl)
+      previewUrl = URL.createObjectURL(blob)
+      showOnCard(previewUrl)
+      if (again) {
+        again = false
+        preview()
+      }
+    }
+
+    const discard = () => {
+      cropper?.destroy()
+      cropper = null
+      URL.revokeObjectURL(cropImg.src)
+    }
+
+    const close = () => {
+      dialog.close()
+      discard()
+    }
+
+    for (const input of document.querySelectorAll<HTMLInputElement>("[data-upload]")) {
+      input.addEventListener("change", async () => {
+        const file = input.files?.[0]
+        input.value = ""
+        if (!file) return
+        try {
+          const bitmap = await createImageBitmap(file)
+          kind = input.dataset.upload!
+          dialog.dataset.kind = kind
+          dialog.querySelector("[data-crop-title]")!.textContent = kind === "portrait" ? "调整人像" : "调整背景"
+          discard()
+          cropImg.src = URL.createObjectURL(file)
+          dialog.showModal()
+          cropper = new Cropper(frame, cropImg, bitmap, kind === "background", (settled) => {
+            zoom.value = String(cropper?.zoom ?? 0)
+            if (settled) preview()
+          })
+          frame.focus()
+        } catch {
+          show("图片打不开，换一张试试。")
+        }
+      })
+    }
+
+    zoom.addEventListener("input", () => cropper?.setZoom(Number(zoom.value), false))
+    zoom.addEventListener("change", () => preview())
+    dialog.querySelector("[data-crop-reset]")!.addEventListener("click", () => cropper?.reset())
+    dialog.querySelector("[data-crop-cancel]")!.addEventListener("click", () => {
+      restoreCard()
+      close()
+    })
+    dialog.addEventListener("cancel", () => {
+      restoreCard()
+      discard()
+    })
+    dialog.querySelector("[data-crop-save]")!.addEventListener("click", async () => {
+      if (!cropper) return
+      const saving = cropper
+      cropper = null
+      dialog.close()
+      URL.revokeObjectURL(cropImg.src)
+      show("正在上传…")
       try {
-        const bitmap = await createImageBitmap(file)
-        kind = input.dataset.upload!
-        dialog.dataset.kind = kind
-        dialog.querySelector("[data-crop-title]")!.textContent = kind === "portrait" ? "调整人像" : "调整背景"
-        discard()
-        cropImg.src = URL.createObjectURL(file)
-        dialog.showModal()
-        cropper = new Cropper(frame, cropImg, bitmap, kind === "background", (settled) => {
-          zoom.value = String(cropper?.zoom ?? 0)
-          if (settled) preview()
-        })
-        frame.focus()
-      } catch {
-        show("图片打不开，换一张试试。")
+        const body = new FormData()
+        body.set("full", await saving.render(1000))
+        body.set("thumb", await saving.render(400))
+        saving.destroy()
+        const response = await fetch(`/api/me/media?kind=${kind}`, { method: "PUT", body })
+        if (!response.ok) throw new Error(await response.text())
+        location.reload()
+      } catch (error) {
+        restoreCard()
+        show(`上传失败，${error instanceof Error ? error.message : error}`)
       }
     })
-  }
 
-  zoom.addEventListener("input", () => cropper?.setZoom(Number(zoom.value), false))
-  zoom.addEventListener("change", () => preview())
-  dialog.querySelector("[data-crop-reset]")!.addEventListener("click", () => cropper?.reset())
-  dialog.querySelector("[data-crop-cancel]")!.addEventListener("click", () => {
-    restoreCard()
-    close()
-  })
-  dialog.addEventListener("cancel", () => {
-    restoreCard()
-    discard()
-  })
-  dialog.querySelector("[data-crop-save]")!.addEventListener("click", async () => {
-    if (!cropper) return
-    const saving = cropper
-    cropper = null
-    dialog.close()
-    URL.revokeObjectURL(cropImg.src)
-    show("正在上传…")
-    try {
-      const body = new FormData()
-      body.set("full", await saving.render(1000))
-      body.set("thumb", await saving.render(400))
-      saving.destroy()
-      const response = await fetch(`/api/me/media?kind=${kind}`, { method: "PUT", body })
-      if (!response.ok) throw new Error(await response.text())
-      location.reload()
-    } catch (error) {
-      restoreCard()
-      show(`上传失败，${error instanceof Error ? error.message : error}`)
+    for (const button of document.querySelectorAll<HTMLButtonElement>("[data-remove]")) {
+      button.addEventListener("click", async () => {
+        const response = await fetch(`/api/me/media?kind=${button.dataset.remove}`, { method: "DELETE" })
+        if (response.ok) location.reload()
+        else show("移除失败，请稍后再试。")
+      })
     }
-  })
-
-  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-remove]")) {
-    button.addEventListener("click", async () => {
-      const response = await fetch(`/api/me/media?kind=${button.dataset.remove}`, { method: "DELETE" })
-      if (response.ok) location.reload()
-      else show("移除失败，请稍后再试。")
-    })
   }
 </script>
 
@@ -416,6 +429,12 @@ const uploads = [
 
   .recap-link {
     justify-self: start;
+  }
+
+  .guest {
+    display: grid;
+    gap: 1.2rem;
+    padding-block: 4rem 0;
   }
 
   .passes {

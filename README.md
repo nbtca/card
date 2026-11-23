@@ -51,7 +51,7 @@ A hovered tag comes forward and hangs straight, and opening it carries the tag i
 | Who | Can |
 | --- | --- |
 | Anyone | See events |
-| Anyone signed in | Claim one pass per event |
+| Anyone signed in | Claim one pass per event, and keep their passes and stubs at `/me` |
 | Logto roles in `MEMBER_ROLES` | See every member card, edit their own at `/me`, start and edit events, check in passes at `/scan` |
 | Logto roles in `ADMIN_ROLES` | Everything members can, and edit any event |
 

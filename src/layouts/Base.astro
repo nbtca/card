@@ -64,7 +64,7 @@ const links = [
         </div>
         {user
           ? (
-              <a class="me" href={user.member ? "/me" : "/e"} title={user.email}>
+              <a class="me" href="/me" title={user.email}>
                 {user.picture
                   ? <img class="avatar" src={user.picture} alt="" referrerpolicy="no-referrer" />
                   : <span class="avatar" style={`--hue: ${user.member?.hue ?? 210}`}>{[...user.name][0]}</span>}
