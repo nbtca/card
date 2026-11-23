@@ -93,6 +93,14 @@ export const upcomingEvents = async (limit = 50) =>
       .all<Event>()
   ).results
 
+export const pastEvents = async (limit = 50) =>
+  (
+    await db()
+      .prepare("SELECT * FROM events WHERE ends_at < ? ORDER BY starts_at DESC LIMIT ?")
+      .bind(new Date().toISOString(), limit)
+      .all<Event>()
+  ).results
+
 export interface Stub extends Event {
   pass_id: string
   serial: number

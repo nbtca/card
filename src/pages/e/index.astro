@@ -2,10 +2,10 @@
 import EventList from "../../components/EventList.astro"
 import PassShelf from "../../components/PassShelf.astro"
 import Base from "../../layouts/Base.astro"
-import { checkInPhase, passesOf, upcomingEvents } from "../../lib/db"
+import { checkInPhase, passesOf, pastEvents, upcomingEvents } from "../../lib/db"
 
 const { user } = Astro.locals
-const [events, passes] = await Promise.all([upcomingEvents(), user ? passesOf(user.email) : []])
+const [events, past, passes] = await Promise.all([upcomingEvents(), pastEvents(), user ? passesOf(user.email) : []])
 const mine = passes.filter((p) => !p.redeemed_at && checkInPhase(p) !== "ended")
 ---
 
@@ -24,6 +24,15 @@ const mine = passes.filter((p) => !p.redeemed_at && checkInPhase(p) !== "ended")
     </header>
     {mine.length > 0 && <PassShelf stubs={mine} guest={!user?.member} eyebrow="Your passes" title="我的券" lede="到场后撕开贴纸扫码。" named={false} />}
     {events.length ? <EventList events={events} /> : <p class="muted">近期没有活动。</p>}
+    {past.length > 0 && (
+      <section>
+        <header>
+          <p class="eyebrow">Past</p>
+          <h2>往期活动</h2>
+        </header>
+        <EventList events={past} />
+      </section>
+    )}
   </main>
 </Base>
 
@@ -38,6 +47,11 @@ const mine = passes.filter((p) => !p.redeemed_at && checkInPhase(p) !== "ended")
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
+  }
+
+  section {
+    display: grid;
+    gap: 2.5rem;
   }
 
   header {
