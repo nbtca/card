@@ -21,7 +21,7 @@ const status = (e: Event) =>
     const { tone, text } = status(e)
     return (
       <li class="rise">
-        <Design event={e} pass={null} holder="你的名字" guest size="thumb" transitionName={`pass-${e.slug}`} />
+        <Design event={e} pass={null} holder="" guest size="thumb" transitionName={`pass-${e.slug}`} />
         <div class="caption">
           <span class="chip" data-tone={tone}>{text}</span>
           <a href={`/e/${e.slug}`}><h3>{e.title}</h3></a>
@@ -86,7 +86,9 @@ const status = (e: Event) =>
     font-size: 1.2rem;
   }
 
+  /* Safari wraps text-wrap: pretty again inside a shrink-to-fit box, so the paragraph takes the full column. */
   p {
+    justify-self: stretch;
     margin: 0;
     font-size: 0.88rem;
     line-height: 1.7;
