@@ -3,12 +3,14 @@ import { passDesign } from "../cards/pass"
 import MemberCard from "../cards/MemberCard.astro"
 import EventList from "../components/EventList.astro"
 import Base from "../layouts/Base.astro"
-import { countMembers, upcomingEvents } from "../lib/db"
+import { countMembers, pastEvents, upcomingEvents } from "../lib/db"
 import { showcaseEvent, showcaseMember } from "../lib/showcase"
 
 const { user } = Astro.locals
 const me = user?.member ?? null
 const [events, count] = await Promise.all([upcomingEvents(6), me ? countMembers() : null])
+const shown = events.length ? events : await pastEvents(3)
+const past = !events.length && shown.length > 0
 const featured = events[0] ?? showcaseEvent()
 const Featured = passDesign(featured.design)
 const layers = [
@@ -76,11 +78,11 @@ const layers = [
 
     <section class="events">
       <header>
-        <p class="eyebrow">Upcoming</p>
-        <h2>近期活动</h2>
+        <p class="eyebrow">{past ? "Recent" : "Upcoming"}</p>
+        <h2>{past ? "最近的活动" : "近期活动"}</h2>
         <a class="more" href="/e">全部活动 →</a>
       </header>
-      {events.length ? <EventList events={events} /> : <p class="muted">近期没有活动。</p>}
+      {shown.length ? <EventList events={shown} /> : <p class="muted">近期没有活动。</p>}
     </section>
   </main>
 </Base>
