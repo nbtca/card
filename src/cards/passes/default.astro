@@ -151,6 +151,9 @@ const units = [...event.word].reduce((sum, c) => sum + (/[⺀-￯]/.test(c) ? 1.
     perspective: 1400px;
     container-type: inline-size;
     color: var(--ink);
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
     rotate: -1.5deg;
     text-decoration: none;
   }
