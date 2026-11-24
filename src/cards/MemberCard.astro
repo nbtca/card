@@ -107,6 +107,9 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
   text-decoration: none;
   color: #fff;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .card.thumb::before {
@@ -178,7 +181,6 @@ const units = [...(word || alias)].reduce((sum, c) => sum + (/[\u2e80-\uffef]/.t
 .layer {
   position: absolute;
   pointer-events: none;
-  user-select: none;
 }
 
 .sky {
