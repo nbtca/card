@@ -202,6 +202,12 @@ const chip = {
                     )
                   : <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>登录领券</a>}
         <div class="extras">
+          {event.repair === 1 && checkInPhase(event) !== "ended" && (
+            <a class="action" href="https://nbtca.space/repair/create-ticket" title="填好机型和问题，到场直接开始">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16a2.12 2.12 0 0 0 3 3l5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z" /></svg>
+              预约维修
+            </a>
+          )}
           {pass && !pass.redeemed_at && checkInPhase(event) !== "ended" && (
             <a class="action" href={`/e/${event.slug}/calendar.ics`} title="开场前半小时提醒" data-calendar>
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>

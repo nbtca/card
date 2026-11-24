@@ -42,7 +42,7 @@ const times = [
       {isNew && (
         <label>
           链接名
-          <span class="slug"><em>card.nbtca.space/e/</em><input name="slug" required pattern="[a-z0-9][a-z0-9\-]{1,40}" placeholder="repair-day" /></span>
+          <span class="slug"><em>card.nbtca.space/e/</em><input name="slug" required pattern="[a-z0-9](?:[a-z0-9]|-){1,40}" title="小写字母、数字和连字符，至少两个字符" placeholder="repair-day" /></span>
           <small>小写字母、数字和连字符，创建后不可改。</small>
         </label>
       )}
