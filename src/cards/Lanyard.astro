@@ -166,11 +166,21 @@ const id = `strap-${Math.random().toString(36).slice(2, 8)}`
     }
     hang.addEventListener("pointerup", release)
     hang.addEventListener("pointercancel", release)
-    addEventListener("resize", () => {
+    // Safari can run this before a slow stylesheet applies, so the first measurement may be of an unstyled
+    // page; watching the lanyard's own size also catches late fonts, layout shifts and window resizes.
+    let size = ""
+    new ResizeObserver(() => {
+      const box = root.getBoundingClientRect()
+      const next = `${box.width}x${hang.offsetHeight}x${box.top + scrollY}`
+      if (next === size) return
+      const first = !size
+      size = next
       measure()
+      if (first && falling) return
       pos = { ...rest }
+      vel = { x: 0, y: 0 }
       draw()
-    })
+    }).observe(root)
   }
 </script>
 
