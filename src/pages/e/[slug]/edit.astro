@@ -39,7 +39,7 @@ const stamp = (ms: number) => formatShort(new Date(ms).toISOString())
       <h1 class="title reveal" style="--i: 1">{event.title}</h1>
     </header>
 
-    <EventEditor event={event} isNew={false} error={error} holder={user.name} members={members} hosts={hosts.map((h) => h.id)} />
+    <EventEditor event={event} isNew={false} error={error} holder={user.name} members={members} hosts={hosts.map((h) => h.id)} claimed={passes.length} />
 
     <section class="panel roll reveal">
       <div class="head">
