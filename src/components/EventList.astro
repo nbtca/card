@@ -7,8 +7,13 @@ interface Props {
   events: Event[]
 }
 
+const now = new Date().toISOString()
+// On the day itself, the time matters more than whether claiming is open.
 const status = (e: Event) =>
-  checkInPhase(e) === "ended" ? { tone: "", text: "已结束" } : ({
+  checkInPhase(e) === "ended" ? { tone: "", text: "已结束" }
+  : e.starts_at <= now ? { tone: "ok", text: `进行中，${formatClock(e.ends_at)} 结束` }
+  : sameDay(e.starts_at, now) ? { tone: "ok", text: `今天 ${formatClock(e.starts_at)} 开场` }
+  : ({
     upcoming: { tone: "warn", text: `${formatShort(e.claim_from)} 开放领取` },
     open: { tone: "ok", text: "正在领取" },
     closed: { tone: "", text: "领取已截止" },

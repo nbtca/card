@@ -70,8 +70,8 @@ function burst(c: AudioContext, { at = 0, type, freq, to, q = 1, gain, attack = 
   source.stop(t + attack + decay + 0.05)
 }
 
-function tone(c: AudioContext, freq: number, to: number, gain: number, decay: number) {
-  const t = c.currentTime
+function tone(c: AudioContext, freq: number, to: number, gain: number, decay: number, at = 0) {
+  const t = c.currentTime + at
   const osc = new OscillatorNode(c, { frequency: freq })
   osc.frequency.exponentialRampToValueAtTime(to, t + decay)
   const env = new GainNode(c, { gain: 0 })
@@ -140,6 +140,16 @@ export function scribble(delay: number, length: number) {
   source.connect(filter).connect(env).connect(master!)
   source.start(t, Math.random() * 1.5)
   source.stop(at + 0.05)
+}
+
+// A door volunteer hears the result without looking down: two rising notes for in, one low note for a problem.
+export function chime(ok: boolean) {
+  const c = wake(0.5)
+  if (!c) return
+  if (ok) {
+    tone(c, 880, 880, 0.18, 0.18)
+    tone(c, 1320, 1320, 0.16, 0.3, 0.09)
+  } else tone(c, 330, 260, 0.22, 0.32)
 }
 
 export function whoosh(open: boolean) {

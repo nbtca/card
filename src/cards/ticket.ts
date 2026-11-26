@@ -42,13 +42,24 @@ for (const ticket of document.querySelectorAll<HTMLElement>("[data-ticket]")) {
     timer = window.setTimeout(check, wait)
     wait = Math.min(LAST_POLL, wait * 1.3)
   }
+  // A screen that dims in the queue makes people unlock and find the page again, so it stays on while the code shows.
+  let lock: Awaited<ReturnType<WakeLock["request"]>> | null = null
+  const awake = async () => {
+    if (!ticket.isConnected || document.visibilityState !== "visible") return
+    lock = await navigator.wakeLock?.request("screen").catch(() => null) ?? null
+  }
+  card.addEventListener("pass:redeemed", () => void lock?.release(), { once: true })
   const start = () => {
     polling = true
+    card.dataset.showing = ""
+    void awake()
     if (!timer) timer = window.setTimeout(check, wait)
   }
   // Checked once on return too: the pass may have been scanned from another device.
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && !timer && ticket.isConnected) check()
+    if (document.visibilityState !== "visible" || !ticket.isConnected) return
+    if (!timer) check()
+    if (polling && lock?.released !== false) void awake()
   })
   if (ticket.querySelector("[data-revealed]")) start()
   else ticket.addEventListener("pass:revealed", start, { once: true })

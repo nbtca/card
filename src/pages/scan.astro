@@ -1,8 +1,10 @@
 ---
 import Base from "../layouts/Base.astro"
-import { recentEvents } from "../lib/db"
+import { checkInPhase, recentEvents } from "../lib/db"
 
 const events = await recentEvents()
+// The door usually has one event checking in, so it is chosen already.
+const current = events.find((e) => checkInPhase(e) === "open")?.slug
 ---
 
 <Base title="核销 · NBTCA">
@@ -18,18 +20,19 @@ const events = await recentEvents()
       <button class="button" type="button" data-start>打开摄像头</button>
     </div>
     <p class="queue" data-queue hidden></p>
+    <span class="flash" data-flash hidden aria-hidden="true" />
     <output class="result" data-result hidden>
       <span class="icon" aria-hidden="true" />
       <strong data-headline></strong>
       <span data-detail></span>
     </output>
-    <details class="panel manual reveal" style="--i: 2">
+    <details class="panel manual reveal" style="--i: 2" data-current={current}>
       <summary>扫不出来？按编号核销</summary>
       <form class="form" data-manual>
         <label>
           活动
           <select name="event" required>
-            {events.map((e) => <option value={e.slug}>{e.title}</option>)}
+            {events.map((e) => <option value={e.slug} selected={e.slug === current}>{e.title}{e.slug === current && " · 正在入场"}</option>)}
           </select>
         </label>
         <label>
@@ -54,6 +57,7 @@ const events = await recentEvents()
 
 <script>
   import { formatClock, formatSerial, formatTime } from "../lib/format"
+  import { chime } from "../lib/sound"
 
   const video = document.querySelector<HTMLVideoElement>("[data-video]")!
   const start = document.querySelector<HTMLButtonElement>("[data-start]")!
@@ -80,6 +84,7 @@ const events = await recentEvents()
     return response.json()
   }
 
+  const flash = document.querySelector<HTMLElement>("[data-flash]")!
   function show(outcome: Outcome) {
     result.dataset.status = outcome.status
     result.hidden = true
@@ -102,7 +107,13 @@ const events = await recentEvents()
       ended: `${who} · 活动期间未使用`,
       queued: "没有网络，联网后按扫码时间自动补交。",
     }[outcome.status]
-    navigator.vibrate?.(outcome.status === "ok" || outcome.status === "queued" ? 80 : [60, 60, 60])
+    const good = outcome.status === "ok" || outcome.status === "queued"
+    navigator.vibrate?.(good ? 80 : [60, 60, 60])
+    chime(good)
+    flash.dataset.flash = good ? "ok" : "bad"
+    flash.hidden = true
+    void flash.offsetWidth
+    flash.hidden = false
   }
 
   const QUEUE = "card:scan-queue"
@@ -331,6 +342,32 @@ const events = await recentEvents()
 
   [data-start] {
     position: relative;
+  }
+
+  /* The whole screen tints for a moment, readable from arm's length while the phone is held up to a pass. */
+  .flash {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    background: rgb(62 207 142 / 0.28);
+    animation: flash 0.45s ease-out forwards;
+  }
+
+  .flash[data-flash="bad"] {
+    background: rgb(255 107 74 / 0.32);
+  }
+
+  @keyframes flash {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .flash {
+      animation-duration: 0.9s;
+    }
   }
 
   .result {
