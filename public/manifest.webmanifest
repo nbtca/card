@@ -1,0 +1,15 @@
+{
+  "name": "NBTCA Cards",
+  "short_name": "NBTCA",
+  "description": "浙大宁波理工学院计算机协会的社员卡与活动券。",
+  "lang": "zh-CN",
+  "start_url": "/e",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#05060a",
+  "theme_color": "#05060a",
+  "icons": [
+    { "src": "/icon-512.webp", "sizes": "512x512", "type": "image/webp", "purpose": "any" },
+    { "src": "/icon-maskable.webp", "sizes": "512x512", "type": "image/webp", "purpose": "maskable" }
+  ]
+}

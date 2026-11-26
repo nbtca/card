@@ -5,7 +5,7 @@ import RepairTally from "../../../components/RepairTally.astro"
 import SharePoster from "../../../components/SharePoster.astro"
 import Timeline from "../../../components/Timeline.astro"
 import Base from "../../../layouts/Base.astro"
-import { checkInOpensAt, checkInPhase, claimPhase, db, getEvent, hostsOf, mediaUrl, randomId, type Pass } from "../../../lib/db"
+import { checkInOpensAt, checkInPhase, claimPhase, db, getEvent, hostsOf, mediaUrl, randomId, upcomingEvents, type Pass } from "../../../lib/db"
 import { formatClock, formatDay, formatRange, formatTime, sameDay, ZONE } from "../../../lib/format"
 import { parseAttendee } from "../../../lib/attendee"
 import { purgePages } from "../../../lib/cache"
@@ -88,6 +88,14 @@ const passNotice = pass?.redeemed_at
       ? "到场后撕开贴纸，给工作人员扫码。"
       : `${formatTime(checkInOpensAt(event))} 起可以撕开贴纸。`
 const Design = passDesign(event.design)
+const keepsake = !!pass?.redeemed_at && checkInPhase(event) === "ended"
+// Counted only for a past event the visitor attended, where each event has a few dozen passes at most.
+const [order, next] = keepsake
+  ? await Promise.all([
+      db().prepare("SELECT COUNT(*) AS n FROM passes WHERE event = ? AND redeemed_at <= ?").bind(event.slug, pass!.redeemed_at).first<{ n: number }>(),
+      upcomingEvents(1),
+    ])
+  : [null, []]
 const meeting = !!user?.member && !!pass?.redeemed_at && checkInPhase(event) === "open"
 const [code, met] = meeting ? await Promise.all([pass!.meet_code ?? meetCode(pass!.id), metAt(event.slug, user!.member!.id)]) : [null, []]
 const meetQr = code ? qrCode(`${Astro.url.origin}/meet/${code}`) : null
@@ -136,7 +144,7 @@ const shareImage = event.share ? `${Astro.url.origin}${mediaUrl(event.share)}` :
     </div>
 
     <section class="info">
-      <span class="chip reveal" data-tone={hosting || pass ? "ok" : chip.tone}>{hosting ? "主办" : pass ? "已领取" : chip.text}</span>
+      <span class="chip reveal" data-tone={hosting || pass ? "ok" : chip.tone}>{hosting ? "主办" : pass?.redeemed_at ? "已入场" : pass ? "已领取" : chip.text}</span>
       <h1 class="reveal" style="--i: 1">{event.title}</h1>
 
       <div class="when reveal" style="--i: 2">
@@ -170,7 +178,27 @@ const shareImage = event.share ? `${Astro.url.origin}${mediaUrl(event.share)}` :
           : pass
           ? (
               <div class="issued" data-issued={Astro.url.searchParams.has("issued") ? "" : undefined}>
-                <p class="notice" data-pass-notice>{passNotice}</p>
+                {keepsake
+                  ? (
+                      <div class="keepsake">
+                        <p>你是第 <b>{order!.n}</b> 位入场的来宾</p>
+                        <small>{formatTime(new Date(pass.redeemed_at!).toISOString())} 入场，这张票根留在你的票夹里。</small>
+                      </div>
+                    )
+                  : <p class="notice" data-pass-notice>{passNotice}</p>}
+                {keepsake && event.album && (
+                  <a class="button" href={event.album}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="3" /><path d="m4 16 4.5-4.5 4 4 2.5-2.5 5 5" /><circle cx="15.5" cy="9.5" r="1.5" /></svg>
+                    看活动相册
+                  </a>
+                )}
+                {keepsake && next[0] && (
+                  <a class="next" href={`/e/${next[0].slug}`}>
+                    <small>下一场</small>
+                    <b>{next[0].title}</b>
+                    <span>{formatDay(next[0].starts_at)} · {next[0].venue}</span>
+                  </a>
+                )}
                 {!pass.redeemed_at && !ended && (
                   <a class="button" href={`/e/${event.slug}/calendar.ics`} title="开场前半小时提醒" data-calendar>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
@@ -239,7 +267,7 @@ const shareImage = event.share ? `${Astro.url.origin}${mediaUrl(event.share)}` :
       </div>
 
       {summary && <p class="summary reveal" style="--i: 4">{summary}</p>}
-      {event.album && (
+      {event.album && !keepsake && (
         <a class="action album reveal" style="--i: 4" href={event.album}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="3" /><path d="m4 16 4.5-4.5 4 4 2.5-2.5 5 5" /><circle cx="15.5" cy="9.5" r="1.5" /></svg>
           活动相册
@@ -458,6 +486,59 @@ const shareImage = event.share ? `${Astro.url.origin}${mediaUrl(event.share)}` :
   .signin .button,
   .claim .button {
     width: 100%;
+  }
+
+  .keepsake {
+    display: grid;
+    gap: 0.35rem;
+    padding: 1.1rem 1.25rem;
+    border: 1px solid rgb(62 207 142 / 0.35);
+    border-radius: 1.25rem;
+    background: rgb(62 207 142 / 0.07);
+  }
+
+  .keepsake p {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .keepsake b {
+    font: 800 1.6rem / 1 var(--wide);
+    font-stretch: 125%;
+    font-variant-numeric: tabular-nums;
+    color: var(--ok);
+  }
+
+  .keepsake small {
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+
+  .next {
+    display: grid;
+    gap: 0.25rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 1.25rem;
+    text-decoration: none;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+
+  .next:hover {
+    border-color: rgb(var(--tint) / 0.2);
+    background: rgb(var(--tint) / 0.04);
+  }
+
+  .next small {
+    font: 700 0.7rem / 1 var(--wide);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .next span {
+    font-size: 0.85rem;
+    color: var(--muted);
   }
 
   .signin {
