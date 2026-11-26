@@ -3,13 +3,12 @@ import { formatWhen } from "../lib/format"
 
 interface Props {
   steps: { label: string; at: string | null; done: boolean }[]
-  countdown?: boolean
   halted?: boolean
   class?: string
   style?: string
 }
 
-const { steps, countdown = false, halted = false, class: className, style } = Astro.props
+const { steps, halted = false, class: className, style } = Astro.props
 const next = halted ? undefined : steps.find((s) => !s.done)
 ---
 
@@ -19,7 +18,6 @@ const next = halted ? undefined : steps.find((s) => !s.done)
       <span class="dot" />
       <b>{s.label}</b>
       <span data-at>{s.at && formatWhen(s.at)}</span>
-      {countdown && s === next && s.at && <span class="countdown" data-target={s.at}>还有 <span data-left>…</span></span>}
     </li>
   ))}
 </ol>
@@ -88,11 +86,6 @@ const next = halted ? undefined : steps.find((s) => !s.done)
 
   .timeline li:is([data-done], [data-next]) b {
     color: var(--fg);
-  }
-
-  .countdown {
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
   }
 
   @media (max-width: 900px) {
