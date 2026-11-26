@@ -2,6 +2,7 @@
 import { passDesign, passDesigns } from "../cards/pass"
 import type { Event, Member } from "../lib/db"
 import { MAX_VIDEO_MB, MAX_VIDEO_SECONDS, toLocal } from "../lib/events"
+import { SHANGHAI, closesPresets, formatWallDay, matchCloses, matchOpens, opensPresets, parseWall, summarize, toWall } from "../lib/schedule"
 
 interface Props {
   event: Event
@@ -10,16 +11,18 @@ interface Props {
   holder: string
   members: Member[]
   hosts: string[]
+  claimed?: number
 }
 
-const { event, isNew, error, holder, members, hosts } = Astro.props
+const { event, isNew, error, holder, members, hosts, claimed = 0 } = Astro.props
 const Design = passDesign(event.design)
-const times = [
-  ["claim_from", "开始领券"],
-  ["claim_until", "停止领券"],
-  ["starts_at", "活动开始"],
-  ["ends_at", "活动结束"],
-] as const
+const [opens, closes, start, end] = (["claim_from", "claim_until", "starts_at", "ends_at"] as const).map((name) => parseWall(toLocal(event[name]))) as [number, number, number, number]
+const thisYear = new Date(Date.now() + SHANGHAI).getUTCFullYear()
+const opensPick = matchOpens(opens, start)
+const closesPick = matchCloses(closes, start, end)
+const day = (ms: number) => toWall(ms).slice(0, 10)
+const clock = (ms: number) => toWall(ms).slice(11)
+const crossDay = day(start) !== day(end)
 ---
 
 <div class="studio">
@@ -58,12 +61,51 @@ const times = [
 
     <section class="panel">
       <h2><span>02</span>时间</h2>
-      <fieldset>
-        <p>北京时间。开场前一小时起可以核销。</p>
-        {times.map(([name, label]) => (
-          <label>{label}<input name={name} type="datetime-local" required value={event[name] && toLocal(event[name])} data-live={name} /></label>
+      <div class="schedule" data-schedule data-year={thisYear} data-claimed={claimed}>
+        {(["claim_from", "claim_until", "starts_at", "ends_at"] as const).map((name) => (
+          <input type="hidden" name={name} value={toLocal(event[name])} data-out={name} />
         ))}
-      </fieldset>
+        <div class="row">
+          <span>日期</span>
+          <div class="range"><label class="pick"><span data-show="start-day">{formatWallDay(start, thisYear)}</span><input type="date" required value={day(start)} data-in="start-day" aria-label="活动日期" /></label></div>
+        </div>
+        <div class="row">
+          <span>时间</span>
+          <div class="range">
+            <label class="pick"><span data-show="start-time">{clock(start)}</span><input type="time" required value={clock(start)} data-in="start-time" aria-label="开始时间" /></label>
+            <i>–</i>
+            <label class="pick" hidden={!crossDay}><span data-show="end-day">{formatWallDay(end, thisYear)}</span><input type="date" required value={day(end)} data-in="end-day" aria-label="结束日期" /></label>
+            <label class="pick"><span data-show="end-time">{clock(end)}</span><input type="time" required value={clock(end)} data-in="end-time" aria-label="结束时间" /></label>
+          </div>
+        </div>
+        <label class="check cross"><input type="checkbox" checked={crossDay} data-in="cross" />在另一天结束</label>
+        <hr />
+        <div class="row">
+          <span>开放领取</span>
+          <div class="range">
+            <select data-in="opens" aria-label="开放领取">
+              {opensPresets.map(([label], i) => <option value={i} selected={i === opensPick}>{label}</option>)}
+              {isNew && <option value="now">现在</option>}
+              <option value="custom" selected={opensPick < 0}>自定义</option>
+            </select>
+            <label class="pick" hidden={opensPick >= 0}><span data-show="opens-day">{formatWallDay(opens, thisYear)}</span><input type="date" value={day(opens)} data-in="opens-day" aria-label="开放领取日期" /></label>
+            <label class="pick" hidden={opensPick >= 0}><span data-show="opens-time">{clock(opens)}</span><input type="time" value={clock(opens)} data-in="opens-time" aria-label="开放领取时间" /></label>
+          </div>
+        </div>
+        <div class="row">
+          <span>停止领取</span>
+          <div class="range">
+            <select data-in="closes" aria-label="停止领取">
+              {closesPresets.map(([label], i) => <option value={i} selected={i === closesPick}>{label}</option>)}
+              <option value="custom" selected={closesPick < 0}>自定义</option>
+            </select>
+            <label class="pick" hidden={closesPick >= 0}><span data-show="closes-day">{formatWallDay(closes, thisYear)}</span><input type="date" value={day(closes)} data-in="closes-day" aria-label="停止领取日期" /></label>
+            <label class="pick" hidden={closesPick >= 0}><span data-show="closes-time">{clock(closes)}</span><input type="time" value={clock(closes)} data-in="closes-time" aria-label="停止领取时间" /></label>
+          </div>
+        </div>
+        <p class="summary" data-summary aria-live="polite">{summarize(opens, closes, start, end, thisYear)}</p>
+        <p class="moved" data-moved hidden>已有 {claimed} 人领取，保存后他们的票会显示新的时间。</p>
+      </div>
     </section>
 
     <section class="panel">
@@ -124,6 +166,8 @@ const times = [
 </div>
 
 <script>
+  import { SHANGHAI, closesAt, formatWallDay, opensAt, parseWall, scheduleError, summarize, toWall } from "../lib/schedule"
+
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
   const bind = (name: string, value: string) =>
     document.querySelectorAll<HTMLElement>(`.preview [data-bind=${name}]`).forEach((el) => (el.textContent = value))
@@ -136,14 +180,90 @@ const times = [
     bind("word", (e.target as HTMLInputElement).value || " ")
     dispatchEvent(new Event("card:refit"))
   })
-  input("starts_at").addEventListener("input", (e) => {
-    const [date, time] = (e.target as HTMLInputElement).value.split("T")
-    if (!date || !time) return
-    const [y, m, d] = date.split("-").map(Number) as [number, number, number]
-    bind("date", `${d} ${MONTHS[m - 1]} ${y}`)
-    bind("day", `${m}月${d}日`)
-    bind("time", time)
-  })
+  const schedule = document.querySelector<HTMLElement>("[data-schedule]")!
+  const thisYear = Number(schedule.dataset.year)
+  const claimed = Number(schedule.dataset.claimed)
+  const field = (name: string) => schedule.querySelector<HTMLInputElement>(`[data-in=${name}]`)!
+  const out = (name: string) => schedule.querySelector<HTMLInputElement>(`[data-out=${name}]`)!
+  const wallOf = (dayName: string, timeName: string) => parseWall(`${field(dayName).value}T${field(timeName).value}`)
+  const setPair = (prefix: string, ms: number) => {
+    if (Number.isNaN(ms)) return
+    field(`${prefix}-day`).value = toWall(ms).slice(0, 10)
+    field(`${prefix}-time`).value = toWall(ms).slice(11)
+  }
+  const opensPick = field("opens")
+  const closesPick = field("closes")
+  const cross = field("cross")
+  const firstStart = parseWall(out("starts_at").value)
+
+  const render = () => {
+    const start = wallOf("start-day", "start-time")
+    const end = wallOf(cross.checked ? "end-day" : "start-day", "end-time")
+    const opensValue = opensPick.value
+    const opens = opensValue === "custom" ? wallOf("opens-day", "opens-time")
+      : opensValue === "now" ? Math.floor((Date.now() + SHANGHAI) / 6e4) * 6e4
+      : opensAt(Number(opensValue), start)
+    const closes = closesPick.value === "custom" ? wallOf("closes-day", "closes-time") : closesAt(Number(closesPick.value), start, end)
+    if (opensValue !== "custom") setPair("opens", opens)
+    if (closesPick.value !== "custom") setPair("closes", closes)
+    if (!cross.checked) field("end-day").value = field("start-day").value
+
+    for (const prefix of ["opens", "closes"]) {
+      const custom = field(prefix).value === "custom"
+      schedule.querySelectorAll<HTMLElement>(`[data-show^=${prefix}-]`).forEach((el) => (el.parentElement!.hidden = !custom))
+    }
+    field("end-day").parentElement!.hidden = !cross.checked
+    for (const el of schedule.querySelectorAll<HTMLElement>("[data-show]")) {
+      const value = field(el.dataset.show!).value
+      el.textContent = el.dataset.show!.endsWith("-day") && value ? formatWallDay(parseWall(`${value}T00:00`), thisYear) : value || "—"
+    }
+
+    const error = scheduleError(opens, closes, start, end)
+    const summary = schedule.querySelector<HTMLElement>("[data-summary]")!
+    summary.textContent = summarize(opens, closes, start, end, thisYear)
+    summary.classList.toggle("bad", !!error)
+    schedule.querySelector<HTMLElement>("[data-show=end-time]")!.classList.toggle("bad", end <= start)
+    schedule.querySelector<HTMLElement>("[data-moved]")!.hidden = !(claimed > 0 && start !== firstStart)
+    for (const [name, ms] of [["claim_from", opens], ["claim_until", closes], ["starts_at", start], ["ends_at", end]] as const) {
+      out(name).value = Number.isNaN(ms) ? "" : toWall(ms)
+    }
+    if (Number.isNaN(start)) return
+    const d = new Date(start)
+    bind("date", `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`)
+    bind("day", `${d.getUTCMonth() + 1}月${d.getUTCDate()}日`)
+    bind("time", toWall(start).slice(11))
+  }
+
+  // Moving the start carries the end along, the way Calendar keeps an event's length.
+  let length = wallOf("end-day", "end-time") - wallOf("start-day", "start-time")
+  for (const name of ["start-day", "start-time"]) {
+    field(name).addEventListener("change", () => {
+      const start = wallOf("start-day", "start-time")
+      if (!Number.isNaN(start) && length > 0) {
+        setPair("end", start + length)
+        cross.checked = field("end-day").value !== field("start-day").value
+      }
+      render()
+    })
+  }
+  for (const name of ["end-day", "end-time", "cross"]) {
+    field(name).addEventListener("change", () => {
+      if (!cross.checked) field("end-day").value = field("start-day").value
+      render()
+      length = wallOf("end-day", "end-time") - wallOf("start-day", "start-time")
+    })
+  }
+  for (const name of ["opens", "closes", "opens-day", "opens-time", "closes-day", "closes-time"]) {
+    field(name).addEventListener("change", render)
+  }
+  for (const picker of schedule.querySelectorAll<HTMLInputElement>(".pick input")) {
+    picker.addEventListener("click", () => {
+      try {
+        picker.showPicker()
+      } catch {}
+    })
+  }
+  render()
   const picker = input("video")
   const label = document.querySelector<HTMLElement>("[data-file]")!
   const posterInput = document.querySelector<HTMLInputElement>("[data-poster]")!
@@ -193,6 +313,121 @@ const times = [
 </script>
 
 <style>
+  .schedule {
+    display: grid;
+    gap: 0.9rem;
+    padding: 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+
+  .range {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .range i {
+    font-style: normal;
+    color: var(--faint);
+  }
+
+  .form .pick {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.6rem;
+    padding: 0 0.95rem;
+    border: 1px solid var(--line);
+    border-radius: 0.8rem;
+    background: var(--field);
+    color: var(--fg);
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form .pick[hidden] {
+    display: none;
+  }
+
+  .form .pick:has(input:focus-visible) {
+    border-color: rgb(59 141 255 / 0.7);
+    box-shadow: 0 0 0 4px rgb(59 141 255 / 0.15);
+  }
+
+  /* The native control sits invisibly on top so a tap opens the system picker, including on iOS. */
+  .form .pick input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .form .schedule select {
+    width: auto;
+    min-height: 2.6rem;
+  }
+
+  .schedule .cross {
+    margin-left: 5.25rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .schedule hr {
+    width: 100%;
+    margin: 0.2rem 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .schedule .bad {
+    color: #ff6b4a;
+  }
+
+  .pick .bad {
+    text-decoration: line-through;
+  }
+
+  .summary,
+  .moved {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--faint);
+  }
+
+  .moved {
+    color: var(--warn);
+  }
+
+  @media (max-width: 520px) {
+    .row {
+      grid-template-columns: 1fr;
+      gap: 0.4rem;
+    }
+
+    .schedule .cross {
+      margin-left: 0;
+    }
+  }
+
   .hosts details {
     grid-column: 1 / -1;
   }
