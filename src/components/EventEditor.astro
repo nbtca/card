@@ -117,6 +117,11 @@ const crossDay = day(start) !== day(end)
     <section class="panel">
       <h2><span>03</span>地点与名额</h2>
       <label>地点<input name="venue" required maxlength="40" value={event.venue} data-live="venue" placeholder="图书馆一楼大厅" {...invalid("venue")} />{errorAt("venue") && <p class="field-error" id="form-error">{errorAt("venue")}</p>}</label>
+      <label>
+        怎么找到
+        <input name="venue_note" maxlength="60" value={event.venue_note} placeholder="图书馆东侧，二楼左手第一间" />
+        <small>写给第一次来的人，可以不填。</small>
+      </label>
       <div class="group">
         <label class="switch">
           <span>限制名额<small>不限制时，开放期间谁都能领。</small></span>
@@ -171,6 +176,7 @@ const crossDay = day(start) !== day(end)
       <label class="drop">
         <input name="video" type="file" {...invalid("video")} accept="video/mp4,video/webm" data-live="video" data-max-mb={MAX_VIDEO_MB} data-max-seconds={MAX_VIDEO_SECONDS} />
         <input name="poster" type="file" hidden data-poster />
+        <input name="share" type="file" hidden data-share />
         <strong data-file>{event.video ? "更换视频" : "选择一段视频"}</strong>
         {errorAt("video") && <p class="field-error" id="form-error">{errorAt("video")}</p>}
         <small>{MAX_VIDEO_SECONDS} 秒、{MAX_VIDEO_MB}MB 以内的 MP4 或 WebM，可以不传。</small>
@@ -405,10 +411,31 @@ const crossDay = day(start) !== day(end)
   }
   form.addEventListener("input", refresh)
   form.addEventListener("change", refresh)
-  form.addEventListener("submit", () => {
+  // The link preview is drawn from what is on screen, so it follows every save; a failure just keeps the old one.
+  const sharePreview = async () => {
+    const start = new Date(`${(form.querySelector("[data-out=starts_at]") as HTMLInputElement).value}:00+08:00`)
+    const footage = document.querySelector<HTMLVideoElement>(".preview video")
+    const { drawShare } = await import("../lib/share")
+    const blob = await drawShare({
+      footage: footage && footage.readyState >= 2 ? footage : null,
+      word: (form.elements.namedItem("word") as HTMLInputElement).value,
+      title: (form.elements.namedItem("title") as HTMLInputElement).value,
+      when: start.toLocaleString("zh-CN", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Shanghai" }),
+      venue: (form.elements.namedItem("venue") as HTMLInputElement).value,
+    })
+    if (blob.type !== "image/webp") return
+    const files = new DataTransfer()
+    files.items.add(new File([blob], "share.webp", { type: "image/webp" }))
+    form.querySelector<HTMLInputElement>("[data-share]")!.files = files.files
+  }
+  form.addEventListener("submit", async (e) => {
+    if (sending) return
+    e.preventDefault()
     sending = true
     save.disabled = true
     save.textContent = isNew ? "正在发布…" : "正在保存…"
+    await Promise.race([sharePreview().catch(() => {}), new Promise((done) => setTimeout(done, 3000))])
+    form.submit()
   })
   addEventListener("beforeunload", (e) => {
     if ((dirty || (isNew && snapshot() !== first)) && !sending) e.preventDefault()

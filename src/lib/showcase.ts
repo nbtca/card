@@ -28,6 +28,8 @@ export const showcaseEvent = (): Event => {
     word: "fix",
     design: "default",
     venue: "图书馆一楼大厅",
+    venue_note: "",
+    share: null,
     summary: "",
     video: null,
     capacity: null,

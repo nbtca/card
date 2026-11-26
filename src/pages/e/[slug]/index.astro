@@ -5,7 +5,7 @@ import RepairTally from "../../../components/RepairTally.astro"
 import SharePoster from "../../../components/SharePoster.astro"
 import Timeline from "../../../components/Timeline.astro"
 import Base from "../../../layouts/Base.astro"
-import { checkInOpensAt, checkInPhase, claimPhase, db, getEvent, hostsOf, randomId, type Pass } from "../../../lib/db"
+import { checkInOpensAt, checkInPhase, claimPhase, db, getEvent, hostsOf, mediaUrl, randomId, type Pass } from "../../../lib/db"
 import { formatClock, formatDay, formatRange, formatTime, sameDay, ZONE } from "../../../lib/format"
 import { parseAttendee } from "../../../lib/attendee"
 import { purgePages } from "../../../lib/cache"
@@ -109,9 +109,22 @@ const chip = {
   open: { tone: "ok", text: full ? "名额已满" : "正在领取" },
   closed: { tone: "", text: "领取已截止" },
 }[phase]
+const ended = checkInPhase(event) === "ended"
+const left = event.capacity === null ? null : Math.max(0, event.capacity - claimed)
+const summary = event.summary || (event.repair ? "现场免费维修，全校师生都能来。把电脑带过来，队员当场帮你看。可以先在网上预约，到场直接开始。" : "")
+const map = `https://uri.amap.com/search?keyword=${encodeURIComponent(`浙大宁波理工学院 ${event.venue}`)}&city=330200&src=card.nbtca.space&callnative=1`
+// The countdown points at what this visitor waits for next, not at every step of the schedule.
+const target = ended
+  ? null
+  : pass || hosting || phase === "closed" || full
+    ? Date.parse(event.starts_at) > now ? { at: event.starts_at, label: "开场" } : { at: event.ends_at, label: "结束" }
+    : phase === "upcoming"
+      ? { at: event.claim_from, label: "开放领取" }
+      : { at: event.claim_until, label: "停止领取" }
+const shareImage = event.share ? `${Astro.url.origin}${mediaUrl(event.share)}` : undefined
 ---
 
-<Base title={`${event.title} · NBTCA`} description={event.summary || `${formatRange(event.starts_at, event.ends_at)}，${event.venue}`}>
+<Base title={`${event.title} · NBTCA`} description={`${formatRange(event.starts_at, event.ends_at)}，${event.venue}${summary ? `。${summary}` : ""}`} image={shareImage}>
   <main class="wrap">
     <div class="stage">
       <Lanyard drop={Astro.url.searchParams.has("issued")}>
@@ -135,45 +148,36 @@ const chip = {
               ? `${formatClock(event.starts_at)}–${formatClock(event.ends_at)}`
               : `${formatClock(event.starts_at)} 开始，${formatTime(event.ends_at)} 结束`}
           </span>
-          <span>{event.venue}</span>
+          <a class="venue" href={map} target="_blank" rel="noopener">
+            {event.venue}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></svg>
+          </a>
+          {event.venue_note && <small>{event.venue_note}</small>}
         </span>
       </div>
 
-      {event.summary && <p class="summary reveal" style="--i: 3">{event.summary}</p>}
-      {event.album && (
-        <a class="action album reveal" style="--i: 3" href={event.album}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="3" /><path d="m4 16 4.5-4.5 4 4 2.5-2.5 5 5" /><circle cx="15.5" cy="9.5" r="1.5" /></svg>
-          活动相册
-        </a>
-      )}
-      {(hosts.length > 0 || editable) && (
-        <div class="host reveal" style="--i: 3">
-          {hosts.length > 0 && (
-            <span class="by">
-              <span class="avatars">{hosts.map((h) => <a href={`/members/${h.id}`} class="avatar" style={`--hue: ${h.hue}`} title={h.name}>{[...h.name][0]}</a>)}</span>
-              <span>由 {hosts.map((h, i) => <>{i > 0 && "、"}<a href={`/members/${h.id}`}>{h.name}</a></>)} 发起</span>
-            </span>
-          )}
-          {editable && (
-            <a class="action" href={`/e/${event.slug}/edit`} title="编辑活动、查看领取名单">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></svg>
-              管理活动
-            </a>
-          )}
-        </div>
-      )}
-
-      <Timeline class="reveal" style="--i: 4" steps={milestones} countdown />
       {repairFrom && Date.parse(repairFrom) <= Date.now() && <RepairTally from={repairFrom} until={event.ends_at} />}
 
-      <div class="act reveal" style="--i: 6">
+      <div class="act reveal" style="--i: 3">
+        {(target || left !== null) && (
+          <p class="status">
+            {target && <span class="countdown" data-target={target.at}><span data-left>…</span> 后{target.label}</span>}
+            {left !== null && !pass && !hosting && phase !== "closed" && !ended && <span>{left ? `还剩 ${left} 个名额` : "名额已满"}</span>}
+          </p>
+        )}
         {hosting
-          ? <p class="notice">{hosting.credited_at ? "你是这场活动的发起人，主办券已计入入场次数。" : checkInPhase(event) === "ended" ? "这场活动没有来宾入场，主办券不计入入场次数。" : "你是这场活动的发起人，不用领券。第一位来宾入场后，主办券计入你的入场次数。"}</p>
+          ? <p class="notice">{hosting.credited_at ? "你是这场活动的发起人，主办券已计入入场次数。" : ended ? "这场活动没有来宾入场，主办券不计入入场次数。" : "你是这场活动的发起人，不用领券。第一位来宾入场后，主办券计入你的入场次数。"}</p>
           : pass
           ? (
-              <>
+              <div class="issued" data-issued={Astro.url.searchParams.has("issued") ? "" : undefined}>
                 <p class="notice" data-pass-notice>{passNotice}</p>
-              </>
+                {!pass.redeemed_at && !ended && (
+                  <a class="button" href={`/e/${event.slug}/calendar.ics`} title="开场前半小时提醒" data-calendar>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
+                    加入日历
+                  </a>
+                )}
+              </div>
             )
           : phase === "upcoming"
             ? <p class="notice">{formatTime(event.claim_from)} 开放领取。</p>
@@ -197,24 +201,24 @@ const chip = {
                               </fieldset>
                             )
                           : !user.member && <label>券上的名字<input name="name" maxlength="20" required value={user.name} /></label>}
-                        <button class="button">领券</button>
+                        <button class="button">领取入场券</button>
                       </form>
                     )
-                  : <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>登录领券</a>}
+                  : (
+                      <div class="signin">
+                        <a class="button" href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`}>领取入场券</a>
+                        <small>用 NBTCA 账号登录后领取，没有账号可以当场注册。</small>
+                      </div>
+                    )}
         <div class="extras">
-          {event.repair === 1 && checkInPhase(event) !== "ended" && (
+          {event.repair === 1 && !ended && (
             <a class="action" href="https://nbtca.space/repair/create-ticket" title="填好机型和问题，到场直接开始">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16a2.12 2.12 0 0 0 3 3l5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z" /></svg>
               预约维修
             </a>
           )}
-          {pass && !pass.redeemed_at && checkInPhase(event) !== "ended" && (
-            <a class="action" href={`/e/${event.slug}/calendar.ics`} title="开场前半小时提醒" data-calendar>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
-              加入日历
-            </a>
-          )}
           <SharePoster
+          label={pass ? "保存分享图" : "生成分享图"}
           sources={{ footage: ".stage video" }}
           spec={{
             word: event.word,
@@ -232,13 +236,42 @@ const chip = {
           }}
           />
         </div>
+      </div>
+
+      {summary && <p class="summary reveal" style="--i: 4">{summary}</p>}
+      {event.album && (
+        <a class="action album reveal" style="--i: 4" href={event.album}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="3" /><path d="m4 16 4.5-4.5 4 4 2.5-2.5 5 5" /><circle cx="15.5" cy="9.5" r="1.5" /></svg>
+          活动相册
+        </a>
+      )}
+      {(hosts.length > 0 || editable) && (
+        <div class="host reveal" style="--i: 4">
+          {hosts.length > 0 && (
+            <span class="by">
+              <span class="avatars">{hosts.map((h) => <a href={`/members/${h.id}`} class="avatar" style={`--hue: ${h.hue}`} title={h.name}>{[...h.name][0]}</a>)}</span>
+              <span>由 {hosts.map((h, i) => <>{i > 0 && "、"}<a href={`/members/${h.id}`}>{h.name}</a></>)} 发起</span>
+            </span>
+          )}
+          {editable && (
+            <a class="action" href={`/e/${event.slug}/edit`} title="编辑活动、查看领取名单">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></svg>
+              管理活动
+            </a>
+          )}
+        </div>
+      )}
+
+      <details class="schedule reveal" style="--i: 5">
+        <summary>完整时间安排</summary>
+        <Timeline steps={milestones} />
         {event.capacity !== null && (
           <div class="meter" style={`--fill: ${Math.min(1, claimed / event.capacity)}`}>
             <span />
             <small>已领取 {claimed} / {event.capacity}</small>
           </div>
         )}
-      </div>
+      </details>
       {meetQr && (
         <div class="meet reveal" style="--i: 7">
           <svg class="code" viewBox={`-2 -2 ${meetQr.size + 4} ${meetQr.size + 4}`} shape-rendering="crispEdges" aria-label="认识一下的二维码"><path d={meetQr.path} /></svg>
@@ -282,8 +315,8 @@ const chip = {
     const pad = (n: number) => String(n).padStart(2, "0")
     const tick = () => {
       const s = Math.max(0, Math.floor((target - Date.now()) / 1000))
-      const d = Math.floor(s / 86400)
-      left.textContent = `${d ? `${d} 天 ` : ""}${pad(Math.floor(s / 3600) % 24)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`
+      // Only the last day ticks; further out, a whole number of days reads calmer.
+      left.textContent = s >= 86400 ? `${Math.ceil(s / 86400)} 天` : `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`
       // Signed-out visitors get a shared copy up to a minute old, so the refresh asks past it.
       if (s === 0) location.replace(`${location.pathname}?fresh`)
     }
@@ -364,6 +397,96 @@ const chip = {
     border-left: 1px solid var(--line);
     font-size: 0.92rem;
     color: var(--muted);
+  }
+
+  .venue {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--fg);
+    text-decoration: underline;
+    text-decoration-color: var(--line);
+    text-underline-offset: 0.25em;
+  }
+
+  .venue svg {
+    width: 0.95em;
+    height: 0.95em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+  }
+
+  .meta small {
+    max-width: 20em;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--faint);
+  }
+
+  .status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1rem;
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+
+  .status .countdown {
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .issued {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .issued[data-issued] .notice {
+    animation: arrive 0.6s var(--ease) both;
+  }
+
+  @keyframes arrive {
+    from {
+      opacity: 0;
+      translate: 0 0.5rem;
+    }
+  }
+
+  .issued .button,
+  .signin .button,
+  .claim .button {
+    width: 100%;
+  }
+
+  .signin {
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .signin small {
+    font-size: 0.8rem;
+    color: var(--faint);
+    text-align: center;
+  }
+
+  .schedule {
+    width: 100%;
+  }
+
+  .schedule summary {
+    font-size: 0.85rem;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .schedule[open] summary {
+    margin-bottom: 1.25rem;
+  }
+
+  .schedule .meter {
+    margin-top: 1.25rem;
   }
 
   .meta b {
@@ -521,13 +644,23 @@ const chip = {
     color: var(--faint);
   }
 
+  .claim {
+    width: 100%;
+  }
+
   @media (max-width: 900px) {
     main {
       grid-template-columns: 1fr;
+      gap: 1.5rem;
+      padding-top: 1rem;
+    }
+
+    .stage {
+      padding-block: 0;
     }
 
     .stage :global(.pass-card) {
-      width: min(300px, 80vw);
+      width: min(200px, 54vw);
     }
   }
 </style>

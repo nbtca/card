@@ -25,6 +25,7 @@ export interface Event {
   word: string
   design: string
   venue: string
+  venue_note: string
   summary: string
   video: string | null
   capacity: number | null
@@ -35,6 +36,7 @@ export interface Event {
   starts_at: string
   ends_at: string
   album: string | null
+  share: string | null
 }
 
 export interface Pass {

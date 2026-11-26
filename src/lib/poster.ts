@@ -16,19 +16,19 @@ const W = 1080
 const H = 1620
 const CARD = { x: 90, y: 80, w: 900, h: 1420, r: 44 }
 const PERFORATION = 1010
-const INK = "#0b0d12"
-const PAPER = "#f6f5f1"
-const MUTED = "rgb(11 13 18 / 0.55)"
-const SANS = `system-ui, -apple-system, "PingFang SC", "Noto Sans SC", sans-serif`
-const WIDE = `"Archivo", ${SANS}`
+export const INK = "#0b0d12"
+export const PAPER = "#f6f5f1"
+export const MUTED = "rgb(11 13 18 / 0.55)"
+export const SANS = `system-ui, -apple-system, "PingFang SC", "Noto Sans SC", sans-serif`
+export const WIDE = `"Archivo", ${SANS}`
 
-function cover(ctx: OffscreenCanvasRenderingContext2D, source: HTMLVideoElement | HTMLImageElement, w: number, h: number) {
+export function cover(ctx: OffscreenCanvasRenderingContext2D, source: HTMLVideoElement | HTMLImageElement, w: number, h: number) {
   const [sw, sh] = source instanceof HTMLVideoElement ? [source.videoWidth, source.videoHeight] : [source.naturalWidth, source.naturalHeight]
   const k = Math.max(w / sw, h / sh)
   ctx.drawImage(source, (w - sw * k) / 2, (h - sh * k) / 2, sw * k, sh * k)
 }
 
-function aurora(ctx: OffscreenCanvasRenderingContext2D, w: number, h: number) {
+export function aurora(ctx: OffscreenCanvasRenderingContext2D, w: number, h: number) {
   ctx.fillStyle = "#0a2a6b"
   ctx.fillRect(0, 0, w, h)
   for (const [x, y, r, color] of [[0.2, 0.2, 0.7, "#3b8dff"], [0.85, 0.35, 0.6, "#ff5fa2"], [0.5, 0.8, 0.8, "#3ecfcf"]] as const) {
@@ -40,14 +40,14 @@ function aurora(ctx: OffscreenCanvasRenderingContext2D, w: number, h: number) {
   }
 }
 
-const font = (weight: number, size: number, family: string) => `${weight} ${size}px ${family}`
+export const font = (weight: number, size: number, family: string) => `${weight} ${size}px ${family}`
 
-function fit(ctx: OffscreenCanvasRenderingContext2D, text: string, weight: number, max: number, width: number, family: string) {
+export function fit(ctx: OffscreenCanvasRenderingContext2D, text: string, weight: number, max: number, width: number, family: string) {
   ctx.font = font(weight, max, family)
   return Math.min(max, (max * width) / ctx.measureText(text).width)
 }
 
-function spaced(ctx: OffscreenCanvasRenderingContext2D, text: string, x: number, y: number, spacing: number, align: "left" | "right" = "left") {
+export function spaced(ctx: OffscreenCanvasRenderingContext2D, text: string, x: number, y: number, spacing: number, align: "left" | "right" = "left") {
   ctx.letterSpacing = `${spacing}px`
   ctx.textAlign = align
   ctx.fillText(text, x, y)
