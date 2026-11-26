@@ -7,14 +7,17 @@ import { SHANGHAI, closesPresets, formatWallDay, matchCloses, matchOpens, opensP
 interface Props {
   event: Event
   isNew: boolean
-  error?: string
+  error?: { error: string; field?: string }
+  saved?: boolean
   holder: string
   members: Member[]
   hosts: string[]
   claimed?: number
 }
 
-const { event, isNew, error, holder, members, hosts, claimed = 0 } = Astro.props
+const { event, isNew, error, saved = false, holder, members, hosts, claimed = 0 } = Astro.props
+const invalid = (field: string) => (error?.field === field ? { "aria-invalid": true, "aria-describedby": "form-error" } as const : {})
+const errorAt = (field: string) => (error?.field === field ? error.error : "")
 const Design = passDesign(event.design)
 const [opens, closes, start, end] = (["claim_from", "claim_until", "starts_at", "ends_at"] as const).map((name) => parseWall(toLocal(event[name]))) as [number, number, number, number]
 const thisYear = new Date(Date.now() + SHANGHAI).getUTCFullYear()
@@ -32,20 +35,22 @@ const crossDay = day(start) !== day(end)
   </aside>
 
   <form class="sheets form" method="post" enctype="multipart/form-data">
-    {error && <p class="notice error">{error}</p>}
+    {error && !error.field && <p class="notice error" id="form-error">{error.error}</p>}
 
     <section class="panel">
       <h2><span>01</span>卡面</h2>
-      <label>活动名称<input name="title" required maxlength="40" value={event.title} data-live="title" placeholder="理工维修日" /></label>
+      <label>活动名称<input name="title" required maxlength="40" value={event.title} data-live="title" placeholder="理工维修日" {...invalid("title")} />{errorAt("title") && <p class="field-error" id="form-error">{errorAt("title")}</p>}</label>
       <label>
         卡面大字
-        <input class="big" name="word" required maxlength="16" value={event.word} data-live="word" placeholder="fix" />
+        <input class="big" name="word" required maxlength="16" value={event.word} data-live="word" placeholder="fix" {...invalid("word")} />
+        {errorAt("word") && <p class="field-error" id="form-error">{errorAt("word")}</p>}
         <small>视频从字里透出，2 到 6 个字符最好。</small>
       </label>
       {isNew && (
         <label>
           链接名
-          <span class="slug"><em>card.nbtca.space/e/</em><input name="slug" required pattern="[a-z0-9](?:[a-z0-9]|-){1,40}" title="小写字母、数字和连字符，至少两个字符" placeholder="repair-day" /></span>
+          <span class="slug"><em>card.nbtca.space/e/</em><input name="slug" required pattern="[a-z0-9](?:[a-z0-9]|-){1,40}" title="小写字母、数字和连字符，至少两个字符" placeholder="repair-day" value={event.slug} {...invalid("slug")} /></span>
+          {errorAt("slug") && <p class="field-error" id="form-error">{errorAt("slug")}</p>}
           <small>小写字母、数字和连字符，创建后不可改。</small>
         </label>
       )}
@@ -104,46 +109,59 @@ const crossDay = day(start) !== day(end)
           </div>
         </div>
         <p class="summary" data-summary aria-live="polite">{summarize(opens, closes, start, end, thisYear)}</p>
+        {errorAt("schedule") && <p class="field-error" id="form-error">{errorAt("schedule")}</p>}
         <p class="moved" data-moved hidden>已有 {claimed} 人领取，保存后他们的票会显示新的时间。</p>
       </div>
     </section>
 
     <section class="panel">
       <h2><span>03</span>地点与名额</h2>
-      <label>地点<input name="venue" required maxlength="40" value={event.venue} data-live="venue" placeholder="图书馆一楼大厅" /></label>
-      <label>名额<input name="capacity" type="number" min="1" value={event.capacity ?? ""} placeholder="不限" /></label>
-      <label class="check">
-        <input name="needs_info" type="checkbox" checked={event.needs_info === 1} />
-        领券时登记学号、姓名、班级和手机号
-      </label>
-      <small class="note">用于学分申报，只有你和管理员能看到，可在编辑页导出。</small>
-      <label class="check">
-        <input name="repair" type="checkbox" checked={event.repair === 1} />
-        这是一场维修日
-      </label>
-      <small class="note">活动页和入场大屏会显示现场修了几台。</small>
+      <label>地点<input name="venue" required maxlength="40" value={event.venue} data-live="venue" placeholder="图书馆一楼大厅" {...invalid("venue")} />{errorAt("venue") && <p class="field-error" id="form-error">{errorAt("venue")}</p>}</label>
+      <div class="group">
+        <label class="switch">
+          <span>限制名额<small>不限制时，开放期间谁都能领。</small></span>
+          <input type="checkbox" role="switch" checked={event.capacity !== null} data-limit />
+        </label>
+        <label class="count" hidden={event.capacity === null && error?.field !== "capacity"}>
+          最多
+          <input name="capacity" type="number" inputmode="numeric" min={Math.max(1, claimed)} step="1" value={event.capacity ?? ""} placeholder="50" disabled={event.capacity === null && error?.field !== "capacity"} {...invalid("capacity")} />
+          人{claimed > 0 && <small>已领取 {claimed} 人</small>}
+        </label>
+        {errorAt("capacity") && <p class="field-error" id="form-error">{errorAt("capacity")}</p>}
+        <label class="switch">
+          <span>登记学生信息<small>领取时填写学号、姓名、班级和手机号，用于学分申报。只有发起人和管理员能看到。</small></span>
+          <input name="needs_info" type="checkbox" role="switch" checked={event.needs_info === 1} />
+        </label>
+        <label class="switch">
+          <span>维修日<small>活动页和入场大屏会显示现场修了几台。</small></span>
+          <input name="repair" type="checkbox" role="switch" checked={event.repair === 1} />
+        </label>
+      </div>
       <label>
         活动相册
-        <input name="album" type="url" value={event.album ?? ""} placeholder="https://photo.nbtca.space/…" />
-        <small>活动结束后填写 photo.nbtca.space 的相册链接。</small>
+        <input name="album" type="url" value={event.album ?? ""} placeholder="https://photo.nbtca.space/…" {...invalid("album")} />
+        {errorAt("album") ? <p class="field-error" id="form-error">{errorAt("album")}</p> : <small>活动结束后填写 photo.nbtca.space 的相册链接。</small>}
       </label>
       <fieldset class="hosts">
         <legend>发起人</legend>
-        <p>发起人领到主办券，不占名额，活动开始后计入入场次数。勾选一起筹备的社员。</p>
-        {members.filter((m) => hosts.includes(m.id)).map((m) => (
-          <label class="check">
-            <input name="hosts" type="checkbox" value={m.id} checked disabled={m.email === event.created_by} />
-            {m.name}
-          </label>
-        ))}
-        <details>
-          <summary>添加发起人</summary>
-          <div>
-            {members.filter((m) => !hosts.includes(m.id)).map((m) => (
-              <label class="check"><input name="hosts" type="checkbox" value={m.id} />{m.name}</label>
-            ))}
-          </div>
-        </details>
+        <p>发起人领到主办券，不占名额，活动开始后计入入场次数。</p>
+        <div class="people" data-people>
+          {members.map((m) => {
+            const on = hosts.includes(m.id)
+            const owner = m.email === event.created_by
+            return (
+              <label class="person" hidden={!on} data-person={m.name.toLowerCase()} data-name={m.name}>
+                <input name="hosts" type="checkbox" value={m.id} checked={on} disabled={owner} hidden />
+                {m.name}
+                {owner ? <small>创建者</small> : <button type="button" aria-label={`移除 ${m.name}`} data-remove>×</button>}
+              </label>
+            )
+          })}
+        </div>
+        <div class="find">
+          <input type="search" placeholder="输入名字添加社员" aria-label="添加发起人" autocomplete="off" data-find />
+          <ul data-results hidden></ul>
+        </div>
       </fieldset>
       <label>简介<textarea name="summary" rows="3" maxlength="200" placeholder="一句话介绍">{event.summary}</textarea></label>
     </section>
@@ -151,16 +169,18 @@ const crossDay = day(start) !== day(end)
     <section class="panel">
       <h2><span>04</span>卡面视频</h2>
       <label class="drop">
-        <input name="video" type="file" accept="video/mp4,video/webm" data-live="video" data-max-mb={MAX_VIDEO_MB} data-max-seconds={MAX_VIDEO_SECONDS} />
+        <input name="video" type="file" {...invalid("video")} accept="video/mp4,video/webm" data-live="video" data-max-mb={MAX_VIDEO_MB} data-max-seconds={MAX_VIDEO_SECONDS} />
         <input name="poster" type="file" hidden data-poster />
         <strong data-file>{event.video ? "更换视频" : "选择一段视频"}</strong>
+        {errorAt("video") && <p class="field-error" id="form-error">{errorAt("video")}</p>}
         <small>{MAX_VIDEO_SECONDS} 秒、{MAX_VIDEO_MB}MB 以内的 MP4 或 WebM，可以不传。</small>
       </label>
     </section>
 
-    <div class="submit">
-      <button class="button">{isNew ? "发布活动" : "保存修改"}</button>
-      <a class="button ghost" href={isNew ? "/e" : `/e/${event.slug}`}>取消</a>
+    <div class="submit" data-submit>
+      <p aria-live="polite" data-state>{error ? "还没有保存" : saved ? "已保存" : isNew ? "" : "没有未保存的修改"}</p>
+      {isNew && <a class="button ghost" href="/e">取消</a>}
+      <button class="button" disabled={!isNew && !error}>{isNew ? "发布活动" : "保存修改"}</button>
     </div>
   </form>
 </div>
@@ -310,6 +330,91 @@ const crossDay = day(start) !== day(end)
       posterInput.files = files.files
     }
   })
+  const form = document.querySelector<HTMLFormElement>("form.sheets")!
+  const limit = document.querySelector<HTMLInputElement>("[data-limit]")!
+  const count = document.querySelector<HTMLElement>(".count")!
+  const capacity = count.querySelector("input")!
+  limit.addEventListener("change", () => {
+    count.hidden = !limit.checked
+    capacity.disabled = !limit.checked
+    if (limit.checked) capacity.focus()
+  })
+
+  const people = document.querySelector<HTMLElement>("[data-people]")!
+  const find = document.querySelector<HTMLInputElement>("[data-find]")!
+  const list = document.querySelector("ul[data-results]") as HTMLUListElement
+  const person = (el: HTMLElement) => el.querySelector("input")!
+  const toggle = (el: HTMLElement, on: boolean) => {
+    person(el).checked = on
+    el.hidden = !on
+    form.dispatchEvent(new Event("input"))
+  }
+  people.addEventListener("click", (e) => {
+    const remove = (e.target as Element).closest("[data-remove]")
+    if (remove) toggle(remove.closest<HTMLElement>("[data-person]")!, false)
+  })
+  const showResults = () => {
+    const query = find.value.trim().toLowerCase()
+    const matches = query
+      ? [...people.querySelectorAll<HTMLElement>("[data-person]")].filter((el) => el.hidden && el.dataset.person!.includes(query)).slice(0, 6)
+      : []
+    const items = matches.map((el) => {
+      const item = document.createElement("li")
+      const button = Object.assign(document.createElement("button"), { type: "button", textContent: el.dataset.name! })
+      button.addEventListener("click", () => {
+        toggle(el, true)
+        find.value = ""
+        showResults()
+        find.focus()
+      })
+      item.replaceChildren(button)
+      return item
+    })
+    if (query && !matches.length) items.push(Object.assign(document.createElement("li"), { className: "empty", textContent: "没有找到这位社员。" }))
+    list.replaceChildren(...items)
+    list.hidden = !query
+  }
+  find.addEventListener("input", showResults)
+  find.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      list.querySelector("button")?.click()
+    }
+    if (e.key === "Escape") {
+      find.value = ""
+      showResults()
+    }
+  })
+
+  // The form keeps its first snapshot so undoing an edit by hand also clears the unsaved state.
+  const save = form.querySelector<HTMLButtonElement>("[data-submit] button")!
+  const state = form.querySelector<HTMLElement>("[data-state]")!
+  const isNew = save.textContent === "发布活动"
+  const snapshot = () =>
+    JSON.stringify([...new FormData(form)].map(([k, v]) => [k, typeof v === "string" ? v : `${v.name}:${v.size}`]))
+  const first = snapshot()
+  // A rejected save comes back with the submitted values, which still differ from what is stored.
+  const failed = !isNew && !save.disabled
+  let dirty = failed
+  let sending = false
+  const refresh = () => {
+    if (isNew) return
+    dirty = failed || snapshot() !== first
+    save.disabled = !dirty
+    state.textContent = dirty ? (failed ? "还没有保存" : "有未保存的修改") : state.textContent === "已保存" ? "已保存" : "没有未保存的修改"
+  }
+  form.addEventListener("input", refresh)
+  form.addEventListener("change", refresh)
+  form.addEventListener("submit", () => {
+    sending = true
+    save.disabled = true
+    save.textContent = isNew ? "正在发布…" : "正在保存…"
+  })
+  addEventListener("beforeunload", (e) => {
+    if ((dirty || (isNew && snapshot() !== first)) && !sending) e.preventDefault()
+  })
+  if (new URL(location.href).searchParams.has("saved")) history.replaceState(null, "", location.pathname)
+  form.querySelector<HTMLElement>("[aria-invalid]")?.focus()
 </script>
 
 <style>
@@ -428,23 +533,216 @@ const crossDay = day(start) !== day(end)
     }
   }
 
-  .hosts details {
-    grid-column: 1 / -1;
+  .group {
+    display: grid;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
   }
 
-  .hosts summary {
-    font-size: 0.88rem;
-    color: var(--muted);
+  .group > * {
+    padding: 0.9rem 1.1rem;
+  }
+
+  .group > * + * {
+    border-top: 1px solid var(--line);
+  }
+
+  .form .switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    color: var(--fg);
+    font-size: 0.95rem;
     cursor: pointer;
   }
 
-  .hosts details div {
+  .switch span {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
-    gap: 0.8rem 1rem;
-    max-height: 14rem;
-    margin-top: 1rem;
-    overflow-y: auto;
+    gap: 0.25rem;
+  }
+
+  .switch small {
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: var(--faint);
+  }
+
+  .switch input {
+    flex: none;
+    appearance: none;
+    position: relative;
+    width: 3.1rem;
+    height: 1.9rem;
+    margin: 0;
+    border-radius: 99px;
+    background: rgb(var(--tint) / 0.16);
+    cursor: pointer;
+    transition: background-color 0.25s var(--ease);
+  }
+
+  .switch input::after {
+    content: "";
+    position: absolute;
+    inset: 0.15rem auto 0.15rem 0.15rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.2);
+    transition: translate 0.25s var(--ease);
+  }
+
+  .switch input:checked {
+    background: var(--ok);
+  }
+
+  .switch input:checked::after {
+    translate: 1.2rem 0;
+  }
+
+  .switch input:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgb(59 141 255 / 0.3);
+  }
+
+  .form .count {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--fg);
+    font-size: 0.95rem;
+  }
+
+  .form .count[hidden] {
+    display: none;
+  }
+
+  .form .count input {
+    width: 6rem;
+    min-height: 2.5rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .count small {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: var(--faint);
+  }
+
+  .group .field-error {
+    margin: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .people {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .form .person {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.2rem;
+    padding: 0 0.5rem 0 0.85rem;
+    border-radius: 99px;
+    background: rgb(var(--tint) / 0.07);
+    color: var(--fg);
+    font-size: 0.88rem;
+  }
+
+  .form .person[hidden] {
+    display: none;
+  }
+
+  .person small {
+    padding-right: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--faint);
+  }
+
+  .person button {
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--faint);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .person button:hover {
+    background: rgb(var(--tint) / 0.1);
+    color: var(--fg);
+  }
+
+  .find {
+    position: relative;
+    grid-column: 1 / -1;
+  }
+
+  .find ul {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 0.35rem);
+    z-index: 5;
+    display: grid;
+    margin: 0;
+    padding: 0.35rem;
+    border: 1px solid var(--line);
+    border-radius: 0.9rem;
+    background: var(--bg);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+    list-style: none;
+  }
+
+  .find button {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 0;
+    border-radius: 0.6rem;
+    background: none;
+    color: var(--fg);
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .find li:first-child button,
+  .find button:is(:hover, :focus-visible) {
+    background: rgb(var(--tint) / 0.08);
+    outline: none;
+  }
+
+  .find .empty {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    color: var(--faint);
+  }
+
+  .hosts .people,
+  .hosts .find {
+    grid-column: 1 / -1;
+  }
+
+  .field-error {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--bad);
+  }
+
+  .form [aria-invalid="true"] {
+    border-color: rgb(255 107 74 / 0.7);
   }
 
   .studio {
@@ -574,9 +872,29 @@ const crossDay = day(start) !== day(end)
   }
 
   .submit {
+    position: sticky;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    z-index: 4;
     display: flex;
+    align-items: center;
     gap: 0.75rem;
-    padding-top: 0.5rem;
+    padding: 0.6rem 0.6rem 0.6rem 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(20px) saturate(1.4);
+    box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.3);
+  }
+
+  .submit p {
+    flex: 1;
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--faint);
+  }
+
+  .submit .button {
+    min-height: 2.6rem;
   }
 
   @media (max-width: 900px) {
@@ -586,6 +904,12 @@ const crossDay = day(start) !== day(end)
 
     .preview {
       position: static;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .preview :global(.pass-card) {
+      width: min(240px, 70vw);
     }
   }
 </style>

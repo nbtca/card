@@ -3,13 +3,15 @@ import EventEditor from "../../components/EventEditor.astro"
 import Base from "../../layouts/Base.astro"
 import { purgePages } from "../../lib/cache"
 import { listMembers, type Event } from "../../lib/db"
-import { saveEvent } from "../../lib/events"
+import { draftFrom, saveEvent } from "../../lib/events"
 
 const user = Astro.locals.user!
-let error = ""
+let error: { error: string; field?: string } | undefined
+let form: FormData | undefined
 if (Astro.request.method === "POST") {
-  const result = await saveEvent(await Astro.request.formData(), null, user.email)
-  if (result.error) error = result.error
+  form = await Astro.request.formData()
+  const result = await saveEvent(form, null, user.email)
+  if (result.error) error = result
   else {
     purgePages(Astro.url, ["/", "/e"])
     return Astro.redirect(`/e/${result.slug}`, 303)
@@ -20,7 +22,7 @@ const members = await listMembers()
 const day = 864e5
 const hour = 36e5
 const next = Math.ceil(Date.now() / hour) * hour
-const draft: Event = {
+const blank: Event = {
   slug: "",
   created_by: user.email,
   album: null,
@@ -38,6 +40,8 @@ const draft: Event = {
   starts_at: new Date(next + 7 * day).toISOString(),
   ends_at: new Date(next + 7 * day + 2 * hour).toISOString(),
 }
+const draft = form && error ? { ...draftFrom(form, blank), slug: String(form.get("slug") ?? "") } : blank
+const hostIds = form && error ? [...new Set([user.member!.id, ...form.getAll("hosts").map(String)])] : [user.member!.id]
 ---
 
 <Base title="发起活动 · NBTCA">
@@ -47,7 +51,7 @@ const draft: Event = {
       <h1 class="title reveal" style="--i: 1">发起一场活动</h1>
       <p class="lede reveal" style="--i: 2">左边是你的主办券，来宾领到的券是同一张卡面。</p>
     </header>
-    <EventEditor event={draft} isNew error={error} holder={user.name} members={members} hosts={[user.member!.id]} />
+    <EventEditor event={draft} isNew error={error} holder={user.name} members={members} hosts={hostIds} />
   </main>
 </Base>
 

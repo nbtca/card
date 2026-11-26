@@ -1,100 +1,182 @@
 ---
 import EventEditor from "../../../components/EventEditor.astro"
 import Base from "../../../layouts/Base.astro"
-import { db, getEvent, hostsOf, listMembers, type Pass } from "../../../lib/db"
-import { formatShort, padSerial } from "../../../lib/format"
+import { checkInPhase, claimPhase, db, getEvent, hostsOf, listMembers, type Pass } from "../../../lib/db"
+import { formatRange, formatShort, padSerial } from "../../../lib/format"
 import { maskPhone } from "../../../lib/attendee"
 import { purgePages } from "../../../lib/cache"
-import { canEdit, saveEvent } from "../../../lib/events"
+import { canEdit, draftFrom, saveEvent } from "../../../lib/events"
 
 const { user } = Astro.locals
 if (!user) return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`)
-const [event, hosts, members, { results: passes }] = await Promise.all([
+const [stored, hosts, members, { results: passes }] = await Promise.all([
   getEvent(Astro.params.slug!),
   hostsOf(Astro.params.slug!),
   listMembers(),
   db().prepare("SELECT * FROM passes WHERE event = ? ORDER BY serial").bind(Astro.params.slug).all<Pass>(),
 ])
-if (!event) return new Response(null, { status: 404 })
-if (!canEdit(event, user, hosts)) return Astro.redirect(`/e/${event.slug}`)
+if (!stored) return new Response(null, { status: 404 })
+if (!canEdit(stored, user, hosts)) return Astro.redirect(`/e/${stored.slug}`)
 
-let error = ""
+let event = stored
+let hostIds = hosts.map((h) => h.id)
+let error: { error: string; field?: string } | undefined
 if (Astro.request.method === "POST") {
-  const result = await saveEvent(await Astro.request.formData(), event, event.created_by)
-  if (result.error) error = result.error
+  const form = await Astro.request.formData()
+  const result = await saveEvent(form, event, event.created_by)
+  if (result.error) {
+    error = result
+    event = draftFrom(form, stored)
+    hostIds = [...new Set([...hosts.filter((h) => h.email === stored.created_by).map((h) => h.id), ...form.getAll("hosts").map(String)])]
+  }
   else {
     purgePages(Astro.url, ["/", "/e", `/e/${event.slug}`])
-    return Astro.redirect(`/e/${event.slug}`, 303)
+    return Astro.redirect(`/e/${event.slug}/edit?saved`, 303)
   }
 }
 
 const entered = passes.filter((p) => p.redeemed_at).length
 const stamp = (ms: number) => formatShort(new Date(ms).toISOString())
+const info = event.needs_info === 1
+const now = Date.now()
+const days = (iso: string) => Math.ceil((Date.parse(iso) - now) / 864e5)
+const when = (iso: string) => (days(iso) <= 1 ? `${formatShort(iso)}` : `${days(iso)} 天后`)
+const status =
+  checkInPhase(event) === "ended"
+    ? { tone: "", text: "已结束" }
+    : now >= Date.parse(event.starts_at)
+      ? { tone: "ok", text: "进行中" }
+      : {
+          upcoming: { tone: "warn", text: `${when(event.claim_from)}开放领取` },
+          open: { tone: "ok", text: `领取中，${when(event.starts_at)}开场` },
+          closed: { tone: "", text: `领取已截止，${when(event.starts_at)}开场` },
+        }[claimPhase(event)]
 ---
 
-<Base title={`编辑 ${event.title} · NBTCA`}>
+<Base title={`管理 ${event.title} · NBTCA`}>
   <main class="wrap">
     <header>
-      <p class="eyebrow reveal">Edit event</p>
+      <p class="eyebrow reveal">Manage event</p>
       <h1 class="title reveal" style="--i: 1">{event.title}</h1>
+      <p class="meta reveal" style="--i: 2">
+        <span class="chip" data-tone={status.tone}>{status.text}</span>
+        <span>{formatRange(event.starts_at, event.ends_at)} · {event.venue}</span>
+      </p>
     </header>
 
-    <EventEditor event={event} isNew={false} error={error} holder={user.name} members={members} hosts={hosts.map((h) => h.id)} claimed={passes.length} />
-
-    <section class="panel roll reveal">
-      <div class="head">
-        <h2>领取名单</h2>
-        <dl>
-          <div><dt>已领取</dt><dd>{passes.length}{event.capacity !== null && <small> / {event.capacity}</small>}</dd></div>
-          <div><dt>已入场</dt><dd>{entered}</dd></div>
-        </dl>
+    <section class="panel overview reveal" style="--i: 3">
+      <dl>
+        <div><dt>已领取</dt><dd>{passes.length}{event.capacity !== null && <small> / {event.capacity}</small>}</dd></div>
+        <div><dt>已入场</dt><dd>{entered}{passes.length > 0 && <small> / {passes.length}</small>}</dd></div>
+      </dl>
+      <div class="actions">
+        <a class="action" href={`/e/${event.slug}`}>
+          <svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>活动页
+        </a>
+        <button class="action" type="button" data-copy={`${Astro.url.origin}/e/${event.slug}`}>
+          <svg viewBox="0 0 24 24"><path d="M9 15 15 9M10 6l1-1a4.2 4.2 0 0 1 6 6l-1 1M14 18l-1 1a4.2 4.2 0 0 1-6-6l1-1" /></svg><span>复制链接</span>
+        </button>
+        <a class="action" href={`/e/${event.slug}/live`} target="_blank">
+          <svg viewBox="0 0 24 24"><path d="M3 5h18v11H3zM8 20h8M12 16v4" /></svg>入场大屏
+        </a>
         {passes.length > 0 && (
-          <div class="exports">
-            <a class="button ghost" href={`/e/${event.slug}/live`} target="_blank">打开入场大屏</a>
-            <a class="button" href={`/e/${event.slug}/attendees.csv?only=entered`} download>导出已入场名单</a>
-            <a class="button ghost" href={`/e/${event.slug}/attendees.csv`} download>导出全部名单</a>
-          </div>
+          <details class="menu">
+            <summary class="action">
+              <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>导出名单
+            </summary>
+            <div>
+              <a href={`/e/${event.slug}/attendees.csv?only=entered`} download>已入场的 {entered} 人</a>
+              <a href={`/e/${event.slug}/attendees.csv`} download>全部 {passes.length} 人</a>
+            </div>
+          </details>
         )}
       </div>
-      {event.needs_info === 1 && <p class="muted privacy">名单含学号和手机号，仅用于学分申报，请勿外传。</p>}
+    </section>
+
+    <section class="panel roll reveal" style="--i: 4">
+      <div class="head">
+        <h2>领取名单</h2>
+        {passes.length > 0 && <input type="search" placeholder={info ? "搜索姓名、学号或编号" : "搜索姓名或编号"} aria-label="搜索名单" data-search />}
+      </div>
+      {info && <p class="muted privacy">名单含学号和手机号，仅用于学分申报，请勿外传。</p>}
       {passes.length
         ? (
-            <table>
-              <thead>
-                <tr>
-                  <th>编号</th><th>姓名</th>
-                  {event.needs_info === 1 && <><th>学号</th><th>班级</th><th>手机号</th></>}
-                  <th>领取时间</th><th>入场时间</th>
-                </tr>
-              </thead>
-              <tbody>
-                {passes.map((p) => (
+            <div class="scroll">
+              <table>
+                <thead>
                   <tr>
-                    <td>{padSerial(p.serial)}</td>
-                    <td>{p.name}</td>
-                    {event.needs_info === 1 && (
-                      <>
-                        <td>{p.student_id ?? "—"}</td>
-                        <td>{p.class_name ?? "—"}</td>
-                        <td>{p.phone ? maskPhone(p.phone) : "—"}</td>
-                      </>
-                    )}
-                    <td>{stamp(p.created_at)}</td>
-                    <td>{p.redeemed_at ? stamp(p.redeemed_at) : <span class="muted">未入场</span>}</td>
+                    <th>编号</th><th>姓名</th>
+                    {info && <><th>学号</th><th>班级</th><th>手机号</th></>}
+                    <th>领取时间</th><th>入场</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {passes.map((p) => (
+                    <tr data-row={[padSerial(p.serial), p.name, info && p.student_id, info && p.class_name].filter(Boolean).join(" ").toLowerCase()}>
+                      <td class="num">{padSerial(p.serial)}</td>
+                      <td>{p.name}</td>
+                      {info && (
+                        <>
+                          <td class="num">{p.student_id ?? "—"}</td>
+                          <td>{p.class_name ?? "—"}</td>
+                          <td class="num">{p.phone ? maskPhone(p.phone) : "—"}</td>
+                        </>
+                      )}
+                      <td class="num">{stamp(p.created_at)}</td>
+                      <td class="num">{p.redeemed_at ? <span class="in">{stamp(p.redeemed_at)}</span> : <span class="muted">未入场</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p class="muted none" data-none hidden>没有找到匹配的人。</p>
+            </div>
           )
-        : <p class="muted">还没有人领券。</p>}
+        : <p class="muted">还没有人领取。活动页开放领取后，名单会出现在这里。</p>}
+    </section>
+
+    <section class="edit">
+      <h2 class="reveal" style="--i: 5">编辑活动</h2>
+      <EventEditor event={event} isNew={false} error={error} saved={Astro.url.searchParams.has("saved")} holder={user.name} members={members} hosts={hostIds} claimed={passes.length} />
     </section>
   </main>
 </Base>
 
+<script>
+  const search = document.querySelector<HTMLInputElement>("[data-search]")
+  search?.addEventListener("input", () => {
+    const query = search.value.trim().toLowerCase()
+    let shown = 0
+    for (const row of document.querySelectorAll<HTMLElement>("[data-row]")) {
+      row.hidden = !!query && !row.dataset.row!.includes(query)
+      if (!row.hidden) shown++
+    }
+    document.querySelector<HTMLElement>("[data-none]")!.hidden = shown > 0
+  })
+
+  const copy = document.querySelector<HTMLButtonElement>("[data-copy]")!
+  copy.addEventListener("click", async () => {
+    const label = copy.querySelector("span")!
+    await navigator.clipboard.writeText(copy.dataset.copy!).then(
+      () => (label.textContent = "已复制"),
+      () => (label.textContent = "复制失败"),
+    )
+    setTimeout(() => (label.textContent = "复制链接"), 1600)
+  })
+
+  for (const menu of document.querySelectorAll<HTMLDetailsElement>(".menu")) {
+    document.addEventListener("click", (e) => {
+      if (!menu.contains(e.target as Node)) menu.open = false
+    })
+    menu.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") menu.open = false
+    })
+  }
+</script>
+
 <style>
   main {
     display: grid;
-    gap: 3.5rem;
+    gap: 2rem;
     padding-block: 3rem;
   }
 
@@ -103,17 +185,22 @@ const stamp = (ms: number) => formatShort(new Date(ms).toISOString())
     gap: 1.2rem;
   }
 
-  .roll {
-    display: grid;
-    gap: 1.5rem;
-  }
-
-  .head {
+  .meta {
     display: flex;
     flex-wrap: wrap;
-    align-items: end;
+    align-items: center;
+    gap: 0.6rem 1rem;
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .overview {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 1.5rem;
   }
 
   dl {
@@ -131,21 +218,124 @@ const stamp = (ms: number) => formatShort(new Date(ms).toISOString())
     margin: 0.3rem 0 0;
     font: 800 2rem / 1 var(--wide);
     font-stretch: 125%;
-  }
-
-  .exports {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-  }
-
-  .privacy {
-    margin: 0;
-    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
   }
 
   dd small {
     font-size: 1rem;
     color: var(--faint);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .menu {
+    position: relative;
+  }
+
+  .menu summary {
+    list-style: none;
+  }
+
+  .menu summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .menu div {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.4rem);
+    z-index: 5;
+    display: grid;
+    min-width: 11rem;
+    padding: 0.35rem;
+    border: 1px solid var(--line);
+    border-radius: 0.9rem;
+    background: var(--bg);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+  }
+
+  .menu a {
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.6rem;
+    font-size: 0.88rem;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .menu a:is(:hover, :focus-visible) {
+    background: rgb(var(--tint) / 0.08);
+    outline: none;
+  }
+
+  .roll {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .head input {
+    width: min(100%, 16rem);
+    min-height: 2.5rem;
+    padding: 0 0.95rem;
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    background: var(--field);
+    color: var(--fg);
+    font: inherit;
+    font-size: 0.9rem;
+  }
+
+  .head input:focus {
+    outline: none;
+    border-color: rgb(59 141 255 / 0.7);
+    box-shadow: 0 0 0 4px rgb(59 141 255 / 0.15);
+  }
+
+  .scroll {
+    overflow-x: auto;
+  }
+
+  table {
+    display: table;
+    width: 100%;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .in {
+    color: var(--ok);
+  }
+
+  .privacy,
+  .none {
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .none {
+    padding-top: 1rem;
+  }
+
+  .edit {
+    display: grid;
+    gap: 1.5rem;
+    padding-top: 1.5rem;
+  }
+
+  .edit h2 {
+    font-size: 1.5rem;
   }
 </style>

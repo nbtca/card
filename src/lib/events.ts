@@ -14,6 +14,31 @@ export const toLocal = (iso: string) => toWall(Date.parse(iso) + SHANGHAI)
 export const canEdit = (event: Event, user: App.Locals["user"], hosts: { email: string }[]) =>
   !!user?.member && (user.admin || event.created_by === user.email || hosts.some((h) => h.email === user.email))
 
+// A rejected form is shown again with what was typed, so nothing has to be entered twice.
+export const draftFrom = (form: FormData, base: Event): Event => {
+  const text = (name: string) => String(form.get(name) ?? "").trim()
+  const iso = (name: string) => {
+    const at = parseWall(text(name)) - SHANGHAI
+    return Number.isNaN(at) ? base[name as (typeof TIMES)[number]] : new Date(at).toISOString()
+  }
+  return {
+    ...base,
+    title: text("title"),
+    word: text("word"),
+    venue: text("venue"),
+    summary: text("summary"),
+    album: text("album") || null,
+    capacity: text("capacity") ? Number(text("capacity")) || null : null,
+    needs_info: form.has("needs_info") ? 1 : 0,
+    repair: form.has("repair") ? 1 : 0,
+    design: Object.hasOwn(passDesigns, text("design")) ? text("design") : base.design,
+    claim_from: iso("claim_from"),
+    claim_until: iso("claim_until"),
+    starts_at: iso("starts_at"),
+    ends_at: iso("ends_at"),
+  }
+}
+
 export async function saveEvent(form: FormData, editing: Event | null, createdBy: string) {
   const text = (name: string) => String(form.get(name) ?? "").trim()
   const slug = editing?.slug ?? text("slug").toLowerCase()
@@ -22,16 +47,18 @@ export async function saveEvent(form: FormData, editing: Event | null, createdBy
   const video = form.get("video")
   const design = Object.hasOwn(passDesigns, text("design")) ? text("design") : "default"
 
-  if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(slug)) return { error: "链接名只能用小写字母、数字和连字符，至少两个字符。" }
-  if (!editing && (await getEvent(slug))) return { error: "这个链接名已经被用过了，换一个吧。" }
-  if (!text("title") || !text("word") || !text("venue")) return { error: "活动名称、卡面大字和地点都要填。" }
+  if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(slug)) return { error: "链接名只能用小写字母、数字和连字符，至少两个字符。", field: "slug" }
+  if (!editing && (await getEvent(slug))) return { error: "这个链接名已经被用过了，换一个吧。", field: "slug" }
+  if (!text("title")) return { error: "填写活动名称。", field: "title" }
+  if (!text("word")) return { error: "填写卡面大字。", field: "word" }
+  if (!text("venue")) return { error: "填写活动地点。", field: "venue" }
   const timeError = scheduleError(claimFrom.getTime(), claimUntil.getTime(), startsAt.getTime(), endsAt.getTime())
-  if (timeError) return { error: timeError }
-  if (capacity !== null && !(Number.isInteger(capacity) && capacity > 0)) return { error: "名额要是正整数，不限名额就留空。" }
-  if (video instanceof File && video.size > MAX_VIDEO) return { error: `视频不能超过 ${MAX_VIDEO_MB}MB，剪一段 ${MAX_VIDEO_SECONDS} 秒以内的片段吧。` }
+  if (timeError) return { error: timeError, field: "schedule" }
+  if (capacity !== null && !(Number.isInteger(capacity) && capacity > 0)) return { error: "名额要是正整数。", field: "capacity" }
+  if (video instanceof File && video.size > MAX_VIDEO) return { error: `视频不能超过 ${MAX_VIDEO_MB}MB，剪一段 ${MAX_VIDEO_SECONDS} 秒以内的片段吧。`, field: "video" }
   const poster = form.get("poster")
   const album = text("album") || null
-  if (album && !/^https:\/\/photo\.nbtca\.space\/\S*$/.test(album)) return { error: "相册链接要是 photo.nbtca.space 上的地址。" }
+  if (album && !/^https:\/\/photo\.nbtca\.space\/\S*$/.test(album)) return { error: "相册链接要是 photo.nbtca.space 上的地址。", field: "album" }
 
   let key = editing?.video ?? null
   if (video instanceof File && video.size > 0) {
