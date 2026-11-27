@@ -207,7 +207,7 @@ const tilt = (n: number) => `${((n * 37) % 7) - 3}deg`
 
   .live .wall {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(9.5rem, 40%), 1fr));
     align-content: start;
     gap: 1.4rem 1.1rem;
     margin: 0;

@@ -13,7 +13,10 @@ const serial = formatSerial(id)
 <Base title={`维修单 ${serial} · NBTCA`} description="计算机协会维修单的进度。">
   <main class="wrap" data-repair={id}>
     <div class="stage">
-      <RepairTag id={id} />
+      <div class="hung">
+        <i class="nail" />
+        <RepairTag id={id} />
+      </div>
       <div class="spot" />
     </div>
     <section class="info">
@@ -89,6 +92,58 @@ const serial = formatSerial(id)
     padding-block: 2rem;
   }
 
+  .hung {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    width: min(340px, 100%, (100svh - 10rem) * 5 / 8);
+    padding-top: 4.5rem;
+    container-type: inline-size;
+  }
+
+  .hung :global(.repair-tag) {
+    width: 100%;
+    rotate: none;
+  }
+
+  /* A torn tag keeps the stub's box, so the page would otherwise leave its height empty below the tear. */
+  .hung:has([data-torn]) {
+    margin-bottom: -36cqi;
+  }
+
+  /* A cord loops over the nail and through the eyelet. The strand behind the tag shows only above it, the one in front crosses into the hole. */
+  .hung::before,
+  .hung::after {
+    content: "";
+    position: absolute;
+    left: calc(50% - 2.5cqi);
+    top: 1.35rem;
+    width: 5cqi;
+    height: calc(3.15rem + 17cqi);
+    border: 2px solid #c4b89c;
+    border-bottom-color: #9a8f76;
+    filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.25));
+    border-radius: 50% / 1.2rem 1.2rem 40% 40%;
+    pointer-events: none;
+  }
+
+  .hung::after {
+    z-index: 2;
+    clip-path: inset(0 0 0 50%);
+  }
+
+  .nail {
+    position: absolute;
+    z-index: 3;
+    top: 1.2rem;
+    left: calc(50% - 6px);
+    width: 12px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #f4f6f8, #9aa1ab 55%, #4d535c);
+    box-shadow: 0 3px 5px rgb(0 0 0 / 0.4);
+  }
+
   .spot {
     position: absolute;
     inset: 10% 5% -5%;
@@ -131,7 +186,7 @@ const serial = formatSerial(id)
       min-height: 0;
     }
 
-    .stage :global(.repair-tag) {
+    .hung {
       width: min(280px, 72vw);
     }
   }

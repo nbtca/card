@@ -247,6 +247,11 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
     }
   }
 
+  /* Torn tags keep the stub's box, so when every tag is torn the next block may rise over that empty strip. */
+  .tally:not(:has(.repair-tag:not([data-torn])), .compact) {
+    margin-bottom: calc(var(--tag) * -0.36);
+  }
+
   .rail {
     margin-inline: -16px;
     overflow-x: auto;
