@@ -138,7 +138,7 @@ const crossDay = day(start) !== day(end)
           <input name="needs_info" type="checkbox" role="switch" checked={event.needs_info === 1} />
         </label>
         <label class="switch">
-          <span>维修日<small>活动页和入场大屏会显示现场修了几台。</small></span>
+          <span>维修日<small>活动页和入场大屏会显示现场修好的电脑数量。</small></span>
           <input name="repair" type="checkbox" role="switch" checked={event.repair === 1} />
         </label>
       </div>
@@ -179,7 +179,7 @@ const crossDay = day(start) !== day(end)
         <input name="share" type="file" hidden data-share />
         <strong data-file>{event.video ? "更换视频" : "选择一段视频"}</strong>
         {errorAt("video") && <p class="field-error" id="form-error">{errorAt("video")}</p>}
-        <small>{MAX_VIDEO_SECONDS} 秒、{MAX_VIDEO_MB}MB 以内的 MP4 或 WebM，可以不传。</small>
+        <small>{MAX_VIDEO_SECONDS} 秒、{MAX_VIDEO_MB}MB 以内的 MP4 或 WebM，不传也可以。</small>
       </label>
     </section>
 

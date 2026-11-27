@@ -163,6 +163,7 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
     --tag: clamp(150px, 34vw, 196px);
     --step: calc(var(--tag) * 0.66);
     --pivot: calc(var(--tag) * 0.144);
+    --hook: calc(var(--tag) * 0.05);
     display: grid;
     gap: 0.9rem;
     width: 100%;
@@ -269,11 +270,10 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
     list-style: none;
   }
 
-  /* The rod runs through every eyelet; the tags in front show it only through their holes. */
   ul::before {
     content: "";
     position: absolute;
-    inset: calc(0.6rem + var(--pivot) - 3px) 6px auto;
+    inset: calc(0.6rem - 3px) 6px auto;
     height: 6px;
     border-radius: 3px;
     background: linear-gradient(#d9dde3, #8a919b 55%, #4d535c);
@@ -294,10 +294,11 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
     position: relative;
     display: block;
     width: var(--tag);
-    transform-origin: 50% var(--pivot);
+    padding-top: var(--hook);
+    transform-origin: 50% 0;
     text-decoration: none;
     outline: none;
-    transition: translate 0.35s var(--ease), scale 0.35s var(--ease);
+    transition: scale 0.35s var(--ease);
   }
 
   /* The shadow sits inside the swinging layer, so it is painted once and turns with the tag instead of being blurred every frame. */
@@ -307,7 +308,6 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
 
   ul :global(a.hang:hover),
   ul :global(a.hang:focus-visible) {
-    translate: 0 -0.4rem;
     scale: 1.04;
   }
 
@@ -315,20 +315,30 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
     box-shadow: inset 0 0 0 3px var(--glow);
   }
 
-  /* A split ring loops over the rod and through the eyelet. */
-  ul :global(.hang::before) {
+  /* A ring loops over the rod and through the eyelet: its back half passes behind the tag, its front half over it. */
+  ul :global(.hang::before),
+  ul :global(.hang::after) {
     content: "";
     position: absolute;
-    z-index: 1;
+    z-index: -1;
     left: calc(50% - var(--tag) * 0.05);
-    top: calc(var(--pivot) - var(--tag) * 0.075);
+    top: calc(var(--tag) * -0.035);
     width: calc(var(--tag) * 0.1);
-    height: calc(var(--tag) * 0.12);
+    height: calc(var(--hook) + var(--pivot) + var(--tag) * 0.047);
     border: 2px solid #b9bfc7;
     border-top-color: #eef1f5;
     border-radius: 50%;
     box-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
     pointer-events: none;
+  }
+
+  ul :global(.hang::after) {
+    z-index: 1;
+    clip-path: inset(calc(var(--tag) * 0.08) 50% 0 0);
+  }
+
+  ul :global(.plate .hang::after) {
+    display: none;
   }
 
   ul > :global(li[style*="--drop"]) > :global(.hang) {
@@ -348,7 +358,7 @@ const { from, until, alias, compact = false, eyebrow, title } = Astro.props
 
   ul :global(.plate .hang) {
     width: calc(var(--step) * 0.45);
-    padding-top: calc(var(--pivot) + var(--tag) * 0.025);
+    padding-top: calc(var(--hook) + var(--tag) * 0.1);
   }
 
   ul :global(.plate b) {

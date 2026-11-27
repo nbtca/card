@@ -57,6 +57,8 @@
   --field: rgb(255 255 255 / 0.7);
   --nav: rgb(246 245 241 / 0.72);
   --note: #d9480f;
+  --ok: #0f7a4a;
+  --warn: #8f5a00;
   --aura: 0.45;
   color-scheme: light;
 }
@@ -69,6 +71,8 @@
     --field: rgb(255 255 255 / 0.7);
     --nav: rgb(246 245 241 / 0.72);
     --note: #d9480f;
+    --ok: #0f7a4a;
+    --warn: #8f5a00;
     --aura: 0.45;
     color-scheme: light;
   }
@@ -251,7 +255,8 @@ p {
   background: rgb(var(--tint) / 0.05);
 }
 
-.action svg {
+.action svg,
+.button svg {
   flex: none;
   width: 1.1em;
   height: 1.1em;
