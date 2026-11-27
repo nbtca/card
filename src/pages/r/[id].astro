@@ -106,11 +106,6 @@ const serial = formatSerial(id)
     rotate: none;
   }
 
-  /* A torn tag keeps the stub's box, so the page would otherwise leave its height empty below the tear. */
-  .hung:has([data-torn]) {
-    margin-bottom: -36cqi;
-  }
-
   /* A cord loops over the nail and through the eyelet. The strand behind the tag shows only above it, the one in front crosses into the hole. */
   .hung::before,
   .hung::after {
@@ -188,6 +183,11 @@ const serial = formatSerial(id)
 
     .hung {
       width: min(280px, 72vw);
+    }
+
+    /* A torn tag keeps the stub's box, so the stacked page would otherwise leave its height empty below the tear. */
+    .hung:has([data-torn]) {
+      margin-bottom: -36cqi;
     }
   }
 </style>
