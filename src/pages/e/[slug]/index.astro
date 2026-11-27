@@ -119,7 +119,7 @@ const chip = {
 }[phase]
 const ended = checkInPhase(event) === "ended"
 const left = event.capacity === null ? null : Math.max(0, event.capacity - claimed)
-const summary = event.summary || (event.repair ? "现场免费维修，全校师生都能来。把电脑带过来，队员当场帮你看。可以先在网上预约，到场直接开始。" : "")
+const summary = event.summary || (event.repair ? "现场免费维修，全校师生都能来。把电脑带过来，队员当场帮你检查。可以先在网上预约，到场直接开始。" : "")
 const map = `https://uri.amap.com/search?keyword=${encodeURIComponent(`浙大宁波理工学院 ${event.venue}`)}&city=330200&src=card.nbtca.space&callnative=1`
 // The countdown points at what this visitor waits for next, not at every step of the schedule.
 const target = ended
@@ -182,7 +182,7 @@ const shareImage = event.share ? `${Astro.url.origin}${mediaUrl(event.share)}` :
                   ? (
                       <div class="keepsake">
                         <p>你是第 <b>{order!.n}</b> 位入场的来宾</p>
-                        <small>{formatTime(new Date(pass.redeemed_at!).toISOString())} 入场，这张票根留在你的票夹里。</small>
+                        <small>{formatTime(new Date(pass.redeemed_at!).toISOString())} 入场，票根已收进票夹。</small>
                       </div>
                     )
                   : <p class="notice" data-pass-notice>{passNotice}</p>}

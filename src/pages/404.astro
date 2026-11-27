@@ -1,0 +1,43 @@
+---
+import Base from "../layouts/Base.astro"
+---
+
+<Base title="找不到这一页 · NBTCA">
+  <main class="wrap">
+    <section class="panel reveal">
+      <p class="eyebrow">Not found</p>
+      <h1>找不到这一页</h1>
+      <p class="muted">链接可能输错了，或者这张卡片、这场活动已经不在了。</p>
+      <div class="row">
+        <a class="button" href="/">回到首页</a>
+        <a class="button ghost" href="/e">去看看活动</a>
+      </div>
+    </section>
+  </main>
+</Base>
+
+<style>
+  main {
+    display: grid;
+    place-items: center;
+    min-height: 60svh;
+  }
+
+  section {
+    display: grid;
+    gap: 1rem;
+    max-width: 30rem;
+    line-height: 1.7;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+</style>
